@@ -7,12 +7,12 @@ import {
   Card,
   CardContent,
   CardHeader,
-  CardTitle,
 } from '../../../../components/ui/card'
 import { Badge } from '../../../../@/components/ui/badge'
 import { useRouter } from 'next/navigation'
 import { Button } from '../../../../components/ui/button'
 import { ClipboardCopy } from 'lucide-react'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../../../../@/components/ui/accordion'
 
 type SurveyQuestion = {
   id: string
@@ -116,83 +116,101 @@ const handleEditSurvey = (id: string) => {
 }
 
 
-  return (
-    <div className="max-w-5xl mx-auto p-6 space-y-4">
-      <h1 className="text-2xl font-bold">All Surveys</h1>
-      {loading ? (
-        <p>Loading...</p>
-      ) : surveys.length === 0 ? (
-        <p>No surveys found.</p>
-      ) : (
-        surveys.map((survey) => (
-          <Card key={survey.id}>
-            <CardHeader className="flex flex-col md:flex-row md:justify-between">
-            <div className="flex items-center gap-2 mt-2 md:mt-0">
-                <button
-                  onClick={() => handleEditSurvey(survey.id)}
-                  className="text-sm text-blue-500 hover:underline"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDeleteSurvey(survey.id)}
-                  className="text-sm text-red-500 hover:underline"
-                >
-                  Delete
-                </button>
-              </div>
+return (
+  <div className="max-w-5xl mx-auto p-6 space-y-4">
+    <h1 className="text-2xl font-bold">All Surveys</h1>
 
-              <div>
-                <CardTitle>{survey.title}</CardTitle>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Created by: {survey.users?.name || 'Unknown'} ({survey.users?.email || 'N/A'})
-                </p>
+    {loading ? (
+      <p>Loading...</p>
+    ) : surveys.length === 0 ? (
+      <p>No surveys found.</p>
+    ) : (
+      <Accordion type="multiple" className="space-y-4">
+        {surveys.map((survey) => (
+          <AccordionItem value={survey.id} key={survey.id}>
+            <AccordionTrigger className="text-left">
+              <div className="flex flex-col gap-1 w-full">
+                <span className="font-semibold">{survey.title}</span>
+                <span className="text-xs text-muted-foreground">
+                  Created by: {survey.users?.name || 'Unknown'} ({survey.users?.email || 'N/A'}) ·{' '}
+                  {survey.is_published ? (
+                    <Badge variant="default">Published</Badge>
+                  ) : (
+                    <Badge variant="secondary">Draft</Badge>
+                  )}
+                </span>
               </div>
-              <Badge variant={survey.is_published ? 'default' : 'secondary'}>
-                {survey.is_published ? 'Published' : 'Draft'}
-              </Badge>
-              <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => {
-          const baseUrl = typeof window !== 'undefined'
-            ? window.location.origin
-            : 'https://petrosphere-consultation.vercel.app' // Fallback for SSR
-          const link = survey.slug
-            ? `${baseUrl}/survey/${survey.slug}`
-            : `${baseUrl}/survey/${survey.id}`
-          navigator.clipboard.writeText(link)
-          toast.success("Link copied to clipboard!")
-        }}
-        className="flex items-center gap-1"
-      >
-        <ClipboardCopy className="w-4 h-4" />
-        Copy Link
-      </Button>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-700 dark:text-gray-300">{survey.description}</p>
-              <p className="text-xs text-gray-400 mt-2">
-                Created at: {new Date(survey.created_at).toLocaleString()}
-              </p>
+            </AccordionTrigger>
 
-              {survey.survey_questions?.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  <h4 className="font-semibold">Questions:</h4>
-                  <ul className="list-disc pl-5 space-y-1">
-                    {survey.survey_questions.map((q, index) => (
-                      <li key={q.id}>
-                        <span className="font-medium">{index + 1}. {q.question_text}</span> – 
-                        <span className="ml-1 text-sm italic">{q.question_type}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))
-      )}
-    </div>
-  )
+            <AccordionContent>
+              <Card>
+                <CardHeader className="flex flex-col md:flex-row md:justify-between gap-2">
+                  <div className="flex gap-3">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEditSurvey(survey.id)}
+                      className="text-blue-500"
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteSurvey(survey.id)}
+                      className="text-red-500"
+                    >
+                      Delete
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const baseUrl =
+                          typeof window !== 'undefined'
+                            ? window.location.origin
+                            : 'http://safety-vitals.vercel.app'
+                        const link = survey.slug
+                          ? `${baseUrl}/survey/${survey.slug}`
+                          : `${baseUrl}/survey/${survey.id}`
+                        navigator.clipboard.writeText(link)
+                        toast.success('Link copied to clipboard!')
+                      }}
+                    >
+                      <ClipboardCopy className="w-4 h-4 mr-1" />
+                      Copy Link
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-muted-foreground">{survey.description}</p>
+                  <p className="text-xs text-gray-400">
+                    Created at: {new Date(survey.created_at).toLocaleString()}
+                  </p>
+
+                  {survey.survey_questions?.length > 0 && (
+                    <div className="space-y-2 mt-2">
+                      <h4 className="font-semibold">Questions:</h4>
+                      <ul className="list-disc pl-5 space-y-1">
+                        {survey.survey_questions.map((q, index) => (
+                          <li key={q.id}>
+                            <span className="font-medium">{index + 1}. {q.question_text}</span>{' '}
+                            <span className="ml-1 text-sm italic text-muted-foreground">
+                              ({q.question_type})
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </AccordionContent>
+          </AccordionItem>
+        ))}
+      </Accordion>
+    )}
+  </div>
+)
+
 }

@@ -3,23 +3,22 @@
 import {
   Folder,
   Users2,
-  Shield,
-  MessagesSquare,
-  Video,
   Settings,
   HelpCircle,
   Menu,
   PlusCircle,
   FileText,
+  Home,
 } from "lucide-react"
-
-import { Home } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import Image from "next/image"
+import { usePathname } from "next/navigation"
+import { cn } from "../lib/utils"
 
 export default function Sidebar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const pathname = usePathname()
 
   function handleNavigation() {
     setIsMobileMenuOpen(false)
@@ -34,11 +33,18 @@ export default function Sidebar() {
     icon: React.ComponentType<{ className?: string }>
     children: React.ReactNode
   }) {
+    const isActive = pathname === href
+
     return (
       <Link
         href={href}
         onClick={handleNavigation}
-        className="flex items-center px-3 py-2 text-sm rounded-md transition-colors text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-[#1F1F23]"
+        className={cn(
+          "flex items-center px-3 py-2 text-sm rounded-md transition-colors",
+          isActive
+            ? "bg-gray-100 text-gray-900 dark:bg-[#1F1F23] dark:text-white"
+            : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-[#1F1F23]"
+        )}
       >
         <Icon className="h-4 w-4 mr-3 flex-shrink-0" />
         {children}
@@ -55,94 +61,71 @@ export default function Sidebar() {
       >
         <Menu className="h-5 w-5 text-gray-600 dark:text-gray-300" />
       </button>
+
       <nav
-        className={`
-                fixed inset-y-0 left-0 z-[70] w-64 bg-white dark:bg-[#0F0F12] transform transition-transform duration-200 ease-in-out
-                lg:translate-x-0 lg:static lg:w-64 border-r border-gray-200 dark:border-[#1F1F23]
-                ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
-            `}
+        className={cn(
+          "fixed inset-y-0 left-0 z-[70] w-64 bg-white dark:bg-[#0F0F12] transform transition-transform duration-200 ease-in-out",
+          "lg:translate-x-0 lg:static lg:w-64 border-r border-gray-200 dark:border-[#1F1F23]",
+          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        )}
       >
         <div className="h-full flex flex-col">
           <Link
             href="#"
-            target="_blank"
-            rel="noopener noreferrer"
             className="h-16 px-6 flex items-center border-b border-gray-200 dark:border-[#1F1F23]"
           >
             <div className="flex items-center gap-3">
               <Image
-                src="/icons/logo.png"
+                src="/icons/pinklogo.png"
                 alt="Petrosphere Logo"
-                width={200}
-                height={230}
-                className="flex-shrink-0 hidden dark:block"
+                width={40}
+                height={40}
+                className="hidden dark:block"
               />
               <Image
-                src="https://kokonutui.com/logo-black.svg"
-                alt="Acme"
-                width={32}
-                height={32}
-                className="flex-shrink-0 block dark:hidden"
+                src="/icons/pinklogo.png"
+                alt="Petrosphere Logo"
+                width={40}
+                height={40}
+                className="block dark:hidden"
               />
-              {/* <span className="text-lg font-semibold hover:cursor-pointer text-gray-900 dark:text-white">
-                KokonutUI
-              </span> */}
+              <div className="flex flex-col">
+                <span className="text-normal font-semibold text-gray-900 dark:text-[#ff7261]">
+                  Safety Vitals
+                </span>
+                <span className="text-[10px] font-normal text-gray-900 dark:text-white">
+                  by Petrosphere Incorporated
+                </span>
+              </div>
             </div>
           </Link>
 
-          <div className="flex-1 overflow-y-auto py-4 px-4">
-            <div className="space-y-6">
-              <div>
-                <div className="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                  Overview
-                </div>
-                <div className="space-y-1">
-                  <NavItem href="../dashboard" icon={Home}>
-                    Dashboard
-                  </NavItem>
-                  <NavItem href="/admin/create-survey/" icon={PlusCircle}>
-                    Create Survey
-                  </NavItem>
-                  <NavItem href="#" icon={FileText}>
-                    Survey Responses
-                  </NavItem>
-                  <NavItem href="/admin/view-survey" icon={Folder}>
-                    View Surveys
-                  </NavItem>
-                </div>
+          <div className="flex-1 overflow-y-auto py-4 px-4 space-y-6">
+            <div>
+              <div className="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                Overview
               </div>
+              <div className="space-y-1">
+                <NavItem href="/dashboard" icon={Home}>Dashboard</NavItem>
+                <NavItem href="/admin/create-survey" icon={PlusCircle}>Create Survey</NavItem>
+                <NavItem href="/admin/survey-responses" icon={FileText}>Survey Responses</NavItem>
+                <NavItem href="/admin/view-survey" icon={Folder}>View Survey</NavItem>
+              </div>
+            </div>
 
-              <div>
-                <div className="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                  Team
-                </div>
-                <div className="space-y-1">
-                  <NavItem href="#" icon={Users2}>
-                    Members
-                  </NavItem>
-                  <NavItem href="#" icon={Shield}>
-                    Permissions
-                  </NavItem>
-                  <NavItem href="#" icon={MessagesSquare}>
-                    Chat
-                  </NavItem>
-                  <NavItem href="#" icon={Video}>
-                    Meetings
-                  </NavItem>
-                </div>
+            <div>
+              <div className="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                Management
+              </div>
+              <div className="space-y-1">
+                <NavItem href="/admin/respondents" icon={Users2}>Respondents</NavItem>
               </div>
             </div>
           </div>
 
-          <div className="px-4 py-4 border-t border-gray-200 dark:border-[#1F1F23]">
-            <div className="space-y-1">
-              <NavItem href="#" icon={Settings}>
-                Settings
-              </NavItem>
-              <NavItem href="#" icon={HelpCircle}>
-                Help
-              </NavItem>
-            </div>
+          <div className="px-4 py-4 border-t border-gray-200 dark:border-[#1F1F23] space-y-1">
+            <NavItem href="/admin/settings" icon={Settings}>Settings</NavItem>
+            <NavItem href="/admin/help" icon={HelpCircle}>Help</NavItem>
           </div>
         </div>
       </nav>

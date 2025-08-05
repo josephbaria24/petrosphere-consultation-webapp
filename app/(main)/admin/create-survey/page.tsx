@@ -4,13 +4,15 @@
 import { useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../../components/ui/card'
-import { Label } from '@radix-ui/react-dropdown-menu'
+
 import { Button } from '../../../../components/ui/button'
 import { Input } from '../../../../components/ui/input'
 import { Textarea } from '../../../../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../components/ui/select'
 import { toast } from 'sonner'
 import { supabase } from '../../../../lib/supabaseClient'
+import { Switch } from '../../../../@/components/ui/switch'
+import { Label } from '../../../../components/ui/label'
 
 
 type Question = {
@@ -51,8 +53,9 @@ export default function CreateSurveyPage() {
           {
             title,
             description,
-            created_by: null, // Set this to a real user ID if needed
+            created_by: null,
             slug: slug || null,
+            is_published: isPublished, // set on insert
           },
         ])
         .select()
@@ -63,6 +66,8 @@ export default function CreateSurveyPage() {
         toast.error("Failed to create survey.")
         return
       }
+  
+      setSurveyId(survey.id)
   
       const formattedQuestions = questions.map((q, i) => ({
         survey_id: survey.id,
@@ -83,114 +88,138 @@ export default function CreateSurveyPage() {
         return
       }
   
-      toast.success("Survey created successfully 🎉")
+      toast.success(`Survey created${isPublished ? ' and published' : ''} 🎉`)
       setTitle("")
       setDescription("")
+      setSlug("")
       setQuestions([])
+      setIsPublished(false)
+      setSurveyId(null)
     } catch (err) {
       console.error("Unhandled Error:", err)
       toast.error("An unexpected error occurred.")
     }
   }
   
-  return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Create New Survey</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label>Survey Title</Label>
-            <Input
-              placeholder="e.g. 2025 Employee Feedback"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label>Custom URL Slug</Label>
-            <Input
-              placeholder="e.g. 2025-feedback"
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
-            />
-            <p className="text-sm text-muted-foreground">
-              This will be used in the public survey link (e.g. <code>/survey/{slug || 'your-slug'}</code>)
-            </p>
-          </div>
-          <div>
-            <Label>Description</Label>
-            <Textarea
-              placeholder="Brief description or purpose of the survey"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </div>
-          <Button type="button" onClick={addQuestion}>
-            <Plus className="w-4 h-4 mr-2" /> Add Question
-          </Button>
-        </CardContent>
-      </Card>
 
-      {questions.map((q, index) => (
-        <Card key={q.id} className="relative">
-          <CardHeader>
-            <CardTitle>Question {index + 1}</CardTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute top-4 right-4 text-red-500"
-              onClick={() => removeQuestion(q.id)}
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
+
+  const [isPublished, setIsPublished] = useState(false)
+  const [, setSurveyId] = useState<string | null>(null)
+
+  
+  return (
+    <div className="flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto p-6">
+      {/* Left Panel: Create Survey */}
+      <div className="lg:w-1/3 w-full space-y-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Create New Survey</CardTitle>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="publish-toggle">Publish</Label>
+              <Switch
+                id="publish-toggle"
+                checked={isPublished}
+                onCheckedChange={setIsPublished}
+              />
+            </div>
           </CardHeader>
+  
           <CardContent className="space-y-4">
             <div>
-              <Label>Question Text</Label>
+              <Label>Survey Title</Label>
               <Input
-                placeholder="e.g. How satisfied are you with your job?"
-                value={q.question}
-                onChange={(e) =>
-                  updateQuestion(q.id, { question: e.target.value })
-                }
+                placeholder="e.g. 2025 Employee Feedback"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
               />
             </div>
-
             <div>
-              <Label>Question Type</Label>
-              <Select
-                value={q.type}
-                onValueChange={(value: 'text' | 'multiple-choice') =>
-                  updateQuestion(q.id, { type: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="text">Text</SelectItem>
-                  <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {q.type === 'multiple-choice' && (
-              <MultipleChoiceEditor
-                question={q}
-                onUpdate={(options) => updateQuestion(q.id, { options })}
+              <Label>Custom URL Slug</Label>
+              <Input
+                placeholder="e.g. 2025-feedback"
+                value={slug}
+                onChange={(e) => setSlug(e.target.value)}
               />
-            )}
+              <p className="text-sm text-muted-foreground">
+                This will be used in the public survey link (e.g. <code>/survey/{slug || 'your-slug'}</code>)
+              </p>
+            </div>
+            <div>
+              <Label>Description</Label>
+              <Textarea
+                placeholder="Brief description or purpose of the survey"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+            <Button type="button" onClick={addQuestion}>
+              <Plus className="w-4 h-4 mr-2" /> Add Question
+            </Button>
           </CardContent>
         </Card>
-      ))}
-
-      <Button onClick={handleSubmit} className="w-full">
-        Save Survey
+  
+        <Button onClick={handleSubmit} className="w-full">
+          Save Survey
+        </Button>
+      </div>
+  
+      {/* Right Panel: Scrollable Questions */}
+      <div className="lg:w-2/3 w-full max-h-[calc(100vh-120px)] overflow-y-auto pr-2 space-y-4">
+      {questions.map((q, index) => (
+  <Card key={q.id} className="relative">
+    <CardHeader>
+      <CardTitle>Question {index + 1}</CardTitle>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute top-4 right-4 text-red-500"
+        onClick={() => removeQuestion(q.id)}
+      >
+        <Trash2 className="w-4 h-4" />
       </Button>
+    </CardHeader>
+    <CardContent className="space-y-4">
+      <div>
+        <Label>Question Text</Label>
+        <Input
+          placeholder="e.g. How satisfied are you with your job?"
+          value={q.question}
+          onChange={(e) => updateQuestion(q.id, { question: e.target.value })}
+        />
+      </div>
+
+      <div>
+        <Label>Question Type</Label>
+        <Select
+          value={q.type}
+          onValueChange={(value: 'text' | 'multiple-choice') =>
+            updateQuestion(q.id, { type: value })
+          }
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="text">Text</SelectItem>
+            <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {q.type === 'multiple-choice' && (
+        <MultipleChoiceEditor
+          question={q}
+          onUpdate={(options) => updateQuestion(q.id, { options })}
+        />
+      )}
+    </CardContent>
+  </Card>
+))}
+
+      </div>
     </div>
   )
+  
 }
 
 function MultipleChoiceEditor({
