@@ -1,26 +1,104 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme inline {
+  --color-border: 240 5% 90%;        /* zinc-200 */
+  --color-input: 240 5% 90%;
+  --color-ring: 240 5% 30%;          /* zinc-700 */
+  --color-background: 0 0% 100%;     /* white */
+  --color-foreground: 240 5% 10%;    /* zinc-900 */
+
+  --color-primary: 240 5% 20%;       /* zinc-800 */
+  --color-primary-foreground: 0 0% 100%;
+
+  --color-secondary: 240 5% 95%;     /* zinc-100 */
+  --color-secondary-foreground: 240 5% 20%;
+
+  --color-destructive: 0 84.2% 60.2%;
+  --color-destructive-foreground: 0 0% 100%;
+
+  --color-muted: 240 5% 95%;         /* zinc-100 */
+  --color-muted-foreground: 240 4% 46%; /* zinc-500 */
+
+  --color-accent: 240 5% 95%;
+  --color-accent-foreground: 240 5% 20%;
+
+  --color-popover: 0 0% 100%;
+  --color-popover-foreground: 240 5% 10%;
+
+  --color-card: 0 0% 100%;
+  --color-card-foreground: 240 5% 10%;
+
+  --radius: 0.5rem;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  @theme inline {
+    --color-border: 240 3.7% 15%;      /* zinc-800 */
+    --color-input: 240 3.7% 15%;
+    --color-ring: 240 4.8% 83.9%;      /* zinc-200 */
+    --color-background: 240 5% 10%;    /* zinc-900 */
+    --color-foreground: 0 0% 100%;     /* white */
+
+    --color-primary: 0 0% 100%;
+    --color-primary-foreground: 240 5% 10%;
+
+    --color-secondary: 240 3.7% 20%;   /* zinc-700 */
+    --color-secondary-foreground: 0 0% 100%;
+
+    --color-destructive: 0 62.8% 30.6%;
+    --color-destructive-foreground: 0 0% 100%;
+
+    --color-muted: 240 3.7% 20%;
+    --color-muted-foreground: 240 5% 60%;
+
+    --color-accent: 240 3.7% 20%;
+    --color-accent-foreground: 0 0% 100%;
+
+    --color-popover: 240 5% 10%;
+    --color-popover-foreground: 0 0% 100%;
+
+    --color-card: 240 5% 10%;
+    --color-card-foreground: 0 0% 100%;
   }
 }
 
+
+.dark {
+  --color-border: 240 3.7% 15%;
+  --color-input: 240 3.7% 15%;
+  --color-ring: 240 4.8% 83.9%;
+  --color-background: 240 5% 10%;
+  --color-foreground: 0 0% 100%;
+
+  --color-primary: 0 0% 100%;
+  --color-primary-foreground: 240 5% 10%;
+
+  --color-secondary: 240 3.7% 20%;
+  --color-secondary-foreground: 0 0% 100%;
+
+  --color-destructive: 0 62.8% 30.6%;
+  --color-destructive-foreground: 0 0% 100%;
+
+  --color-muted: 240 3.7% 20%;
+  --color-muted-foreground: 240 5% 60%;
+
+  --color-accent: 240 3.7% 20%;
+  --color-accent-foreground: 0 0% 100%;
+
+  --color-popover: 240 5% 10%;
+  --color-popover-foreground: 0 0% 100%;
+
+  --color-card: 240 5% 10%;
+  --color-card-foreground: 0 0% 100%;
+}
+
+
+* {
+  border-color: hsl(var(--color-border));
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: hsl(var(--color-background));
+  color: hsl(var(--color-foreground));
 }
