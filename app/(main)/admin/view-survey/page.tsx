@@ -157,7 +157,7 @@ const handleEditSurvey = (id: string) => {
         onClick={() => {
           const baseUrl = typeof window !== 'undefined'
             ? window.location.origin
-            : 'https://your-vercel-url.vercel.app' // Fallback for SSR
+            : 'https://petrosphere-consultation.vercel.app' // Fallback for SSR
           const link = survey.slug
             ? `${baseUrl}/survey/${survey.slug}`
             : `${baseUrl}/survey/${survey.id}`

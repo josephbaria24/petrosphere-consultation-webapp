@@ -6,8 +6,8 @@ import { Toaster } from "sonner"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
-  title: "KokonutUI Dashboard",
-  description: "A modern dashboard with theme switching",
+  title: "Petrosphere - Consulation Web App",
+  description: "Consultation web app for petrosphere clients",
 }
 
 export default function RootLayout({

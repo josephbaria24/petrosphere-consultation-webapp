@@ -39,7 +39,7 @@ export default function PublicSurveyPage() {
             id, question_text, question_type, options
           )
         `)
-        .eq('id', params.id)
+        .or(`id.eq.${params.id},slug.eq.${params.id}`)
         .single()
 
       if (error) {
