@@ -63,26 +63,88 @@ export default function PublicSurveyPage() {
   const [isOtherRole, setIsOtherRole] = useState(false)
 
   const roles = [
-    'Engineer',
-    'Technician',
-    'Supervisor',
-    'Manager',
-    'HSSEQ Officer',
-    'HR Personnel',
-    'Sales & Marketing',
-    'Operations Staff',
-    'Site Coordinator',
-    'Liaison Officer',
-    'Finance Officer',
-    'QA/QC Officer',
-    'Maintenance Personnel',
-    'Warehouse Staff',
     'Admin Assistant',
-    'Intern',
+    'Administrative Assistant',
+    'Administrative Manager',
+    'Business Analyst',
+    'Business Development',
+    'Business Operations',
+    'Compliance Analyst',
+    'Compliance Officer',
+    'Consultant',
+    'Content Writer',
+    'Customer Service',
+    'Customer Success Manager',
+    'Data Analyst',
+    'Data Scientist',
+    'Database Administrator',
+    'Engineer',
+    'Environmental Officer',
+    'Environmental Specialist',
+    'Event Coordinator',
     'Executive',
-    'Others'
-  ]
-
+    'Executive Assistant',
+    'Field Operations',
+    'Field Technician',
+    'Finance Manager',
+    'Finance Officer',
+    'Graphic Designer',
+    'Health & Safety',
+    'Health & Safety Coordinator',
+    'HR Personnel',
+    'Human Resources Manager',
+    'IT Manager',
+    'IT Specialist',
+    'IT Support',
+    'Intern',
+    'Inventory Manager',
+    'Liaison Officer',
+    'Legal Advisor',
+    'Logistics Coordinator',
+    'Logistics Manager',
+    'Maintenance Personnel',
+    'Maintenance Supervisor',
+    'Manager',
+    'Marketing Manager',
+    'Mobile App Developer',
+    'Network Engineer',
+    'Operations Analyst',
+    'Operations Manager',
+    'Operations Staff',
+    'Others',
+    'Procurement Manager',
+    'Procurement Officer',
+    'Product Manager',
+    'Project Coordinator',
+    'Project Manager',
+    'Public Relations',
+    'QA/QC Officer',
+    'Quality Assurance',
+    'Quality Control Inspector',
+    'Regulatory Affairs',
+    'Research Analyst',
+    'Risk Manager',
+    'Safety Officer',
+    'Sales & Marketing',
+    'Sales Manager',
+    'Security Officer',
+    'Site Coordinator',
+    'Site Engineer',
+    'Site Operations',
+    'Social Media Manager',
+    'Software Engineer',
+    'Supervisor',
+    'Supply Chain Coordinator',
+    'Systems Analyst',
+    'Technical Support',
+    'Technical Writer',
+    'Technician',
+    'Training Coordinator',
+    'Training Manager',
+    'Training Specialist',
+    'Web Developer'
+  ];
+  
 
   const groupedQuestions = survey?.survey_questions.reduce((acc, q) => {
     const key = q.dimension // only group by dimension name
@@ -200,7 +262,7 @@ const handleSubmit = async () => {
         throw responseError
       }
   
-      toast.success('Survey submitted successfully!')
+      toast.success('Answers submitted successfully!')
       setStep(3)
     } catch (err) {
       console.error('Submission error:', err)
@@ -211,20 +273,20 @@ const handleSubmit = async () => {
   
 
   const renderStepHeader = () => {
-    const steps = ['Metadata', 'Questionnaire', 'Success']
+    const steps = ['Metadata', 'Questionnaire', 'Completion']
   
     return (
-      <div className="flex justify-evenly items-center mb-8 w-full">
+      <div className="flex flex-wrap items-center justify-between gap-y-4 mb-8 w-full">
         {steps.map((label, index) => {
           const isActive = step === index + 1
           const isCompleted = step > index + 1
   
           return (
-            <div key={label} className="flex items-center w-full max-w-xs">
+            <div key={label} className="flex items-center w-full sm:w-auto flex-1 min-w-[100px]">
               {/* Step icon + label */}
               <div className="flex items-center gap-2">
                 <div
-                  className={`w-6 h-6 flex items-center justify-center rounded-full font-medium ${
+                  className={`w-6 h-6 sm:w-7 sm:h-7 text-[0.75rem] sm:text-sm flex items-center justify-center rounded-full font-medium ${
                     isActive
                       ? 'bg-primary text-white'
                       : isCompleted
@@ -232,10 +294,10 @@ const handleSubmit = async () => {
                       : 'bg-muted text-muted-foreground'
                   }`}
                 >
-                  {isCompleted ? <Check className="w-4 h-4" /> : index + 1}
+                  {isCompleted ? <Check className="w-4 h-4 sm:w-5 sm:h-5" /> : index + 1}
                 </div>
                 <span
-                  className={`${
+                  className={`text-sm sm:text-base ${
                     isActive
                       ? 'text-primary font-semibold'
                       : 'text-muted-foreground'
@@ -247,7 +309,7 @@ const handleSubmit = async () => {
   
               {/* Connector line */}
               {index !== steps.length - 1 && (
-                <div className="flex-1 h-px bg-gray-300 mx-4" />
+                <div className="flex-1 h-px bg-gray-300 mx-2 sm:mx-4" />
               )}
             </div>
           )
@@ -255,6 +317,7 @@ const handleSubmit = async () => {
       </div>
     )
   }
+  
   if (loading) return <p>Loading survey...</p>
   if (!survey) return <p>Survey not found.</p>
 
@@ -274,8 +337,9 @@ const handleSubmit = async () => {
       )}
       {step === 1 && (
         <form className="space-y-4">
-          <div className="flex justify-between space-x-2">
-            <div className='w-full'>
+        {/* Row 1: Name and Email */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="w-full">
             <Label>Name</Label>
             <Input
               placeholder="Enter your name"
@@ -283,7 +347,7 @@ const handleSubmit = async () => {
               onChange={(e) => handleMetadataChange('name', e.target.value)}
             />
           </div>
-          <div className='w-full'>
+          <div className="w-full">
             <Label>Email</Label>
             <Input
               placeholder="Enter your email"
@@ -291,70 +355,69 @@ const handleSubmit = async () => {
               onChange={(e) => handleMetadataChange('email', e.target.value)}
             />
           </div>
-          </div>
+        </div>
+      
           
-       <div className="flex justify-between space-x-2">
-       <div className="w-full">
-        <Label>Role</Label>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded="true"
-              className="w-full justify-between"
-            >
-              {metadata.role ? metadata.role : 'Select role'}
-              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-full p-0 max-h-60 overflow-y-auto">
-            <Command>
-              <CommandInput placeholder="Search role..." />
-              <CommandEmpty>No role found.</CommandEmpty>
-              <CommandGroup>
-                {roles.map((role) => (
-                  <CommandItem
-                    key={role}
-                    onSelect={() => {
-                      if (role === 'Others') {
-                        setIsOtherRole(true)
-                        handleMetadataChange('role', '')
-                      } else {
-                        setIsOtherRole(false)
-                        handleMetadataChange('role', role)
-                      }
-                    }}
-                  >
-                    <Check
-                      className={cn(
-                        'mr-2 h-4 w-4',
-                        metadata.role === role ? 'opacity-100' : 'opacity-0'
-                      )}
-                    />
-                    {role}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </Command>
-          </PopoverContent>
-        </Popover>
+         {/* Row 2: Role and Department */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="w-full">
+            <Label>Role</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded="true"
+                  className="w-full justify-between"
+                >
+                  {metadata.role ? metadata.role : 'Select role'}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-full p-0 max-h-60 overflow-y-auto">
+                <Command>
+                  <CommandInput placeholder="Search role..." />
+                  <CommandEmpty>No role found.</CommandEmpty>
+                  <CommandGroup>
+                    {roles.map((role) => (
+                      <CommandItem
+                        key={role}
+                        onSelect={() => {
+                          if (role === 'Others') {
+                            setIsOtherRole(true)
+                            handleMetadataChange('role', '')
+                          } else {
+                            setIsOtherRole(false)
+                            handleMetadataChange('role', role)
+                          }
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            'mr-2 h-4 w-4',
+                            metadata.role === role ? 'opacity-100' : 'opacity-0'
+                          )}
+                        />
+                        {role}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </Command>
+              </PopoverContent>
+            </Popover>
 
-        {isOtherRole && (
-          <div className="mt-2">
-            <Input
-              placeholder="Please specify"
-              value={metadata.role}
-              onChange={(e) =>
-                handleMetadataChange('role', e.target.value)
-              }
-            />
-          </div>
-        )}
-      </div>
+          {isOtherRole && (
+            <div className="mt-2">
+              <Input
+                placeholder="Please specify"
+                value={metadata.role}
+                onChange={(e) => handleMetadataChange('role', e.target.value)}
+              />
+            </div>
+          )}
+        </div>
 
-
-        <div className='w-full'>
+        <div className="w-full">
           <Label>Department</Label>
           <Input
             placeholder="Enter department"
@@ -362,27 +425,28 @@ const handleSubmit = async () => {
             onChange={(e) => handleMetadataChange('department', e.target.value)}
           />
         </div>
-        </div>
-        <div>
-          <Label>Site</Label>
-          <Input
-            placeholder="Enter site location"
-            value={metadata.site}
-            onChange={(e) => handleMetadataChange('site', e.target.value)}
-          />
-        </div>
-      
-        <Button
+      </div>
+
+        {/* Row 3: Site */}
+          <div className="w-full">
+            <Label>Site</Label>
+            <Input
+              placeholder="Enter site location"
+              value={metadata.site}
+              onChange={(e) => handleMetadataChange('site', e.target.value)}
+            />
+          </div>
+
+          <Button
             className="mt-4 w-full"
             onClick={() => {
-                if (validateMetadata()) setStep(2)
+              if (validateMetadata()) setStep(2)
             }}
             type="button"
-            >
+          >
             Next
-            </Button>
-
-      </form>
+          </Button>
+        </form>
       
       
       )}
@@ -450,9 +514,9 @@ const handleSubmit = async () => {
 
       {step === 3 && (
         <div className="text-center py-20">
-          <h2 className="text-2xl font-semibold mb-4">Thank you for completing the survey!</h2>
+          <h2 className="text-2xl font-semibold mb-4">Thank you for completing the assessment!</h2>
           <p className="text-gray-500">
-            Please wait while we evaluate your consultation result. You’ll receive an email shortly.
+            Please wait while we evaluate your result. You’ll receive an email shortly.
           </p>
         </div>
       )}

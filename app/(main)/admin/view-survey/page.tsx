@@ -165,7 +165,7 @@ return (
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => {
+                      onClick={async () => {
                         const baseUrl =
                           typeof window !== 'undefined'
                             ? window.location.origin
@@ -173,9 +173,24 @@ return (
                         const link = survey.slug
                           ? `${baseUrl}/survey/${survey.slug}`
                           : `${baseUrl}/survey/${survey.id}`
-                        navigator.clipboard.writeText(link)
-                        toast.success('Link copied to clipboard!')
+                      
+                        try {
+                          if (navigator.clipboard && navigator.clipboard.writeText) {
+                            await navigator.clipboard.writeText(link)
+                            toast.success('Link copied to clipboard!')
+                          } else {
+                            throw new Error('Clipboard API not supported')
+                          }
+                        } catch {
+                          toast.error('Something went wrong.')
+                        } {
+                          const confirmed = window.prompt('Copy the link below:', link)
+                          if (confirmed !== null) {
+                            toast.success('You can now paste the link manually.')
+                          }
+                        }
                       }}
+                      
                     >
                       <ClipboardCopy className="w-4 h-4 mr-1" />
                       Copy Link
