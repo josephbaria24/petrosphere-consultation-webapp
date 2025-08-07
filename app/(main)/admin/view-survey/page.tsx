@@ -34,7 +34,8 @@ type Survey = {
   is_published: boolean
   created_by: string | null
   users: {
-    name: string
+    first_name: string
+    last_name: string
     email: string
   } | null
   survey_questions: SurveyQuestion[]
@@ -58,7 +59,8 @@ export default function ViewSurveysPage() {
           is_published,
           created_by,
           users:created_by (
-            name,
+            first_name,
+            last_name,
             email
           ),
           survey_questions (
@@ -80,6 +82,7 @@ export default function ViewSurveysPage() {
           ...survey,
           users: Array.isArray(survey.users) ? survey.users[0] ?? null : survey.users,
         }))
+        
       
         setSurveys(normalized as Survey[])
       }
@@ -132,7 +135,7 @@ return (
               <div className="flex flex-col gap-1 w-full">
                 <span className="font-semibold">{survey.title}</span>
                 <span className="text-xs text-muted-foreground">
-                  Created by: {survey.users?.name || 'Unknown'} ({survey.users?.email || 'N/A'}) ·{' '}
+                  Created by: {survey.users?.first_name || 'Unknown'} {survey.users?.last_name || 'Unknown'} ({survey.users?.email || 'N/A'}) ·{' '}
                   {survey.is_published ? (
                     <Badge variant="default">Published</Badge>
                   ) : (

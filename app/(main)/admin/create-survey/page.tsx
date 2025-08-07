@@ -18,7 +18,7 @@ import { Label } from '../../../../components/ui/label'
 type Question = {
   id: number
   question: string
-  type: 'text' | 'multiple-choice'
+  type: 'text' | 'multiple-choice' | 'likert' | 'radio'
   options?: string[]
 }
 
@@ -73,7 +73,8 @@ export default function CreateSurveyPage() {
         survey_id: survey.id,
         question_text: q.question,
         question_type: q.type,
-        options: q.type === 'multiple-choice' ? q.options : null,
+        options: ['multiple-choice', 'radio', 'likert'].includes(q.type) ? q.options : null,
+
         order_index: i,
         is_required: false,
       }))
@@ -202,6 +203,8 @@ export default function CreateSurveyPage() {
           <SelectContent>
             <SelectItem value="text">Text</SelectItem>
             <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
+            <SelectItem value="likert">Likert Scale</SelectItem>
+            <SelectItem value="radio">Radio Group</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -212,14 +215,117 @@ export default function CreateSurveyPage() {
           onUpdate={(options) => updateQuestion(q.id, { options })}
         />
       )}
-    </CardContent>
-  </Card>
-))}
+
+      {q.type === 'radio' && (
+        <RadioGroupEditor
+          question={q}
+          onUpdate={(options) => updateQuestion(q.id, { options })}
+        />
+      )}
+
+      {q.type === 'likert' && (
+        <LikertScaleEditor
+          onUpdate={(options) => updateQuestion(q.id, { options })}
+          initialScale={q.options || ['Strongly Disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly Agree']}
+        />
+      )}
+
+          </CardContent>
+        </Card>
+      ))}
 
       </div>
     </div>
   )
   
+}
+
+function RadioGroupEditor({
+  question,
+  onUpdate,
+}: {
+  question: Question
+  onUpdate: (options: string[]) => void
+}) {
+  const [options, setOptions] = useState(question.options || [])
+
+  const update = (index: number, value: string) => {
+    const newOptions = [...options]
+    newOptions[index] = value
+    setOptions(newOptions)
+    onUpdate(newOptions)
+  }
+
+  const addOption = () => {
+    const newOptions = [...options, '']
+    setOptions(newOptions)
+    onUpdate(newOptions)
+  }
+
+  const removeOption = (index: number) => {
+    const newOptions = options.filter((_, i) => i !== index)
+    setOptions(newOptions)
+    onUpdate(newOptions)
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label>Radio Options</Label>
+      {options.map((opt, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <Input
+            value={opt}
+            onChange={(e) => update(i, e.target.value)}
+            placeholder={`Option ${i + 1}`}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="text-red-500"
+            onClick={() => removeOption(i)}
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      ))}
+      <Button type="button" variant="outline" onClick={addOption}>
+        <Plus className="w-4 h-4 mr-2" />
+        Add Option
+      </Button>
+    </div>
+  )
+}
+
+function LikertScaleEditor({
+  onUpdate,
+  initialScale,
+}: {
+  onUpdate: (options: string[]) => void
+  initialScale: string[]
+}) {
+  const [options, setOptions] = useState(initialScale)
+
+  const update = (index: number, value: string) => {
+    const newOptions = [...options]
+    newOptions[index] = value
+    setOptions(newOptions)
+    onUpdate(newOptions)
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label>Likert Scale Labels</Label>
+      {options.map((opt, i) => (
+        <Input
+          key={i}
+          value={opt}
+          onChange={(e) => update(i, e.target.value)}
+          placeholder={`Label ${i + 1}`}
+        />
+      ))}
+    </div>
+  )
 }
 
 function MultipleChoiceEditor({

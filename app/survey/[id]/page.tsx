@@ -7,7 +7,7 @@ import { Input } from '../../../components/ui/input'
 import { Textarea } from '../../../components/ui/textarea'
 
 import { cn } from '../../../lib/utils'
-import { ChevronsUpDown } from 'lucide-react'
+import { ChevronsUpDown, Languages } from 'lucide-react'
 
 
 import { Button } from '../../../components/ui/button'
@@ -27,7 +27,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '
 type SurveyQuestion = {
   id: string
   question_text: string
-  question_type: 'text' | 'multiple-choice'
+  translated_question?: string // optional for translations
+  question_type: 'text' | 'multiple-choice' | 'radio' | 'likert'
   options: string[] | null
   dimension: string
   dimension_code: string
@@ -52,7 +53,8 @@ export default function PublicSurveyPage() {
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [step, setStep] = useState<number>(1)
   const [metadata, setMetadata] = useState({
-    name: '',
+    first_name: '',
+    last_name: '',
     email: '',
     role: '',
     department: '',
@@ -145,6 +147,7 @@ export default function PublicSurveyPage() {
     'Web Developer'
   ];
   
+  const [useFilipino, setUseFilipino] = useState(false)
 
   const groupedQuestions = survey?.survey_questions.reduce((acc, q) => {
     const key = q.dimension // only group by dimension name
@@ -165,7 +168,7 @@ export default function PublicSurveyPage() {
         .select(`
           id, slug, title, description, created_at, is_published,
           survey_questions (
-            id, question_text, question_type, options, dimension, dimension_code
+            id, question_text, translated_question, question_type, options, dimension, dimension_code
           )
         `)
         .eq(isUUID ? 'id' : 'slug', params.id)
@@ -200,10 +203,10 @@ export default function PublicSurveyPage() {
 
 
 const validateMetadata = () => {
-  const required = ['name', 'email', 'role', 'department', 'site']
+  const required = ['first_name','last_name', 'email', 'role', 'department', 'site']
   const missing = required.filter((key) => !metadata[key as keyof typeof metadata])
   if (missing.length > 0) {
-    toast.error('Please fill in all metadata fields.')
+    toast.error('Please fill in all fields.')
     return false
   }
   return true
@@ -228,13 +231,15 @@ const handleSubmit = async () => {
           .from('users')
           .insert({
             email: metadata.email,
-            name: metadata.name,
+            first_name: metadata.first_name,
+            last_name: metadata.last_name,
             role: metadata.role,
+            department: metadata.department,
+            site: metadata.site,
             status: 'active',
           })
           .select()
           .single()
-  
         if (insertError || !newUser) {
           console.error('User insert error:', insertError)
           throw insertError || new Error('Failed to create user')
@@ -249,8 +254,6 @@ const handleSubmit = async () => {
         question: q.question_text, // NOT id
         answer: answers[q.id] || '',
         role: metadata.role,
-        department: metadata.department,
-        site: metadata.site,
       }))
   
       const { error: responseError } = await supabase
@@ -317,7 +320,8 @@ const handleSubmit = async () => {
       </div>
     )
   }
-  
+  const [showTooltip, setShowTooltip] = useState(true)
+
   if (loading) return <p>Loading survey...</p>
   if (!survey) return <p>Survey not found.</p>
 
@@ -325,6 +329,8 @@ const handleSubmit = async () => {
     <div className="max-w-2xl mx-auto p-6 space-y-6">
       <img src="/header3.png" alt="header image" className="" />
       {renderStepHeader()}
+
+      <div className=" flex justify-between">
       {step === 2 && (
         <Button
           variant="outline"
@@ -335,19 +341,65 @@ const handleSubmit = async () => {
           ← Go Back to Metadata
         </Button>
       )}
+      {step === 2 && (
+        <div className="flex justify-end mb-4 relative">
+          {/* Persistent Tooltip */}
+          {showTooltip && (
+            <div className="absolute -top-14 right-0 bg-gray-800 text-white text-xs px-3 py-2 rounded shadow-md z-10 animate-fade-in">
+              <div className="flex items-center justify-between gap-2">
+                <span>Click to translate questions</span>
+                <button
+                  onClick={() => setShowTooltip(false)}
+                  className="text-white hover:text-gray-300 text-sm ml-2"
+                  aria-label="Close tooltip"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="absolute -bottom-1 right-4 w-2 h-2 bg-gray-800 rotate-45"></div>
+            </div>
+          )}
+
+          {/* Translation Toggle Button */}
+          <Button variant="outline" size="sm" onClick={() => setUseFilipino(!useFilipino)}>
+            <Languages className="mr-2 h-4 w-4" />
+            {useFilipino ? 'Translate to English' : 'Translate to Filipino'}
+          </Button>
+        </div>
+      )}
+
+
+      </div>
+      
+
+
       {step === 1 && (
         <form className="space-y-4">
         {/* Row 1: Name and Email */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="w-full">
-            <Label>Name</Label>
+            <Label>First name</Label>
             <Input
-              placeholder="Enter your name"
-              value={metadata.name}
-              onChange={(e) => handleMetadataChange('name', e.target.value)}
+              placeholder="Enter your firstname"
+              value={metadata.first_name}
+              onChange={(e) => handleMetadataChange('first_name', e.target.value)}
             />
           </div>
           <div className="w-full">
+            <Label>Last name</Label>
+            <Input
+              placeholder="Enter your lastname"
+              value={metadata.last_name}
+              onChange={(e) => handleMetadataChange('last_name', e.target.value)}
+            />
+          </div>
+          
+        </div>
+      
+          
+         {/* Row 2: Role and Department */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="w-full">
             <Label>Email</Label>
             <Input
               placeholder="Enter your email"
@@ -355,11 +407,7 @@ const handleSubmit = async () => {
               onChange={(e) => handleMetadataChange('email', e.target.value)}
             />
           </div>
-        </div>
-      
-          
-         {/* Row 2: Role and Department */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
           <div className="w-full">
             <Label>Role</Label>
             <Popover>
@@ -416,7 +464,14 @@ const handleSubmit = async () => {
             </div>
           )}
         </div>
+        
+       
+      </div>
 
+        {/* Row 3: Site */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+     
         <div className="w-full">
           <Label>Department</Label>
           <Input
@@ -425,9 +480,6 @@ const handleSubmit = async () => {
             onChange={(e) => handleMetadataChange('department', e.target.value)}
           />
         </div>
-      </div>
-
-        {/* Row 3: Site */}
           <div className="w-full">
             <Label>Site</Label>
             <Input
@@ -435,6 +487,7 @@ const handleSubmit = async () => {
               value={metadata.site}
               onChange={(e) => handleMetadataChange('site', e.target.value)}
             />
+          </div>
           </div>
 
           <Button
@@ -472,8 +525,10 @@ const handleSubmit = async () => {
                 {questions.map((q, index) => (
                   <div key={q.id}>
                     <Label className="block mb-1 font-medium text-sm">
-                      {index + 1}. {q.question_text}
+                      {index + 1}. {useFilipino ? (q.translated_question || q.question_text) : q.question_text}
                     </Label>
+
+
 
                     {q.question_type === 'multiple-choice' && q.options && (
                       <RadioGroup
@@ -488,6 +543,40 @@ const handleSubmit = async () => {
                         ))}
                       </RadioGroup>
                     )}
+                    {!['text', 'multiple-choice', 'radio', 'likert'].includes(q.question_type) && (
+                      <p className="text-red-500 text-sm">Unknown question type: {q.question_type}</p>
+                    )}
+                    {q.question_type === 'radio' && q.options && (
+                      <RadioGroup
+                        value={answers[q.id] || ''}
+                        onValueChange={(val) => handleInputChange(q.id, val)}
+                      >
+                        {q.options.map((opt, i) => (
+                          <div key={i} className="flex items-center space-x-2">
+                            <RadioGroupItem value={opt} id={`${q.id}-radio-${i}`} />
+                            <Label htmlFor={`${q.id}-radio-${i}`}>{opt}</Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                    )}
+
+                    {q.question_type === 'likert' && q.options && (
+                      <div className="flex flex-col gap-2">
+                        <RadioGroup
+                          value={answers[q.id] || ''}
+                          onValueChange={(val) => handleInputChange(q.id, val)}
+                          className="flex flex-wrap gap-3"
+                        >
+                          {q.options.map((opt, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                              <RadioGroupItem value={opt} id={`${q.id}-likert-${i}`} />
+                              <Label htmlFor={`${q.id}-likert-${i}`}>{opt}</Label>
+                            </div>
+                          ))}
+                        </RadioGroup>
+                      </div>
+                    )}
+
 
                     {q.question_type === 'text' && (
                       <Textarea
