@@ -1,18 +1,19 @@
+// components/TopNav.tsx
 "use client"
 
 import Image from "next/image"
 import { Bell, ChevronRight } from "lucide-react"
-import Profile01 from "./profile-01"
 import Link from "next/link"
 import { ThemeToggle } from "./theme-toggle"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "./ui/dropdown-menu"
+import Profile01 from "./profile-01"
 
 interface BreadcrumbItem {
   label: string
   href?: string
 }
 
-export default function TopNav() {
+export default function TopNav({ fullName, email }: { fullName: string; email: string }) {
   const breadcrumbs: BreadcrumbItem[] = [
     { label: "Petrosphere", href: "#" },
     { label: "dashboard", href: "#" },
@@ -51,19 +52,15 @@ export default function TopNav() {
         <DropdownMenu>
           <DropdownMenuTrigger className="focus:outline-none">
             <Image
-              src="https://ferf1mheo22r9ira.public.blob.vercel-storage.com/avatar-01-n0x8HFv8EUetf9z6ht0wScJKoTHqf8.png"
+              src="https://ferf1mheo22r9ira.public.blob.vercel-storage.com/avatar-02-albo9B0tWOSLXCVZh9rX9KFxXIVWMr.png"
               alt="User avatar"
               width={28}
               height={28}
               className="rounded-full ring-2 ring-gray-200 dark:ring-[#2B2B30] sm:w-8 sm:h-8 cursor-pointer"
             />
           </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            sideOffset={8}
-            className="w-[280px] sm:w-80 bg-background border-border rounded-lg shadow-lg"
-          >
-            <Profile01 avatar="https://ferf1mheo22r9ira.public.blob.vercel-storage.com/avatar-01-n0x8HFv8EUetf9z6ht0wScJKoTHqf8.png" />
+          <DropdownMenuContent align="end" sideOffset={8} className="w-[280px] sm:w-80 bg-background border-border rounded-lg shadow-lg">
+            <Profile01 name={fullName} role={email} />
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

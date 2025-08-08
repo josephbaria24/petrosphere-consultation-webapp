@@ -24,6 +24,9 @@ export default function RespondentsPage() {
   const [respondents, setRespondents] = useState<Respondent[]>([])
   const [loading, setLoading] = useState(true)
 
+
+
+
   useEffect(() => {
     const fetchRespondents = async () => {
         const { data: responseUsers, error: responseError } = await supabase

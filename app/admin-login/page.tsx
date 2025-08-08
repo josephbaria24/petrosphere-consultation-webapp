@@ -3,13 +3,13 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
-
 import { toast } from 'sonner'
 import { supabase } from '../../lib/supabaseClient'
 import bcrypt from 'bcryptjs'
 import { Label } from '../../@/components/ui/label'
 import { Input } from '../../components/ui/input'
 import { Button } from '../../components/ui/button'
+import Cookies from 'js-cookie'
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('')
@@ -20,30 +20,32 @@ export default function AdminLoginPage() {
   const handleLogin = async () => {
     setLoading(true)
 
-    const { data, error } = await supabase
+    // ✅ Fetch admin by email
+    const { data: admin, error } = await supabase
       .from('admin_users')
       .select('id, email, password_hash')
       .eq('email', email)
       .single()
 
-    if (error || !data) {
+    if (error || !admin) {
       toast.error('Admin not found')
       setLoading(false)
       return
     }
 
-    const match = await bcrypt.compare(password, data.password_hash)
-
+    // ✅ Compare passwords
+    const match = await bcrypt.compare(password, admin.password_hash)
     if (!match) {
       toast.error('Invalid credentials')
       setLoading(false)
       return
     }
 
-    // Set auth state in localStorage (or cookie)
-    localStorage.setItem('admin_token', data.id)
+    // ✅ Store admin_id in cookie (1 day expiry)
+    Cookies.set('admin_id', admin.id, { expires: 1 })
+
     toast.success('Logged in successfully')
-    router.push('/dashboard') // or any route
+    router.push('/dashboard')
   }
 
   return (
@@ -55,13 +57,27 @@ export default function AdminLoginPage() {
         <CardContent className="space-y-4">
           <div>
             <Label>Email</Label>
-            <Input value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="admin@example.com"
+            />
           </div>
           <div>
             <Label>Password</Label>
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+            />
           </div>
-          <Button onClick={handleLogin} className="w-full" disabled={loading}>
+          <Button
+            onClick={handleLogin}
+            className="w-full"
+            disabled={loading}
+          >
             {loading ? 'Logging in...' : 'Login'}
           </Button>
         </CardContent>

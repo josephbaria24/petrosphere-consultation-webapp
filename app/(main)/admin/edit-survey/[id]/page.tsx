@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Trash2, Plus } from 'lucide-react'
 import { Switch } from '../../../../../@/components/ui/switch'
 
+
 type Question = {
   id: number | string
   question: string
@@ -37,8 +38,11 @@ type RawSurveyQuestion = {
   }
   
 export default function EditSurveyPage() {
-  const { id } = useParams()
+
   const router = useRouter()
+
+  const { id } = useParams()
+
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
