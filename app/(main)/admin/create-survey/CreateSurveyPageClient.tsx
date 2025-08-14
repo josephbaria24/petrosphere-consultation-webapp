@@ -27,6 +27,7 @@ export default function CreateSurveyPage() {
   const [description, setDescription] = useState('')
   const [slug, setSlug] = useState('')
   const [questions, setQuestions] = useState<Question[]>([])
+  const [targetCompany, setTargetCompany] = useState('') // ✅ NEW STATE
 
   const addQuestion = () => {
     setQuestions((prev) => [
@@ -45,7 +46,7 @@ export default function CreateSurveyPage() {
     )
   }
 
-  const handleSubmit = async () => {
+    const handleSubmit = async () => {
     try {
       const { data: survey, error: surveyError } = await supabase
         .from('surveys')
@@ -55,44 +56,45 @@ export default function CreateSurveyPage() {
             description,
             created_by: null,
             slug: slug || null,
-            is_published: isPublished, // set on insert
+            is_published: isPublished,
+            target_company: targetCompany || null, // ✅ NEW FIELD
           },
         ])
         .select()
         .single()
-  
+
       if (surveyError || !survey) {
         console.error("Survey Insert Error:", surveyError?.message || surveyError)
         toast.error("Failed to create survey.")
         return
       }
-  
+
       setSurveyId(survey.id)
-  
+
       const formattedQuestions = questions.map((q, i) => ({
         survey_id: survey.id,
         question_text: q.question,
         question_type: q.type,
         options: ['multiple-choice', 'radio', 'likert'].includes(q.type) ? q.options : null,
-
         order_index: i,
         is_required: false,
       }))
-  
+
       const { error: questionError } = await supabase
         .from('survey_questions')
         .insert(formattedQuestions)
-  
+
       if (questionError) {
         console.error("Questions Insert Error:", questionError?.message || questionError)
         toast.error("Failed to add questions.")
         return
       }
-  
+
       toast.success(`Survey created${isPublished ? ' and published' : ''} 🎉`)
       setTitle("")
       setDescription("")
       setSlug("")
+      setTargetCompany("") // ✅ RESET FIELD
       setQuestions([])
       setIsPublished(false)
       setSurveyId(null)
@@ -101,7 +103,6 @@ export default function CreateSurveyPage() {
       toast.error("An unexpected error occurred.")
     }
   }
-  
 
 
   const [isPublished, setIsPublished] = useState(false)
@@ -134,6 +135,14 @@ export default function CreateSurveyPage() {
                 onChange={(e) => setTitle(e.target.value)}
               />
             </div>
+            <div>
+  <Label>Target Company</Label>
+  <Input
+    placeholder="e.g. Acme Corporation"
+    value={targetCompany}
+    onChange={(e) => setTargetCompany(e.target.value)}
+  />
+</div>
             <div>
               <Label>Custom URL Slug</Label>
               <Input

@@ -1,13 +1,17 @@
-import { Inter } from "next/font/google"
+
+import { Geist } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "../components/theme-provider"
 import { Toaster } from "sonner"
 
-const inter = Inter({ subsets: ["latin"] })
+const poppins = Geist({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"], // include the weights you plan to use
+})
 
 export const metadata = {
-  title: "Petrosphere - Consulation Web App",
-  description: "Consultation web app for petrosphere clients",
+  title: "Petrosphere - Consultation Web App",
+  description: "Consultation web app for Petrosphere clients",
 }
 
 export default function RootLayout({
@@ -15,17 +19,18 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head />
-      <body className={inter.className}>
-      <ThemeProvider
-            attribute="class"
-            defaultTheme="light"
-            enableSystem
-            disableTransitionOnChange
-          >
-             <Toaster richColors position="top-right" />
+      <body className={poppins.className}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <Toaster richColors position="top-right" />
           {children}
         </ThemeProvider>
       </body>

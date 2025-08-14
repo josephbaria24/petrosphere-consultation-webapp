@@ -34,7 +34,7 @@ export default function Sidebar() {
     children: React.ReactNode
   }) {
     const isActive = pathname === href
-
+  
     return (
       <Link
         href={href}
@@ -42,7 +42,7 @@ export default function Sidebar() {
         className={cn(
           "flex items-center px-3 py-2 text-sm rounded-md transition-colors",
           isActive
-            ? "bg-gray-100 text-gray-900 dark:bg-[#1F1F23] dark:text-white"
+            ? "bg-gray-100 text-orange-500 font-semibold dark:bg-[#1F1F23] dark:text-orange-500"
             : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-[#1F1F23]"
         )}
       >
@@ -51,6 +51,7 @@ export default function Sidebar() {
       </Link>
     )
   }
+  
 
   return (
     <>
@@ -65,65 +66,66 @@ export default function Sidebar() {
       <nav
         className={cn(
           "fixed inset-y-0 left-0 z-[70] w-64 bg-white dark:bg-[#0F0F12] transform transition-transform duration-200 ease-in-out",
-          "lg:translate-x-0 lg:static lg:w-64 border-r border-gray-200 dark:border-[#1F1F23]",
+          "lg:translate-x-0 lg:static lg:w-55 border-0 shadow-2xl ",
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div className="h-full flex flex-col">
           <Link
             href="#"
-            className="h-16 px-6 flex items-center border-b border-gray-200 dark:border-[#1F1F23]"
+            className="h-16 px-6 flex items-center border-0"
           >
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col pt-12 items-start gap-1">
               <Image
                 src="/icons/pinklogo.png"
                 alt="Petrosphere Logo"
-                width={40}
-                height={40}
+                width={60}
+                height={60}
                 className="hidden dark:block"
               />
               <Image
                 src="/icons/pinklogo.png"
                 alt="Petrosphere Logo"
-                width={40}
-                height={40}
+                width={60}
+                height={60}
                 className="block dark:hidden"
               />
               <div className="flex flex-col">
-                <span className="text-normal font-semibold text-gray-900 dark:text-[#ff7261]">
+                <span className="text-2xl font-semibold text-gray-900 dark:text-[#ff7261]">
                   Safety Vitals
                 </span>
-                <span className="text-[10px] font-normal text-gray-900 dark:text-white">
+                <span className="text-[12px] font-normal text-gray-900 dark:text-white">
                   by Petrosphere Incorporated
                 </span>
               </div>
             </div>
           </Link>
 
-          <div className="flex-1 overflow-y-auto py-4 px-4 space-y-6">
-            <div>
-              <div className="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          <div className="flex-1 overflow-y-auto py-15 px-4 space-y-6">
+            <div className="border-0 rounded-2xl p-2 bg-zinc-100 dark:bg-zinc-900">
+              {/* <div className="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 Overview
-              </div>
+              </div> */}
               <div className="space-y-1">
                 <NavItem href="/dashboard" icon={Home}>Dashboard</NavItem>
                 <NavItem href="/admin/create-survey" icon={PlusCircle}>Create Survey</NavItem>
                 <NavItem href="/admin/survey-responses" icon={FileText}>Survey Responses</NavItem>
                 <NavItem href="/admin/view-survey" icon={Folder}>View Survey</NavItem>
+                <NavItem href="/admin/respondents" icon={Users2}>Respondents</NavItem>
               </div>
             </div>
 
             <div>
-              <div className="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              {/* <div className="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 Management
-              </div>
+              </div> */}
               <div className="space-y-1">
-                <NavItem href="/admin/respondents" icon={Users2}>Respondents</NavItem>
+                
               </div>
             </div>
           </div>
 
-          <div className="px-4 py-4 border-t border-gray-200 dark:border-[#1F1F23] space-y-1">
+          <div className="px-4 py-4 border-0 space-y-1">
             <NavItem href="/admin/settings" icon={Settings}>Settings</NavItem>
             <NavItem href="/admin/help" icon={HelpCircle}>Help</NavItem>
           </div>

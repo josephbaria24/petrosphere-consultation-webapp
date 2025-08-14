@@ -15,12 +15,12 @@ interface BreadcrumbItem {
 
 export default function TopNav({ fullName, email }: { fullName: string; email: string }) {
   const breadcrumbs: BreadcrumbItem[] = [
-    { label: "Petrosphere", href: "#" },
+    { label: "Safety Vitals", href: "#" },
     { label: "dashboard", href: "#" },
   ]
 
   return (
-    <nav className="px-3 sm:px-6 flex items-center justify-between bg-white dark:bg-[#0F0F12] border-b border-gray-200 dark:border-[#1F1F23] h-full">
+    <nav className="px-3 sm:px-6 flex items-center justify-between bg-gray-100 dark:bg-[#0F0F12] border-0 h-full">
       <div className="font-medium text-sm hidden sm:flex items-center space-x-1 truncate max-w-[300px]">
         {breadcrumbs.map((item, index) => (
           <div key={item.label} className="flex items-center">
@@ -59,7 +59,7 @@ export default function TopNav({ fullName, email }: { fullName: string; email: s
               className="rounded-full ring-2 ring-gray-200 dark:ring-[#2B2B30] sm:w-8 sm:h-8 cursor-pointer"
             />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" sideOffset={8} className="w-[280px] sm:w-80 bg-background border-border rounded-lg shadow-lg">
+          <DropdownMenuContent align="end" sideOffset={8} className="w-[280px] sm:w-80 bg-background border-0 rounded-lg shadow-lg">
             <Profile01 name={fullName} role={email} />
           </DropdownMenuContent>
         </DropdownMenu>

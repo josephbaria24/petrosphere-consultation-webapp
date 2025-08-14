@@ -1,7 +1,286 @@
-import Content from "./content"
+"use client";
+
+import { useEffect, useState } from "react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
+} from "recharts";
+import { Separator } from "../@/components/ui/separator";
+import { Progress } from "../@/components/ui/progress";
+import { Badge } from "../@/components/ui/badge";
+import { supabase } from "../lib/supabaseClient";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+import GaugeChart from "./chart/gauge-chart";
 
 export default function Dashboard() {
+  const [surveys, setSurveys] = useState<any[]>([]);
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [selectedSurvey, setSelectedSurvey] = useState<any>(null);
+  const [selectedQuestion, setSelectedQuestion] = useState<string>("");
+  const [avgScore, setAvgScore] = useState<number>(0);
+  const [totalAvg, setTotalAvg] = useState<number>(0);
+  const [trend, setTrend] = useState<number>(0);
+  const [reliability, setReliability] = useState<number>(0);
+  const [respondentCount, setRespondentCount] = useState<number>(0);
+  const [barData, setBarData] = useState<any[]>([]);
+  const [radarData, setRadarData] = useState<any[]>([]);
+
+  // Fetch survey questions when survey changes
+  useEffect(() => {
+    if (!selectedSurvey) return;
+    const fetchQuestions = async () => {
+      const { data, error } = await supabase
+        .from("survey_questions")
+        .select("id, question_text, dimension")
+        .eq("survey_id", selectedSurvey.id)
+        .order("order_index", { ascending: true });
+      if (!error && data) setQuestions(data);
+    };
+    fetchQuestions();
+    fetchSurveyStats(selectedSurvey.id, selectedSurvey.target_company);
+  }, [selectedSurvey]);
+
+  const fetchSurveyStats = async (surveyId: string, company: string) => {
+    // Step 1: get all question details
+    const { data: questions, error: qError } = await supabase
+      .from("survey_questions")
+      .select("id, dimension, scoring_type, max_score, min_score, reverse_score")
+      .eq("survey_id", surveyId);
+    if (qError || !questions) return;
+  
+    const questionIds = questions.map((q) => q.id);
+  
+    // Step 2: get responses
+    const { data: responses, error: rError } = await supabase
+      .from("responses")
+      .select("user_id, question_id, answer")
+      .in("question_id", questionIds);
+    if (rError || !responses) return;
+  
+    // Count respondents
+    const uniqueRespondents = new Set(responses.map((r) => r.user_id));
+    setRespondentCount(uniqueRespondents.size);
+  
+    // Step 3: aggregate scores + normalized reliability
+    const dimensionScores: Record<string, number[]> = {};
+    let normalizedScores: number[] = [];
+  
+    responses.forEach((r) => {
+      const question = questions.find((q) => q.id === r.question_id);
+      if (!question) return;
+  
+      let score: number | null = null;
+      if (typeof r.answer === "string") {
+        const match = r.answer.match(/\((\d+)\)$/);
+        if (match) {
+          score = parseInt(match[1], 10);
+        } else {
+          const parsed = parseFloat(r.answer);
+          if (!isNaN(parsed)) score = parsed;
+        }
+      } else if (typeof r.answer === "number") {
+        score = r.answer;
+      }
+      if (score === null || isNaN(score)) return;
+  
+      const { scoring_type, max_score, min_score, reverse_score } = question;
+      if (scoring_type === "likert" && reverse_score) {
+        score = max_score + 1 - score;
+      } else if (scoring_type === "binary") {
+        score = score ? max_score : min_score;
+      }
+  
+      // Dimension scores
+      if (!dimensionScores[question.dimension]) {
+        dimensionScores[question.dimension] = [];
+      }
+      dimensionScores[question.dimension].push(score);
+  
+      // Normalized scores for reliability
+      const normalized = (score - min_score) / (max_score - min_score);
+      normalizedScores.push(normalized);
+    });
+  
+    // Step 4: reliability = average normalized score * 100
+    if (normalizedScores.length > 0) {
+      setReliability(
+        Math.round(
+          (normalizedScores.reduce((a, b) => a + b, 0) / normalizedScores.length) * 100
+        )
+      );
+    } else {
+      setReliability(0);
+    }
+  
+    // Step 5: prepare charts
+    const bar = Object.entries(dimensionScores).map(([dim, scores]) => ({
+      name: dim,
+      score: scores.reduce((a, b) => a + b, 0) / scores.length,
+    }));
+    setBarData(bar);
+    setRadarData(bar.map((b) => ({ subject: b.name, you: b.score })));
+  
+    const allScores = Object.values(dimensionScores).flat();
+    const currentAvg = allScores.reduce((a, b) => a + b, 0) / allScores.length || 0;
+    setAvgScore(currentAvg);
+    setTotalAvg(currentAvg);
+  
+    // Step 6: calculate trend vs previous survey
+    const { data: pastSurveys } = await supabase
+      .from("surveys")
+      .select("id")
+      .eq("target_company", company)
+      .order("created_at", { ascending: false })
+      .limit(2);
+    if (pastSurveys && pastSurveys.length === 2) {
+      const prevSurveyId = pastSurveys[1].id;
+      const { data: prevQuestions } = await supabase
+        .from("survey_questions")
+        .select("id")
+        .eq("survey_id", prevSurveyId);
+      const prevQIds = prevQuestions?.map((q) => q.id) || [];
+      const { data: prevResponses } = await supabase
+        .from("responses")
+        .select("answer")
+        .in("question_id", prevQIds);
+      const prevScores = prevResponses
+        ?.map((r) => parseFloat(r.answer))
+        .filter((n) => !isNaN(n)) || [];
+      const prevAvg = prevScores.reduce((a, b) => a + b, 0) / prevScores.length || 0;
+      setTrend(currentAvg - prevAvg);
+    }
+  };
+  
+  // Fetch surveys
+  useEffect(() => {
+    const fetchSurveys = async () => {
+      const { data, error } = await supabase
+        .from("surveys")
+        .select("id, title, target_company")
+        .order("created_at", { ascending: false });
+      if (!error && data) setSurveys(data);
+      if (data.length > 0) {
+        setSelectedSurvey(data[0]); // select first survey by default
+      }
+    };
+    fetchSurveys();
+  }, []);
+
   return (
-      <Content />
-  )
+    <div className="min-h-screen px-2 space-y-3">
+      {/* Survey Selector */}
+      <div className="flex gap-4 max-w-2xl">
+  <Select
+    value={selectedSurvey?.id || ""}
+    onValueChange={(val) => {
+      const surveyObj = surveys.find((s) => s.id === val);
+      setSelectedSurvey(surveyObj || null);
+    }}
+  >
+    <SelectTrigger className="bg-card">
+      <SelectValue placeholder="Select a Survey" />
+    </SelectTrigger>
+    <SelectContent>
+      {surveys.map((survey) => (
+        <SelectItem key={survey.id} value={survey.id}>
+          {survey.title}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+</div>
+
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Survey Summary */}
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>Survey Summary</CardTitle>
+            {selectedSurvey && (
+              <CardDescription>
+                Company: <strong>{selectedSurvey.target_company || "N/A"}</strong>
+              </CardDescription>
+            )}
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p>Respondents: {respondentCount}</p>
+            <p>Avg Score: {avgScore.toFixed(2)}</p>
+            <p>Total Avg Score: {totalAvg.toFixed(2)}</p>
+            <Separator />
+            <p>
+              Trending Direction: {trend > 0 ? "+" : ""}
+              {trend.toFixed(2)}
+            </p>
+            <Progress value={Math.abs(trend * 100)} className="h-2" />
+          </CardContent>
+        </Card>
+
+        {/* Gauge Chart */}
+        <div className="w-full">
+          <GaugeChart score={avgScore} />
+        </div>
+
+        
+
+        <Card>
+          <CardHeader>
+            <CardTitle>How You Compare</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                <PolarGrid />
+                <PolarAngleAxis dataKey="subject" />
+                <PolarRadiusAxis angle={30} domain={[0, 4]} />
+                <Radar name="You" dataKey="you" stroke="#2563eb" fill="#2563eb" fillOpacity={0.4} />
+                <Tooltip />
+              </RadarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
+        {/* Bar Chart */}
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>Your Results</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={barData}
+                  margin={{ top: 10, right: 10, left: 0, bottom: 30 }}
+                >
+                  <XAxis
+                    dataKey="name"
+                    angle={-20}
+                    textAnchor="end"
+                    interval={0}
+                    height={60}
+                  />
+                  <YAxis domain={[0, 4]} />
+                  <Tooltip />
+                  <Bar dataKey="score" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-4 flex items-center justify-between border-2 p-3 rounded-md">
+              <span>Reliability Value:</span>
+              <Badge variant="secondary">{reliability}% Excellent</Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
 }

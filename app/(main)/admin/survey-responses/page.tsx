@@ -198,7 +198,7 @@ const enrichedResponses = responses.map((r) => {
                         .map((qa, j) => (
                             <div key={j} className="flex flex-col gap-1">
                             <p className="text-sm font-medium">{j + 1}. {qa.question}</p>
-                            <Badge className={`w-fit ${getBadgeColor(qa.answer)}`}>
+                            <Badge className={`w-fit italic ${getBadgeColor(qa.answer)}`}>
                                 {qa.answer}
                             </Badge>
                             </div>

@@ -5,10 +5,10 @@ import { useParams } from 'next/navigation'
 import { supabase } from '../../../lib/supabaseClient'
 import { Input } from '../../../components/ui/input'
 import { Textarea } from '../../../components/ui/textarea'
-
+import Question from "../../../components/survey/Question";
 import { cn } from '../../../lib/utils'
 import { ChevronsUpDown, Languages } from 'lucide-react'
-
+import { useCallback, useMemo } from "react";
 
 import { Button } from '../../../components/ui/button'
 import { toast } from 'sonner'
@@ -47,6 +47,7 @@ type Survey = {
 
   
 export default function PublicSurveyPage() {
+  
   const params = useParams<{ id: string }>()
   const [survey, setSurvey] = useState<Survey | null>(null)
   const [loading, setLoading] = useState(true)
@@ -73,12 +74,14 @@ export default function PublicSurveyPage() {
   
   const [useFilipino, setUseFilipino] = useState(false)
 
-  const groupedQuestions = survey?.survey_questions.reduce((acc, q) => {
-    const key = q.dimension // only group by dimension name
-    if (!acc[key]) acc[key] = []
-    acc[key].push(q)
-    return acc
-  }, {} as Record<string, SurveyQuestion[]>)
+// Memoize groupedQuestions so it only recalculates if survey changes
+const groupedQuestions = useMemo(() => {
+  if (!survey) return {};
+  return survey.survey_questions.reduce((acc, q) => {
+    (acc[q.dimension] ||= []).push(q);
+    return acc;
+  }, {} as Record<string, typeof survey.survey_questions>);
+}, [survey]);
   
 
   useEffect(() => {
@@ -111,12 +114,13 @@ export default function PublicSurveyPage() {
     fetchSurvey()
   }, [params.id])
 
-  const handleInputChange = (questionId: string, value: string) => {
-    setAnswers((prev) => ({
-      ...prev,
-      [questionId]: value,
-    }))
-  }
+// Memoize the handler so children don't get new function refs every render
+const handleInputChange = useCallback((questionId: string, value: string) => {
+  setAnswers((prev) => ({
+    ...prev,
+    [questionId]: value,
+  }));
+}, []);
 
   const handleMetadataChange = (field: string, value: string) => {
     setMetadata((prev) => ({
@@ -175,10 +179,13 @@ const handleSubmit = async () => {
       // 2. Build valid responses for your schema
       const responsePayload = survey.survey_questions.map((q) => ({
         user_id: userId,
-        question: q.question_text, // NOT id
+        question_id: q.id, // ✅ link to survey_questions
+        question: q.question_text,
         answer: answers[q.id] || '',
         role: metadata.role,
+        dimension: q.dimension // optional, if you want to store it directly
       }))
+      
   
       const { error: responseError } = await supabase
         .from('responses')
@@ -200,7 +207,7 @@ const handleSubmit = async () => {
   
 
   const renderStepHeader = () => {
-    const steps = ['Metadata', 'Questionnaire', 'Completion']
+    const steps = ['Information', 'Questionnaire', 'Completion']
   
     return (
       <div className="flex flex-wrap items-center justify-between gap-y-4 mb-8 w-full">
@@ -250,10 +257,12 @@ const handleSubmit = async () => {
   if (!survey) return <p>Survey not found.</p>
 
   return (
-    <div className="max-w-2xl mx-auto p-6 space-y-6">
-      <img src="/header3.png" alt="header image" className="" />
-      {renderStepHeader()}
-
+    <div className="max-w-4xl mx-auto p-6">
+    <Card className="shadow-lg rounded-2xl p-6 bg-white dark:bg-background">
+      <div className="space-y-6">
+        <img src="/header3.png" alt="header image" />
+        {renderStepHeader()}
+        
       <div className=" flex justify-between">
       {step === 2 && (
         <Button
@@ -262,7 +271,7 @@ const handleSubmit = async () => {
           onClick={() => setStep(1)}
           className="w-fit"
         >
-          ← Go Back to Metadata
+          ← Go Back to Information
         </Button>
       )}
       {step === 2 && (
@@ -431,89 +440,32 @@ const handleSubmit = async () => {
 {step === 2 && (
   <form className="space-y-6">
     <div className="space-y-6">
-      {groupedQuestions &&
-        Object.entries(groupedQuestions)
-          .sort(([a], [b]) => {
-            const aNum = parseInt(a.split('.')[0], 10)
-            const bNum = parseInt(b.split('.')[0], 10)
-            return aNum - bNum
-          })
-          .map(([group, questions]) => (
-            <Card key={group} className="w-full">
-              <CardHeader>
-                <CardTitle className="text-base font-semibold text-primary">
-                  {group}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {questions.map((q, index) => (
-                  <div key={q.id}>
-                    <Label className="block mb-1 font-medium text-sm">
-                      {index + 1}. {useFilipino ? (q.translated_question || q.question_text) : q.question_text}
-                    </Label>
-
-
-
-                    {q.question_type === 'multiple-choice' && q.options && (
-                      <RadioGroup
-                        value={answers[q.id] || ''}
-                        onValueChange={(val) => handleInputChange(q.id, val)}
-                      >
-                        {q.options.map((opt, i) => (
-                          <div key={i} className="flex items-center space-x-2">
-                            <RadioGroupItem value={opt} id={`${q.id}-${i}`} />
-                            <Label htmlFor={`${q.id}-${i}`}>{opt}</Label>
-                          </div>
-                        ))}
-                      </RadioGroup>
-                    )}
-                    {!['text', 'multiple-choice', 'radio', 'likert'].includes(q.question_type) && (
-                      <p className="text-red-500 text-sm">Unknown question type: {q.question_type}</p>
-                    )}
-                    {q.question_type === 'radio' && q.options && (
-                      <RadioGroup
-                        value={answers[q.id] || ''}
-                        onValueChange={(val) => handleInputChange(q.id, val)}
-                      >
-                        {q.options.map((opt, i) => (
-                          <div key={i} className="flex items-center space-x-2">
-                            <RadioGroupItem value={opt} id={`${q.id}-radio-${i}`} />
-                            <Label htmlFor={`${q.id}-radio-${i}`}>{opt}</Label>
-                          </div>
-                        ))}
-                      </RadioGroup>
-                    )}
-
-                    {q.question_type === 'likert' && q.options && (
-                      <div className="flex flex-col gap-2">
-                        <RadioGroup
-                          value={answers[q.id] || ''}
-                          onValueChange={(val) => handleInputChange(q.id, val)}
-                          className="flex flex-wrap gap-3"
-                        >
-                          {q.options.map((opt, i) => (
-                            <div key={i} className="flex items-center gap-2">
-                              <RadioGroupItem value={opt} id={`${q.id}-likert-${i}`} />
-                              <Label htmlFor={`${q.id}-likert-${i}`}>{opt}</Label>
-                            </div>
-                          ))}
-                        </RadioGroup>
-                      </div>
-                    )}
-
-
-                    {q.question_type === 'text' && (
-                      <Textarea
-                        placeholder="Your answer..."
-                        value={answers[q.id] || ''}
-                        onChange={(e) => handleInputChange(q.id, e.target.value)}
-                      />
-                    )}
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          ))}
+      {Object.entries(groupedQuestions)
+        .sort(([a], [b]) => {
+          const aNum = parseInt(a.split(".")[0], 10);
+          const bNum = parseInt(b.split(".")[0], 10);
+          return aNum - bNum;
+        })
+        .map(([group, questions]) => (
+          <Card key={group} className="w-full">
+            <CardHeader>
+              <CardTitle className="text-base font-semibold text-primary">
+                {group}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {questions.map((q, index) => (
+                <Question
+                  key={q.id}
+                  q={q}
+                  value={answers[q.id] || ""}
+                  onChange={handleInputChange}
+                  useFilipino={useFilipino}
+                />
+              ))}
+            </CardContent>
+          </Card>
+        ))}
     </div>
 
     <Button type="button" onClick={handleSubmit} className="w-full mt-6">
@@ -524,15 +476,20 @@ const handleSubmit = async () => {
 
 
 
-
       {step === 3 && (
         <div className="text-center py-20">
-          <h2 className="text-2xl font-semibold mb-4">Thank you for completing the assessment!</h2>
+          <h2 className="text-2xl font-semibold mb-4">Thank you for participation.</h2>
           <p className="text-gray-500">
-            Please wait while we evaluate your result. You’ll receive an email shortly.
+          
+Your input is invaluable in helping us support a safer and healthier work environment at your site. The insights gathered will guide targeted improvements in safety practices, communication, and overall risk reduction.
+We appreciate your trust in allowing us to be part of your continuous safety journey.
+Together, let’s build a stronger safety culture.
           </p>
         </div>
       )}
     </div>
+    
+  </Card>
+  </div>
   )
 }
