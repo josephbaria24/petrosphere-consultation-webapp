@@ -4,6 +4,9 @@ import { LogOut, MoveUpRight, Settings, FileText } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { createAvatar } from '@dicebear/core';
+import { glass } from '@dicebear/collection';
+
 
 interface MenuItem {
   label: string
@@ -37,7 +40,7 @@ export default function Profile01Client({ name, role }: ProfileProps) {
           <div className="flex items-center gap-4 mb-8">
             <div className="relative shrink-0">
               <Image
-                src="https://ferf1mheo22r9ira.public.blob.vercel-storage.com/avatar-02-albo9B0tWOSLXCVZh9rX9KFxXIVWMr.png"
+                src="https://api.dicebear.com/9.x/glass/svg?seed=Luis"
                 alt='admin avatar'
                 width={72}
                 height={72}

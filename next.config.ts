@@ -1,12 +1,18 @@
 import type { NextConfig } from "next";
 
-const nextConfig = {
+const nextConfig: NextConfig = {
   images: {
+    dangerouslyAllowSVG: true,
     domains: [
-      "ferf1mheo22r9ira.public.blob.vercel-storage.com", // 👈 add this line
+      "ferf1mheo22r9ira.public.blob.vercel-storage.com",
+    ],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "api.dicebear.com",
+      },
     ],
   },
-}
-
+};
 
 export default nextConfig;

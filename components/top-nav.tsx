@@ -39,7 +39,7 @@ export default function TopNav({ fullName, email }: { fullName: string; email: s
         ))}
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-4 ml-auto sm:ml-0">
+      <div className="flex items-center gap-2 sm:gap-2 ml-auto sm:ml-0 px-1 bg-card rounded-xl shadow-md">
         <button
           type="button"
           className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-[#1F1F23] rounded-full transition-colors"
@@ -52,11 +52,11 @@ export default function TopNav({ fullName, email }: { fullName: string; email: s
         <DropdownMenu>
           <DropdownMenuTrigger className="focus:outline-none">
             <Image
-              src="https://ferf1mheo22r9ira.public.blob.vercel-storage.com/avatar-02-albo9B0tWOSLXCVZh9rX9KFxXIVWMr.png"
+              src="https://api.dicebear.com/9.x/glass/svg?seed=Luis"
               alt="User avatar"
               width={28}
               height={28}
-              className="rounded-full ring-2 ring-gray-200 dark:ring-[#2B2B30] sm:w-8 sm:h-8 cursor-pointer"
+              className="rounded-full ring-1 ring-gray-200 dark:ring-[#2B2B30] sm:w-7 sm:h-7 cursor-pointer"
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" sideOffset={8} className="w-[280px] sm:w-80 bg-background border-0 rounded-lg shadow-lg">

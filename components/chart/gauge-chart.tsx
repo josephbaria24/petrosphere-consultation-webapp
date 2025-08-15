@@ -9,7 +9,7 @@ interface GaugeChartProps {
 
 export default function GaugeChart({ score }: GaugeChartProps) {
   return (
-    <Card className="w-full h-full">
+    <Card className="w-full h-full border-0 shadow-lg">
       <CardHeader>
         <CardTitle>Performance Score</CardTitle>
       </CardHeader>

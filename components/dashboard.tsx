@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import GaugeChart from "./chart/gauge-chart";
+import CustomTooltip from "./chart/custom-tooltip";
 
 export default function Dashboard() {
   const [surveys, setSurveys] = useState<any[]>([]);
@@ -201,7 +202,7 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Survey Summary */}
-        <Card className="w-full">
+        <Card className="w-full border-0 shadow-lg">
           <CardHeader>
             <CardTitle>Survey Summary</CardTitle>
             {selectedSurvey && (
@@ -230,18 +231,18 @@ export default function Dashboard() {
 
         
 
-        <Card>
+        <Card className="border-0 shadow-lg">
           <CardHeader>
             <CardTitle>How You Compare</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-                <PolarGrid />
-                <PolarAngleAxis dataKey="subject" />
+                <PolarGrid opacity={0.4}/>
+                <PolarAngleAxis dataKey="subject" fontSize={12}/>
                 <PolarRadiusAxis angle={30} domain={[0, 4]} />
-                <Radar name="You" dataKey="you" stroke="#2563eb" fill="#2563eb" fillOpacity={0.4} />
-                <Tooltip />
+                <Radar name="You" dataKey="you" stroke="#FF7A40" fill="#FF7A40" fillOpacity={0.4} />
+                <Tooltip content={<CustomTooltip />} />
               </RadarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -250,7 +251,7 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
         {/* Bar Chart */}
-        <Card className="w-full">
+        <Card className="w-full border-0 shadow-lg">
           <CardHeader>
             <CardTitle>Your Results</CardTitle>
           </CardHeader>
@@ -265,12 +266,13 @@ export default function Dashboard() {
                     dataKey="name"
                     angle={-20}
                     textAnchor="end"
+                    fontSize={12}
                     interval={0}
                     height={60}
                   />
                   <YAxis domain={[0, 4]} />
-                  <Tooltip />
-                  <Bar dataKey="score" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="score" fill="#FF7A40" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
