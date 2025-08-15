@@ -52,14 +52,14 @@ export default function TopNav({ fullName, email }: { fullName: string; email: s
         <DropdownMenu>
           <DropdownMenuTrigger className="focus:outline-none">
             <Image
-              src="https://api.dicebear.com/9.x/glass/svg?seed=Luis"
+              src="https://api.dicebear.com/9.x/glass/svg?seed=Leah"
               alt="User avatar"
               width={28}
               height={28}
               className="rounded-full ring-1 ring-gray-200 dark:ring-[#2B2B30] sm:w-7 sm:h-7 cursor-pointer"
             />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" sideOffset={8} className="w-[280px] sm:w-80 bg-background border-0 rounded-lg shadow-lg">
+          <DropdownMenuContent align="end" sideOffset={8} className="w-[280px] sm:w-80 bg-card border-0 rounded-lg shadow-lg">
             <Profile01 name={fullName} role={email} />
           </DropdownMenuContent>
         </DropdownMenu>

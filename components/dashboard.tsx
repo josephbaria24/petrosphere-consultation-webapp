@@ -20,6 +20,7 @@ import {
 } from "../components/ui/select";
 import GaugeChart from "./chart/gauge-chart";
 import CustomTooltip from "./chart/custom-tooltip";
+import { BarChart3, Building2, GaugeCircle, TrendingDown, TrendingUp, Users2 } from "lucide-react";
 
 export default function Dashboard() {
   const [surveys, setSurveys] = useState<any[]>([]);
@@ -176,54 +177,83 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <div className="min-h-screen px-2 space-y-3">
+    <div className="min-h-screen px-2 space-y-2">
       {/* Survey Selector */}
-      <div className="flex gap-4 max-w-2xl">
-  <Select
-    value={selectedSurvey?.id || ""}
-    onValueChange={(val) => {
-      const surveyObj = surveys.find((s) => s.id === val);
-      setSelectedSurvey(surveyObj || null);
-    }}
-  >
-    <SelectTrigger className="bg-card">
-      <SelectValue placeholder="Select a Survey" />
-    </SelectTrigger>
-    <SelectContent>
-      {surveys.map((survey) => (
-        <SelectItem key={survey.id} value={survey.id}>
-          {survey.title}
-        </SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
+      <div className="inline-flex gap-2 dark:bg-card bg-zinc-800 p-1 pl-2 rounded-3xl shadow-md">
+        <div className="flex items-center text-sm text-white">
+          <h1>Select survey</h1>
+        </div>
+      <Select
+        value={selectedSurvey?.id || ""}
+        onValueChange={(val) => {
+          const surveyObj = surveys.find((s) => s.id === val);
+          setSelectedSurvey(surveyObj || null);
+        }}
+      >
+        <SelectTrigger className="bg-card rounded-2xl border-0">
+          <SelectValue placeholder="Select a Survey" />
+        </SelectTrigger>
+        <SelectContent>
+          {surveys.map((survey) => (
+            <SelectItem key={survey.id} value={survey.id}>
+              {survey.title}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 </div>
 
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
         {/* Survey Summary */}
-        <Card className="w-full border-0 shadow-lg">
-          <CardHeader>
-            <CardTitle>Survey Summary</CardTitle>
+        <Card className="w-full border border-muted shadow-lg bg-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-primary" />
+              Survey Summary
+            </CardTitle>
             {selectedSurvey && (
-              <CardDescription>
-                Company: <strong>{selectedSurvey.target_company || "N/A"}</strong>
+              <CardDescription className="flex items-center gap-2 text-muted-foreground mt-1">
+                <Building2 className="w-4 h-4 text-muted-foreground" />
+                <span>
+                  Company: <strong>{selectedSurvey.target_company || "N/A"}</strong>
+                </span>
               </CardDescription>
             )}
           </CardHeader>
-          <CardContent className="space-y-2">
-            <p>Respondents: {respondentCount}</p>
-            <p>Avg Score: {avgScore.toFixed(2)}</p>
-            <p>Total Avg Score: {totalAvg.toFixed(2)}</p>
+
+          <CardContent className="space-y-4 text-sm text-foreground">
+            <div className="flex items-center gap-2">
+              <Users2 className="w-4 h-4 text-muted-foreground" />
+              <span className="font-medium">Respondents:</span> {respondentCount}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <GaugeCircle className="w-4 h-4 text-muted-foreground" />
+              <span className="font-medium">Avg Score:</span> {avgScore.toFixed(2)}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <GaugeCircle className="w-4 h-4 text-muted-foreground" />
+              <span className="font-medium">Total Avg Score:</span> {totalAvg.toFixed(2)}
+            </div>
+
             <Separator />
-            <p>
-              Trending Direction: {trend > 0 ? "+" : ""}
+
+            <div className="flex items-center gap-2">
+              {trend >= 0 ? (
+                <TrendingUp className="w-4 h-4 text-green-500" />
+              ) : (
+                <TrendingDown className="w-4 h-4 text-red-500" />
+              )}
+              <span className="font-medium">Trending Direction:</span>
+              {trend > 0 ? "+" : ""}
               {trend.toFixed(2)}
-            </p>
+            </div>
+
             <Progress value={Math.abs(trend * 100)} className="h-2" />
           </CardContent>
         </Card>
-
         {/* Gauge Chart */}
         <div className="w-full">
           <GaugeChart score={avgScore} />
@@ -236,7 +266,7 @@ export default function Dashboard() {
             <CardTitle>How You Compare</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
                 <PolarGrid opacity={0.4}/>
                 <PolarAngleAxis dataKey="subject" fontSize={12}/>
@@ -249,7 +279,7 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Bar Chart */}
         <Card className="w-full border-0 shadow-lg">
           <CardHeader>
