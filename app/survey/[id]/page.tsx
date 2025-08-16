@@ -30,6 +30,7 @@ type SurveyQuestion = {
   translated_question?: string // optional for translations
   question_type: 'text' | 'multiple-choice' | 'radio' | 'likert'
   options: string[] | null
+  translated_options?: string[] | null  // ✅ NEW
   dimension: string
   dimension_code: string
 }
@@ -84,6 +85,20 @@ const groupedQuestions = useMemo(() => {
 }, [survey]);
   
 
+const allQuestions = useMemo(() => {
+  return survey?.survey_questions ?? [];
+}, [survey]);
+
+const totalRequiredQuestions = allQuestions.length;
+
+const totalAnswered = useMemo(() => {
+  return allQuestions.filter((q) => answers[q.id]?.trim()).length;
+}, [answers, allQuestions]);
+
+const progress = totalRequiredQuestions > 0
+  ? Math.round((totalAnswered / totalRequiredQuestions) * 100)
+  : 0;
+
   useEffect(() => {
     if (!params.id) return
 
@@ -95,7 +110,7 @@ const groupedQuestions = useMemo(() => {
         .select(`
           id, slug, title, description, created_at, is_published,
           survey_questions (
-            id, question_text, translated_question, question_type, options, dimension, dimension_code
+            id, question_text, translated_question, question_type, options, translated_options, dimension, dimension_code
           )
         `)
         .eq(isUUID ? 'id' : 'slug', params.id)
@@ -143,7 +158,12 @@ const validateMetadata = () => {
 
 const handleSubmit = async () => {
     if (!survey) return
-  
+    
+    const unanswered = allQuestions.filter((q) => !answers[q.id]?.trim());
+if (unanswered.length > 0) {
+  toast.error("Please answer all required questions.");
+  return;
+}
     try {
       // 1. Check if user exists
       const { data: user} = await supabase
@@ -210,58 +230,73 @@ const handleSubmit = async () => {
     const steps = ['Information', 'Questionnaire', 'Completion']
   
     return (
-      <div className="flex flex-wrap items-center justify-between gap-y-4 mb-8 w-full">
-        {steps.map((label, index) => {
-          const isActive = step === index + 1
-          const isCompleted = step > index + 1
+      <div className="flex justify-center mb-8">
+        <div className="flex items-center gap-x-6">
+          {steps.map((label, index) => {
+            const isActive = step === index + 1
+            const isCompleted = step > index + 1
   
-          return (
-            <div key={label} className="flex items-center w-full sm:w-auto flex-1 min-w-[100px]">
-              {/* Step icon + label */}
-              <div className="flex items-center gap-2">
-                <div
-                  className={`w-6 h-6 sm:w-7 sm:h-7 text-[0.75rem] sm:text-sm flex items-center justify-center rounded-full font-medium ${
-                    isActive
-                      ? 'bg-primary text-white'
-                      : isCompleted
-                      ? 'bg-green-500 text-white'
-                      : 'bg-muted text-muted-foreground'
-                  }`}
-                >
-                  {isCompleted ? <Check className="w-4 h-4 sm:w-5 sm:h-5" /> : index + 1}
+            return (
+              <div key={label} className="flex items-center">
+                {/* Step icon + label */}
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`w-6 h-6 sm:w-7 sm:h-7 text-[0.75rem] sm:text-sm flex items-center justify-center rounded-full font-medium ${
+                      isActive
+                        ? 'bg-primary text-white'
+                        : isCompleted
+                        ? 'bg-green-500 text-white'
+                        : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {isCompleted ? <Check className="w-4 h-4 sm:w-5 sm:h-5" /> : index + 1}
+                  </div>
+                  <span
+                    className={`text-sm sm:text-base ${
+                      isActive ? 'text-primary font-semibold' : 'text-muted-foreground'
+                    }`}
+                  >
+                    {label}
+                  </span>
                 </div>
-                <span
-                  className={`text-sm sm:text-base ${
-                    isActive
-                      ? 'text-primary font-semibold'
-                      : 'text-muted-foreground'
-                  }`}
-                >
-                  {label}
-                </span>
-              </div>
   
-              {/* Connector line */}
-              {index !== steps.length - 1 && (
-                <div className="flex-1 h-px bg-gray-300 mx-2 sm:mx-4" />
-              )}
-            </div>
-          )
-        })}
+                {/* Connector line */}
+                {index !== steps.length - 1 && (
+                  <div className="h-px bg-gray-300 mx-3 w-10 sm:w-16" />
+                )}
+              </div>
+            )
+          })}
+        </div>
       </div>
     )
   }
+  
   const [showTooltip, setShowTooltip] = useState(true)
 
   if (loading) return <p>Loading survey...</p>
   if (!survey) return <p>Survey not found.</p>
 
+
+
   return (
     <div className="max-w-4xl mx-auto p-6">
-    <Card className="shadow-lg rounded-2xl p-6 bg-white dark:bg-background">
+      {/* Floating Progress Bar */}
+        {step === 2 && (
+          <div className="fixed top-0 left-0 w-full z-50 bg-white dark:bg-background shadow">
+            <div className="h-2 bg-primary transition-all duration-300" style={{ width: `${progress}%` }} />
+            <div className="text-xs text-center py-1 font-medium text-gray-700 dark:text-gray-300">
+              {progress}% Complete
+            </div>
+          </div>
+        )}
+            <Card className="shadow-lg rounded-2xl p-6 bg-white dark:bg-background">
       <div className="space-y-6">
         <img src="/header3.png" alt="header image" />
+  
+
         {renderStepHeader()}
+
         
       <div className=" flex justify-between">
       {step === 2 && (
@@ -440,32 +475,38 @@ const handleSubmit = async () => {
 {step === 2 && (
   <form className="space-y-6">
     <div className="space-y-6">
-      {Object.entries(groupedQuestions)
-        .sort(([a], [b]) => {
-          const aNum = parseInt(a.split(".")[0], 10);
-          const bNum = parseInt(b.split(".")[0], 10);
-          return aNum - bNum;
-        })
-        .map(([group, questions]) => (
-          <Card key={group} className="w-full">
-            <CardHeader>
-              <CardTitle className="text-base font-semibold text-primary">
-                {group}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {questions.map((q, index) => (
-                <Question
-                  key={q.id}
-                  q={q}
-                  value={answers[q.id] || ""}
-                  onChange={handleInputChange}
-                  useFilipino={useFilipino}
-                />
-              ))}
-            </CardContent>
-          </Card>
+    {Object.entries(groupedQuestions)
+  .sort(([a], [b]) => {
+    const getPrefix = (str: string) => {
+      const num = parseInt(str);
+      return isNaN(num) ? Infinity : num;
+    };
+
+    return getPrefix(a) - getPrefix(b);
+  })
+  .map(([group, questions]) => (
+    <Card key={group} className="w-full">
+      <CardHeader>
+        <CardTitle className="text-base font-semibold text-primary">
+          {group}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {questions
+          .sort((a, b) => parseInt(a.id) - parseInt(b.id)) // keep as is if needed
+          .map((q) => (
+            <Question
+              key={q.id}
+              q={q}
+              value={answers[q.id] || ""}
+              onChange={handleInputChange}
+              useFilipino={useFilipino}
+            />
         ))}
+      </CardContent>
+    </Card>
+  ))}
+
     </div>
 
     <Button type="button" onClick={handleSubmit} className="w-full mt-6">

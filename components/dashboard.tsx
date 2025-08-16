@@ -21,12 +21,13 @@ import {
 import GaugeChart from "./chart/gauge-chart";
 import CustomTooltip from "./chart/custom-tooltip";
 import { BarChart3, Building2, GaugeCircle, TrendingDown, TrendingUp, Users2 } from "lucide-react";
+import EnlargedBarChartModal from "./chart-modal";
+import ChartModal from "./chart-modal";
 
 export default function Dashboard() {
   const [surveys, setSurveys] = useState<any[]>([]);
-  const [questions, setQuestions] = useState<any[]>([]);
+  const [, setQuestions] = useState<any[]>([]);
   const [selectedSurvey, setSelectedSurvey] = useState<any>(null);
-  const [selectedQuestion, setSelectedQuestion] = useState<string>("");
   const [avgScore, setAvgScore] = useState<number>(0);
   const [totalAvg, setTotalAvg] = useState<number>(0);
   const [trend, setTrend] = useState<number>(0);
@@ -34,7 +35,8 @@ export default function Dashboard() {
   const [respondentCount, setRespondentCount] = useState<number>(0);
   const [barData, setBarData] = useState<any[]>([]);
   const [radarData, setRadarData] = useState<any[]>([]);
-
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [openChart, setOpenChart] = useState<"bar" | "radar" | null>(null);
   // Fetch survey questions when survey changes
   useEffect(() => {
     if (!selectedSurvey) return;
@@ -176,6 +178,10 @@ export default function Dashboard() {
     fetchSurveys();
   }, []);
 
+
+
+
+  
   return (
     <div className="min-h-screen px-2 space-y-2">
       {/* Survey Selector */}
@@ -203,6 +209,47 @@ export default function Dashboard() {
       </Select>
 </div>
 
+      <ChartModal
+        open={openChart === "bar"}
+        onClose={() => setOpenChart(null)}
+        title="Bar Chart"
+      >
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={barData}
+            margin={{ top: 0, right: 10, left: 0, bottom:30 }}
+          >
+            <XAxis
+              dataKey="name"
+              angle={-20}
+              textAnchor="end"
+              fontSize={12}
+              interval={0}
+              height={60}
+            />
+            <YAxis domain={[0, 4]} />
+            <Tooltip content={<CustomTooltip />} />
+            <Bar dataKey="score" fill="#FF7A40" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartModal>
+
+
+      <ChartModal
+  open={openChart === "radar"}
+  onClose={() => setOpenChart(null)}
+  title="Radar Chart"
+>
+  <ResponsiveContainer width="100%" height={400}>
+    <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+      <PolarGrid opacity={0.4} />
+      <PolarAngleAxis dataKey="subject" fontSize={12} />
+      <PolarRadiusAxis angle={30} domain={[0, 4]} />
+      <Radar name="You" dataKey="you" stroke="#FF7A40" fill="#FF7A40" fillOpacity={0.4} />
+      <Tooltip content={<CustomTooltip />} />
+    </RadarChart>
+  </ResponsiveContainer>
+</ChartModal>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
         {/* Survey Summary */}
@@ -222,7 +269,7 @@ export default function Dashboard() {
             )}
           </CardHeader>
 
-          <CardContent className="space-y-4 text-sm text-foreground">
+          <CardContent  className="space-y-4 text-sm text-foreground">
             <div className="flex items-center gap-2">
               <Users2 className="w-4 h-4 text-muted-foreground" />
               <span className="font-medium">Respondents:</span> {respondentCount}
@@ -265,7 +312,7 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle>How You Compare</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent onClick={() => setOpenChart("radar")}>
             <ResponsiveContainer width="100%" height={250}>
               <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
                 <PolarGrid opacity={0.4}/>
@@ -285,7 +332,7 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle>Your Results</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent onClick={() => setOpenChart("bar")}>
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
