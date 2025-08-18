@@ -20,9 +20,10 @@ import {
 } from "../components/ui/select";
 import GaugeChart from "./chart/gauge-chart";
 import CustomTooltip from "./chart/custom-tooltip";
-import { BarChart3, Building2, GaugeCircle, TrendingDown, TrendingUp, Users2 } from "lucide-react";
+import { BarChart3, Building2, GaugeCircle, Maximize2, Minimize2, TrendingDown, TrendingUp, Users2 } from "lucide-react";
 import EnlargedBarChartModal from "./chart-modal";
 import ChartModal from "./chart-modal";
+import { RoleAreaChart } from "./chart/area-chart";
 
 export default function Dashboard() {
   const [surveys, setSurveys] = useState<any[]>([]);
@@ -36,7 +37,21 @@ export default function Dashboard() {
   const [barData, setBarData] = useState<any[]>([]);
   const [radarData, setRadarData] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [openChart, setOpenChart] = useState<"bar" | "radar" | null>(null);
+  const [openChart, setOpenChart] = useState<
+  "bar" | "radar" | "gauge" | "role" | null
+>(null);
+  const [roleData, setRoleData] = useState<any[]>([]);
+
+  
+  // 🔹 NEW: Track expanded card
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
+
+  const toggleExpand = (card: string) => {
+    setExpandedCard((prev) => (prev === card ? null : card));
+  };
+
+
+
   // Fetch survey questions when survey changes
   useEffect(() => {
     if (!selectedSurvey) return;
@@ -129,6 +144,15 @@ export default function Dashboard() {
       name: dim,
       score: scores.reduce((a, b) => a + b, 0) / scores.length,
     }));
+
+    // Helper to extract numeric prefix
+    const extractNumber = (dim: string) => {
+      const match = dim.match(/^(\d+)\./);
+      return match ? parseInt(match[1], 10) : Infinity;
+    };
+
+    
+
     setBarData(bar);
     setRadarData(bar.map((b) => ({ subject: b.name, you: b.score })));
   
@@ -161,8 +185,93 @@ export default function Dashboard() {
       const prevAvg = prevScores.reduce((a, b) => a + b, 0) / prevScores.length || 0;
       setTrend(currentAvg - prevAvg);
     }
+
+type RoleResponse = {
+  user_id: string;
+  question_id: string;
+  answer: string | number;
+  users: {
+    role: string | null;
+  } | null;
+};
+
+// Step X: calculate average score per role
+const { data: roleResponses, error: roleError } = await supabase
+  .from("responses")
+  .select(`
+    user_id,
+    question_id,
+    answer,
+    users:users (
+      role
+    )
+  `)
+  .in("question_id", questionIds) as { data: RoleResponse[] | null, error: any };
+
+
+if (roleError) {
+console.error("Error fetching role responses:", roleError);
+return;
+}
+// Step X: calculate average score per role per dimension
+const roleDimensionScores: Record<string, Record<string, number[]>> = {};
+
+roleResponses?.forEach((r) => {
+  let score: number | null = null;
+
+  if (typeof r.answer === "string") {
+    const match = r.answer.match(/\((\d+)\)$/);
+    if (match) score = parseInt(match[1], 10);
+    else {
+      const parsed = parseFloat(r.answer);
+      if (!isNaN(parsed)) score = parsed;
+    }
+  } else if (typeof r.answer === "number") {
+    score = r.answer;
+  }
+
+  if (score !== null && !isNaN(score)) {
+    const role = r.users?.role || "Unknown";
+    const dimension = questions.find((q) => q.id === r.question_id)?.dimension || "Unknown";
+
+    if (!roleDimensionScores[dimension]) roleDimensionScores[dimension] = {};
+    if (!roleDimensionScores[dimension][role]) roleDimensionScores[dimension][role] = [];
+
+    roleDimensionScores[dimension][role].push(score);
+  }
+});
+
+// Convert into chart data
+const roleChartData = Object.entries(roleDimensionScores).map(([dimension, roles]) => {
+  const row: Record<string, any> = { dimension };
+  for (const [role, scores] of Object.entries(roles)) {
+    row[role] = scores.reduce((a, b) => a + b, 0) / scores.length;
+  }
+  return row;
+});
+
+setRoleData(roleChartData);
+// Sort bar data
+const sortedBar = [...bar].sort((a, b) => extractNumber(a.name) - extractNumber(b.name));
+
+setBarData(sortedBar);
+
+// Radar chart sorted too
+setRadarData(
+  sortedBar.map((b) => ({ subject: b.name, you: b.score }))
+);
+
+// Role data also sorted
+const sortedRoleData = roleChartData.sort(
+  (a, b) => extractNumber(a.dimension) - extractNumber(b.dimension)
+);
+
+setRoleData(sortedRoleData);
+
+
   };
-  
+ 
+
   // Fetch surveys
   useEffect(() => {
     const fetchSurveys = async () => {
@@ -189,104 +298,45 @@ export default function Dashboard() {
         <div className="flex items-center text-sm text-white">
           <h1>Select survey</h1>
         </div>
-      <Select
-        value={selectedSurvey?.id || ""}
-        onValueChange={(val) => {
-          const surveyObj = surveys.find((s) => s.id === val);
-          setSelectedSurvey(surveyObj || null);
-        }}
-      >
-        <SelectTrigger className="bg-card rounded-2xl border-0">
-          <SelectValue placeholder="Select a Survey" />
-        </SelectTrigger>
-        <SelectContent>
-          {surveys.map((survey) => (
-            <SelectItem key={survey.id} value={survey.id}>
-              {survey.title}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-</div>
-
-      <ChartModal
-        open={openChart === "bar"}
-        onClose={() => setOpenChart(null)}
-        title="Bar Chart"
-      >
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={barData}
-            margin={{ top: 0, right: 10, left: 0, bottom:30 }}
-          >
-            <XAxis
-              dataKey="name"
-              angle={-20}
-              textAnchor="end"
-              fontSize={12}
-              interval={0}
-              height={60}
-            />
-            <YAxis domain={[0, 4]} />
-            <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="score" fill="#FF7A40" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartModal>
-
-
-      <ChartModal
-  open={openChart === "radar"}
-  onClose={() => setOpenChart(null)}
-  title="Radar Chart"
->
-  <ResponsiveContainer width="100%" height={400}>
-    <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-      <PolarGrid opacity={0.4} />
-      <PolarAngleAxis dataKey="subject" fontSize={12} />
-      <PolarRadiusAxis angle={30} domain={[0, 4]} />
-      <Radar name="You" dataKey="you" stroke="#FF7A40" fill="#FF7A40" fillOpacity={0.4} />
-      <Tooltip content={<CustomTooltip />} />
-    </RadarChart>
-  </ResponsiveContainer>
-</ChartModal>
-
+        <Select
+          value={selectedSurvey?.id || ""}
+          onValueChange={(val) => {
+            const surveyObj = surveys.find((s) => s.id === val);
+            setSelectedSurvey(surveyObj || null);
+          }}
+        >
+          <SelectTrigger className="bg-card rounded-2xl border-0">
+            <SelectValue placeholder="Select a Survey" />
+          </SelectTrigger>
+          <SelectContent>
+            {surveys.map((survey) => (
+              <SelectItem key={survey.id} value={survey.id}>
+                {survey.title}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+  
+      {/* Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
-        {/* Survey Summary */}
-        <Card className="w-full border border-muted shadow-lg bg-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-primary" />
-              Survey Summary
+        {/* Survey Summary (no modal needed) */}
+        <Card className="w-full border-0 shadow-lg">
+          <CardHeader className="flex justify-between items-center">
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-primary" /> Survey Summary
             </CardTitle>
-            {selectedSurvey && (
-              <CardDescription className="flex items-center gap-2 text-muted-foreground mt-1">
-                <Building2 className="w-4 h-4 text-muted-foreground" />
-                <span>
-                  Company: <strong>{selectedSurvey.target_company || "N/A"}</strong>
-                </span>
-              </CardDescription>
-            )}
           </CardHeader>
-
-          <CardContent  className="space-y-4 text-sm text-foreground">
+          <CardContent className="space-y-4 text-sm">
             <div className="flex items-center gap-2">
-              <Users2 className="w-4 h-4 text-muted-foreground" />
+              <Users2 className="w-4 h-4" />
               <span className="font-medium">Respondents:</span> {respondentCount}
             </div>
-
             <div className="flex items-center gap-2">
-              <GaugeCircle className="w-4 h-4 text-muted-foreground" />
+              <GaugeCircle className="w-4 h-4" />
               <span className="font-medium">Avg Score:</span> {avgScore.toFixed(2)}
             </div>
-
-            <div className="flex items-center gap-2">
-              <GaugeCircle className="w-4 h-4 text-muted-foreground" />
-              <span className="font-medium">Total Avg Score:</span> {totalAvg.toFixed(2)}
-            </div>
-
             <Separator />
-
             <div className="flex items-center gap-2">
               {trend >= 0 ? (
                 <TrendingUp className="w-4 h-4 text-green-500" />
@@ -297,69 +347,139 @@ export default function Dashboard() {
               {trend > 0 ? "+" : ""}
               {trend.toFixed(2)}
             </div>
-
             <Progress value={Math.abs(trend * 100)} className="h-2" />
           </CardContent>
         </Card>
+  
         {/* Gauge Chart */}
-        <div className="w-full">
-          <GaugeChart score={avgScore} />
-        </div>
-
-        
-
-        <Card className="border-0 shadow-lg">
-          <CardHeader>
-            <CardTitle>How You Compare</CardTitle>
+        <Card className="w-full shadow-lg border-0">
+          <CardHeader className="flex justify-between items-center">
+            <CardTitle>Gauge</CardTitle>
+            <Button variant="ghost" size="icon" onClick={() => setOpenChart("gauge")}>
+              <Maximize2 className="w-2 h-2" />
+            </Button>
           </CardHeader>
-          <CardContent onClick={() => setOpenChart("radar")}>
-            <ResponsiveContainer width="100%" height={250}>
+          <CardContent>
+            <GaugeChart score={avgScore} />
+          </CardContent>
+        </Card>
+  
+        {/* Radar Chart */}
+        <Card className="w-full border-0 shadow-lg">
+          <CardHeader className="flex justify-between items-center">
+            <CardTitle>Radar</CardTitle>
+            <Button variant="ghost" size="icon" onClick={() => setOpenChart("radar")}>
+              <Maximize2 className="w-4 h-4" />
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
               <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-                <PolarGrid opacity={0.4}/>
-                <PolarAngleAxis dataKey="subject" fontSize={12}/>
+                <PolarGrid opacity={0.4} />
+                <PolarAngleAxis dataKey="subject" fontSize={12} />
                 <PolarRadiusAxis angle={30} domain={[0, 4]} />
-                <Radar name="You" dataKey="you" stroke="#FF7A40" fill="#FF7A40" fillOpacity={0.4} />
+                <Radar
+                  name="You"
+                  dataKey="you"
+                  stroke="#FF7A40"
+                  fill="#FF7A40"
+                  fillOpacity={0.4}
+                />
                 <Tooltip content={<CustomTooltip />} />
               </RadarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
-      </div>
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Bar Chart */}
+        <div className="grid grid-cols-1 lg:grid-cols-1 gap-2">
+          {/* Bar Chart */}
         <Card className="w-full border-0 shadow-lg">
-          <CardHeader>
-            <CardTitle>Your Results</CardTitle>
+          <CardHeader className="flex justify-between items-center">
+            <CardTitle>Bar Chart</CardTitle>
+            <Button variant="ghost" size="icon" onClick={() => setOpenChart("bar")}>
+              <Maximize2 className="w-4 h-4" />
+            </Button>
           </CardHeader>
-          <CardContent onClick={() => setOpenChart("bar")}>
-            <div className="h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={barData}
-                  margin={{ top: 10, right: 10, left: 0, bottom: 30 }}
-                >
-                  <XAxis
-                    dataKey="name"
-                    angle={-20}
-                    textAnchor="end"
-                    fontSize={12}
-                    interval={0}
-                    height={60}
-                  />
-                  <YAxis domain={[0, 4]} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="score" fill="#FF7A40" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-4 flex items-center justify-between border-2 p-3 rounded-md">
-              <span>Reliability Value:</span>
-              <Badge variant="secondary">{reliability}% Excellent</Badge>
-            </div>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={barData} margin={{ top: 50, right: 10, left: 0, bottom: 0 }}>
+                <XAxis
+                  dataKey="name"
+                  angle={-20}
+                  textAnchor="end"
+                  fontSize={12}
+                  interval={0}
+                  height={100}
+                />
+                <YAxis domain={[0, 4]} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="score" fill="#FF7A40" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
-      </div>
+  
+        {/* Role Area Chart */}
+        <Card className="w-full border-0 shadow-lg">
+          <CardHeader className="flex justify-between items-center">
+            <CardTitle>Scores by Role</CardTitle>
+            <Button variant="ghost" size="icon" onClick={() => setOpenChart("role")}>
+              <Maximize2 className="w-4 h-4" />
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <RoleAreaChart data={roleData} />
+          </CardContent>
+        </Card>
+        </div>
+  
+        
+      
+  
+      {/* 🔹 Modals */}
+      <ChartModal open={openChart === "gauge"} onClose={() => setOpenChart(null)} title="Gauge Chart">
+        <GaugeChart score={avgScore} />
+      </ChartModal>
+  
+      <ChartModal open={openChart === "radar"} onClose={() => setOpenChart(null)} title="Radar Chart">
+        <ResponsiveContainer width="100%" height={450}>
+          <RadarChart cx="50%" cy="30%" outerRadius="50%" data={radarData}>
+            <PolarGrid opacity={0.4} />
+            <PolarAngleAxis dataKey="subject" fontSize={12} />
+            <PolarRadiusAxis angle={30} domain={[0, 4]} />
+            <Radar name="You" dataKey="you" stroke="#FF7A40" fill="#FF7A40" fillOpacity={0.4} />
+            <Tooltip content={<CustomTooltip />} />
+          </RadarChart>
+        </ResponsiveContainer>
+      </ChartModal>
+  
+      <ChartModal open={openChart === "bar"} onClose={() => setOpenChart(null)} title="Bar Chart">
+        <ResponsiveContainer width="100%" height={400}>
+          <BarChart data={barData} margin={{ top: 10, right: 10, left: 0, bottom: 30 }}>
+            <XAxis
+              dataKey="name"
+              angle={-20}
+              textAnchor="end"
+              fontSize={12}
+              interval={0}
+              height={200}
+            />
+            <YAxis domain={[0, 4]} />
+            <Tooltip content={<CustomTooltip />} />
+            <Bar dataKey="score" fill="#FF7A40" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartModal>
+  
+      <ChartModal
+  open={openChart === "role"}
+  onClose={() => setOpenChart(null)}
+  title="Scores by Role"
+>
+  <RoleAreaChart data={roleData} bare />
+</ChartModal>
     </div>
   );
+  
 }

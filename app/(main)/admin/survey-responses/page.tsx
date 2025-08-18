@@ -15,6 +15,9 @@ type User = {
   first_name: string
   last_name: string
   email: string
+  role: string
+  department: string
+  site: string
 }
 
 type AnswerWithDimension = {
@@ -104,9 +107,10 @@ const enrichedResponses = responses.map((r) => {
 
       const userIds = Array.from(new Set(responses.map(r => r.user_id)))
       const { data: users, error: usersError } = await supabase
-        .from('users')
-        .select('id, first_name, last_name, email')
-        .in('id', userIds)
+      .from('users')
+      .select('id, first_name, last_name, email, role, department, site')
+      .in('id', userIds)
+    
 
       if (usersError) {
         toast.error('Failed to fetch user info')
@@ -123,9 +127,9 @@ const enrichedResponses = responses.map((r) => {
             acc[curr.user_id] = {
               user,
               metadata: {
-                department: curr.department,
-                site: curr.site,
-                role: curr.role,
+                department: user?.department || 'Unknown',
+                site: user?.site || 'Unknown',
+                role: user?.role || 'Unknown',
                 created_at: curr.created_at,
               },
               answers: [],

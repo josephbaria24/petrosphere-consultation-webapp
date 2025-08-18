@@ -46,7 +46,7 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-green-50">
+    <div className="flex min-h-screen items-center justify-center bg-orange-50">
       <div className="flex w-full max-w-5xl rounded-3xl overflow-hidden shadow-2xl bg-white/70 backdrop-blur-lg">
         {/* Left side - form */}
         <div className="w-full md:w-1/2 p-10 flex flex-col justify-center">
@@ -82,7 +82,7 @@ export default function AdminLoginPage() {
             </button>
           </div>
 
-          <a href="#" className="text-sm text-green-600 mb-6">Forgot your password?</a>
+          <a href="#" className="text-sm text-orange-600 mb-6">Forgot your password?</a>
 
           <Button
             onClick={handleLogin}
@@ -94,7 +94,7 @@ export default function AdminLoginPage() {
 
           <p className="mt-8 text-sm text-gray-500">
             For assistance, contact <br />
-            <a href="mailto:safetyvitals@petrosphere.com" className="text-green-600">is@petrosphere.com.ph</a>
+            <a href="mailto:safetyvitals@petrosphere.com" className="text-orange-600">is@petrosphere.com.ph</a>
           </p>
         </div>
 

@@ -70,7 +70,10 @@ export default function PublicSurveyPage() {
     "Executive",
     "Manager",
     "Supervisor",
-    "Employees / Rank and File" 
+    "Employees / Rank and File",
+    "Owner", 
+    "General Contractor", 
+    "Sub contractor" 
   ];
   
   const [useFilipino, setUseFilipino] = useState(false)

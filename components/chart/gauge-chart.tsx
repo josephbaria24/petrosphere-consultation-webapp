@@ -4,7 +4,7 @@ import GaugeComponent from "react-gauge-component";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 
 interface GaugeChartProps {
-  score: number; // 0 to 4 scale
+  score: number; // 0 to 5 scale
 }
 
 export default function GaugeChart({ score }: GaugeChartProps) {
@@ -17,7 +17,7 @@ export default function GaugeChart({ score }: GaugeChartProps) {
         <GaugeComponent
           value={score}
           minValue={0}
-          maxValue={4}
+          maxValue={5}  // ✅ changed to 5
           type="radial"
           labels={{
             tickLabels: {
@@ -28,6 +28,7 @@ export default function GaugeChart({ score }: GaugeChartProps) {
                 { value: 2, valueConfig: { formatTextValue: () => "2.0" } },
                 { value: 3, valueConfig: { formatTextValue: () => "3.0" } },
                 { value: 4, valueConfig: { formatTextValue: () => "4.0" } },
+                { value: 5, valueConfig: { formatTextValue: () => "5.0" } }, // ✅ added 5
               ],
             },
             valueLabel: {
@@ -41,9 +42,9 @@ export default function GaugeChart({ score }: GaugeChartProps) {
           arc={{
             colorArray: ["#EF4444", "#F59E0B", "#22C55E"], // red, yellow, green
             subArcs: [
-              { limit: 2 }, // red zone ends at 2.0
-              { limit: 3 }, // yellow zone ends at 3.0
-              {}, // green zone
+              { limit: 2 },  // red zone ends at 2
+              { limit: 3.5 }, // yellow zone ends at 3.5
+              {},            // green zone (3.5–5)
             ],
             padding: 0.02,
             width: 0.3,
@@ -59,14 +60,14 @@ export default function GaugeChart({ score }: GaugeChartProps) {
           className={`mt-2 text-sm font-semibold ${
             score < 2
               ? "text-red-500"
-              : score < 3
+              : score < 3.5
               ? "text-yellow-500"
               : "text-green-500"
           }`}
         >
           {score < 2
             ? "Your score is below average"
-            : score < 3
+            : score < 3.5
             ? "Your score is average"
             : "Your score is excellent"}
         </p>
