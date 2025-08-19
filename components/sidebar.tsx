@@ -9,6 +9,7 @@ import {
   PlusCircle,
   FileText,
   Home,
+  SquareRoundCorner,
 } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
@@ -112,6 +113,7 @@ export default function Sidebar() {
                 <NavItem href="/admin/survey-responses" icon={FileText}>Survey Responses</NavItem>
                 <NavItem href="/admin/view-survey" icon={Folder}>View Survey</NavItem>
                 <NavItem href="/admin/respondents" icon={Users2}>Respondents</NavItem>
+                <NavItem href="/admin/dimensions" icon={SquareRoundCorner}>Dimensions</NavItem>
               </div>
             </div>
 

@@ -9,7 +9,6 @@ import {
 } from "recharts";
 import { Separator } from "../@/components/ui/separator";
 import { Progress } from "../@/components/ui/progress";
-import { Badge } from "../@/components/ui/badge";
 import { supabase } from "../lib/supabaseClient";
 import {
   Select,
@@ -21,7 +20,6 @@ import {
 import GaugeChart from "./chart/gauge-chart";
 import CustomTooltip from "./chart/custom-tooltip";
 import { BarChart3, Building2, GaugeCircle, Maximize2, Minimize2, TrendingDown, TrendingUp, Users2 } from "lucide-react";
-import EnlargedBarChartModal from "./chart-modal";
 import ChartModal from "./chart-modal";
 import { RoleAreaChart } from "./chart/area-chart";
 
@@ -36,7 +34,6 @@ export default function Dashboard() {
   const [respondentCount, setRespondentCount] = useState<number>(0);
   const [barData, setBarData] = useState<any[]>([]);
   const [radarData, setRadarData] = useState<any[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [openChart, setOpenChart] = useState<
   "bar" | "radar" | "gauge" | "role" | null
 >(null);
@@ -67,23 +64,65 @@ export default function Dashboard() {
     fetchSurveyStats(selectedSurvey.id, selectedSurvey.target_company);
   }, [selectedSurvey]);
 
+
+
+  const getScoreFromTemplate = async (answer: string): Promise<number | null> => {
+    const { data, error } = await supabase
+      .from("option_templates")
+      .select("options, scores");
+  
+    if (error || !data) return null;
+  
+    for (const template of data) {
+      const idx = template.options?.findIndex(
+        (opt: string) => opt.trim().toLowerCase() === answer.trim().toLowerCase()
+      );
+      if (idx !== -1 && template.scores && template.scores[idx] !== undefined) {
+        return template.scores[idx];
+      }
+    }
+  
+    return null;
+  };
+
   const fetchSurveyStats = async (surveyId: string, company: string) => {
     // Step 1: get all question details
-    const { data: questions, error: qError } = await supabase
-      .from("survey_questions")
-      .select("id, dimension, scoring_type, max_score, min_score, reverse_score")
-      .eq("survey_id", surveyId);
+// Get all questions WITH template_id
+const { data: questions, error: qError } = await supabase
+  .from("survey_questions")
+  .select("id, dimension, scoring_type, max_score, min_score, reverse_score, template_id")
+  .eq("survey_id", surveyId);
+
     if (qError || !questions) return;
   
-    const questionIds = questions.map((q) => q.id);
-  
-    // Step 2: get responses
-    const { data: responses, error: rError } = await supabase
-      .from("responses")
-      .select("user_id, question_id, answer")
-      .in("question_id", questionIds);
-    if (rError || !responses) return;
-  
+
+// 🔹 Add this line: Collect question IDs
+const questionIds = questions.map((q) => q.id);
+
+// Step 2: fetch responses
+const { data: responses, error: rError } = await supabase
+  .from("responses")
+  .select("user_id, question_id, answer")
+  .in("question_id", questionIds);
+
+if (rError || !responses) return;
+
+    const templateIds = [...new Set(questions.map((q) => q.template_id).filter(Boolean))];
+
+// Get the option_templates for these questions
+const { data: templates, error: tError } = await supabase
+  .from("option_templates")
+  .select("id, options, scores")
+  .in("id", templateIds);
+
+if (tError || !templates) return;
+
+// Put into lookup map
+const templateMap: Record<string, { options: string[]; scores: number[] }> = {};
+for (const t of templates) {
+  templateMap[t.id] = { options: t.options, scores: t.scores };
+}
+
     // Count respondents
     const uniqueRespondents = new Set(responses.map((r) => r.user_id));
     setRespondentCount(uniqueRespondents.size);
@@ -92,41 +131,42 @@ export default function Dashboard() {
     const dimensionScores: Record<string, number[]> = {};
     let normalizedScores: number[] = [];
   
-    responses.forEach((r) => {
+
+    for (const r of responses) {
       const question = questions.find((q) => q.id === r.question_id);
-      if (!question) return;
-  
+      if (!question) continue;
+    
       let score: number | null = null;
-      if (typeof r.answer === "string") {
-        const match = r.answer.match(/\((\d+)\)$/);
-        if (match) {
-          score = parseInt(match[1], 10);
-        } else {
-          const parsed = parseFloat(r.answer);
-          if (!isNaN(parsed)) score = parsed;
+    
+      // Get template mapping for this question
+      const template = question.template_id ? templateMap[question.template_id] : null;
+      if (template) {
+        const idx = template.options.findIndex(
+          (opt) => opt.trim().toLowerCase() === r.answer.trim().toLowerCase()
+        );
+        if (idx !== -1 && template.scores[idx] !== undefined) {
+          score = template.scores[idx];
         }
-      } else if (typeof r.answer === "number") {
-        score = r.answer;
       }
-      if (score === null || isNaN(score)) return;
-  
+    
+      if (score === null || isNaN(score)) continue;
+    
+      // Apply reverse/binary rules if needed
       const { scoring_type, max_score, min_score, reverse_score } = question;
       if (scoring_type === "likert" && reverse_score) {
-        score = max_score + 1 - score;
+        score = (max_score ?? 5) + 1 - score;
       } else if (scoring_type === "binary") {
         score = score ? max_score : min_score;
       }
-  
-      // Dimension scores
-      if (!dimensionScores[question.dimension]) {
-        dimensionScores[question.dimension] = [];
-      }
+    
+      // Store for dimension & reliability
+      if (!dimensionScores[question.dimension]) dimensionScores[question.dimension] = [];
       dimensionScores[question.dimension].push(score);
-  
-      // Normalized scores for reliability
+    
       const normalized = (score - min_score) / (max_score - min_score);
       normalizedScores.push(normalized);
-    });
+    }
+    
   
     // Step 4: reliability = average normalized score * 100
     if (normalizedScores.length > 0) {
@@ -140,10 +180,14 @@ export default function Dashboard() {
     }
   
     // Step 5: prepare charts
-    const bar = Object.entries(dimensionScores).map(([dim, scores]) => ({
-      name: dim,
-      score: scores.reduce((a, b) => a + b, 0) / scores.length,
-    }));
+    const bar = Object.entries(dimensionScores).map(([dim, scores]) => {
+      const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+      return {
+        name: dim,
+        score: Math.min(avg, 5),
+      };
+    });
+    
 
     // Helper to extract numeric prefix
     const extractNumber = (dim: string) => {
@@ -157,10 +201,10 @@ export default function Dashboard() {
     setRadarData(bar.map((b) => ({ subject: b.name, you: b.score })));
   
     const allScores = Object.values(dimensionScores).flat();
-    const currentAvg = allScores.reduce((a, b) => a + b, 0) / allScores.length || 0;
+    const currentAvgRaw = allScores.reduce((a, b) => a + b, 0) / allScores.length || 0;
+    const currentAvg = Math.min(currentAvgRaw, 5);
     setAvgScore(currentAvg);
     setTotalAvg(currentAvg);
-  
     // Step 6: calculate trend vs previous survey
     const { data: pastSurveys } = await supabase
       .from("surveys")
@@ -216,36 +260,57 @@ return;
 // Step X: calculate average score per role per dimension
 const roleDimensionScores: Record<string, Record<string, number[]>> = {};
 
-roleResponses?.forEach((r) => {
+for (const r of roleResponses || []) {
+  const question = questions.find((q) => q.id === r.question_id);
+  if (!question) continue;
+
   let score: number | null = null;
 
   if (typeof r.answer === "string") {
+    // Try (number) at end of string
     const match = r.answer.match(/\((\d+)\)$/);
-    if (match) score = parseInt(match[1], 10);
-    else {
+    if (match) {
+      score = parseInt(match[1], 10);
+    } else {
       const parsed = parseFloat(r.answer);
-      if (!isNaN(parsed)) score = parsed;
+      if (!isNaN(parsed)) {
+        score = parsed;
+      } else {
+        const cleanAnswer = r.answer.replace(/\s*\(\d+\)$/, "").trim();
+        const templateScore = await getScoreFromTemplate(cleanAnswer);
+        if (templateScore !== null) score = templateScore;
+      }
     }
   } else if (typeof r.answer === "number") {
     score = r.answer;
   }
 
-  if (score !== null && !isNaN(score)) {
-    const role = r.users?.role || "Unknown";
-    const dimension = questions.find((q) => q.id === r.question_id)?.dimension || "Unknown";
+  if (score === null || isNaN(score)) continue;
 
-    if (!roleDimensionScores[dimension]) roleDimensionScores[dimension] = {};
-    if (!roleDimensionScores[dimension][role]) roleDimensionScores[dimension][role] = [];
-
-    roleDimensionScores[dimension][role].push(score);
+  // Apply scoring type rules
+  const { scoring_type, max_score, min_score, reverse_score } = question;
+  if (scoring_type === "likert" && reverse_score) {
+    score = (max_score ?? 5) + 1 - score;
+  } else if (scoring_type === "binary") {
+    score = score ? max_score : min_score;
   }
-});
+
+  const role = r.users?.role || "Unknown";
+  const dimension = question.dimension || "Unknown";
+
+  if (!roleDimensionScores[dimension]) roleDimensionScores[dimension] = {};
+  if (!roleDimensionScores[dimension][role]) roleDimensionScores[dimension][role] = [];
+
+  roleDimensionScores[dimension][role].push(score);
+}
+
 
 // Convert into chart data
 const roleChartData = Object.entries(roleDimensionScores).map(([dimension, roles]) => {
   const row: Record<string, any> = { dimension };
   for (const [role, scores] of Object.entries(roles)) {
-    row[role] = scores.reduce((a, b) => a + b, 0) / scores.length;
+    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+    row[role] = Math.min(avg, 5);
   }
   return row;
 });
@@ -328,6 +393,10 @@ setRoleData(sortedRoleData);
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
+            <div className="flex items-center gap-2">
+              <Building2 className="w-4 h-4" />
+              <span className="font-medium">Company:</span> {selectedSurvey?.target_company || "N/A"}
+            </div>
             <div className="flex items-center gap-2">
               <Users2 className="w-4 h-4" />
               <span className="font-medium">Respondents:</span> {respondentCount}
