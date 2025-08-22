@@ -1,3 +1,4 @@
+//dashboard.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -5,7 +6,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../co
 import { Button } from "../components/ui/button";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
+  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
+  Legend
 } from "recharts";
 import { Separator } from "../@/components/ui/separator";
 import { Progress } from "../@/components/ui/progress";
@@ -34,8 +36,9 @@ export default function Dashboard() {
   const [respondentCount, setRespondentCount] = useState<number>(0);
   const [barData, setBarData] = useState<any[]>([]);
   const [radarData, setRadarData] = useState<any[]>([]);
+  const [comparisonRadarData, setComparisonRadarData] = useState<any[]>([]);
   const [openChart, setOpenChart] = useState<
-  "bar" | "radar" | "gauge" | "role" | null
+  "bar" | "radar" | "gauge" | "role" | "comparison" | null
 >(null);
   const [roleData, setRoleData] = useState<any[]>([]);
 
@@ -46,8 +49,6 @@ export default function Dashboard() {
   const toggleExpand = (card: string) => {
     setExpandedCard((prev) => (prev === card ? null : card));
   };
-
-
 
   // Fetch survey questions when survey changes
   useEffect(() => {
@@ -62,9 +63,8 @@ export default function Dashboard() {
     };
     fetchQuestions();
     fetchSurveyStats(selectedSurvey.id, selectedSurvey.target_company);
+    fetchComparisonData(selectedSurvey.id);
   }, [selectedSurvey]);
-
-
 
   const getScoreFromTemplate = async (answer: string): Promise<number | null> => {
     const { data, error } = await supabase
@@ -84,6 +84,143 @@ export default function Dashboard() {
   
     return null;
   };
+
+  // 🔹 NEW: Function to fetch comparison data
+  const fetchComparisonData = async (currentSurveyId: string) => {
+    try {
+      // Get all surveys except the current one
+      const { data: otherSurveys, error: surveysError } = await supabase
+        .from("surveys")
+        .select("id")
+        .neq("id", currentSurveyId);
+
+      if (surveysError || !otherSurveys || otherSurveys.length === 0) {
+        setComparisonRadarData([]);
+        return;
+      }
+
+      const otherSurveyIds = otherSurveys.map(s => s.id);
+
+      // Get all questions from other surveys
+      const { data: allQuestions, error: questionsError } = await supabase
+        .from("survey_questions")
+        .select("id, dimension, scoring_type, max_score, min_score, reverse_score, template_id, survey_id")
+        .in("survey_id", otherSurveyIds);
+
+      if (questionsError || !allQuestions) {
+        setComparisonRadarData([]);
+        return;
+      }
+
+      const questionIds = allQuestions.map(q => q.id);
+
+      // Get responses for all other surveys
+      const { data: allResponses, error: responsesError } = await supabase
+        .from("responses")
+        .select("user_id, question_id, answer")
+        .in("question_id", questionIds);
+
+      if (responsesError || !allResponses) {
+        setComparisonRadarData([]);
+        return;
+      }
+
+      // Get templates
+      const templateIds = [...new Set(allQuestions.map((q) => q.template_id).filter(Boolean))];
+      const { data: templates, error: templatesError } = await supabase
+        .from("option_templates")
+        .select("id, options, scores")
+        .in("id", templateIds);
+
+      if (templatesError || !templates) {
+        setComparisonRadarData([]);
+        return;
+      }
+
+      const templateMap: Record<string, { options: string[]; scores: number[] }> = {};
+      for (const t of templates) {
+        templateMap[t.id] = { options: t.options, scores: t.scores };
+      }
+
+      // Process scores by dimension
+      const dimensionScores: Record<string, number[]> = {};
+
+      for (const r of allResponses) {
+        const question = allQuestions.find((q) => q.id === r.question_id);
+        if (!question) continue;
+
+        let score: number | null = null;
+
+        // Get template mapping for this question
+        const template = question.template_id ? templateMap[question.template_id] : null;
+        if (template) {
+          const idx = template.options.findIndex(
+            (opt) => opt.trim().toLowerCase() === r.answer.trim().toLowerCase()
+          );
+          if (idx !== -1 && template.scores[idx] !== undefined) {
+            score = template.scores[idx];
+          }
+        }
+
+        if (score === null || isNaN(score)) continue;
+
+        // Apply reverse/binary rules if needed
+        const { scoring_type, max_score, min_score, reverse_score } = question;
+        if (scoring_type === "likert" && reverse_score) {
+          score = (max_score ?? 5) + 1 - score;
+        } else if (scoring_type === "binary") {
+          score = score ? max_score : min_score;
+        }
+
+        // Store for dimension
+        if (!dimensionScores[question.dimension]) dimensionScores[question.dimension] = [];
+        dimensionScores[question.dimension].push(score);
+      }
+
+      // Calculate averages and prepare comparison data
+      const comparisonData = Object.entries(dimensionScores).map(([dim, scores]) => {
+        const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+        return {
+          subject: dim,
+          average: Math.min(avg, 5)
+        };
+      });
+
+      // Helper to extract numeric prefix for sorting
+      const extractNumber = (dim: string) => {
+        const match = dim.match(/^(\d+)\./);
+        return match ? parseInt(match[1], 10) : Infinity;
+      };
+
+      // Sort the comparison data
+      const sortedComparisonData = comparisonData.sort(
+        (a, b) => extractNumber(a.subject) - extractNumber(b.subject)
+      );
+
+      // Merge with current survey data for comparison
+      const mergedData = sortedComparisonData.map(item => {
+        const currentItem = radarData.find(r => r.subject === item.subject);
+        return {
+          subject: item.subject,
+          current: currentItem ? currentItem.you : 0,
+          average: item.average
+        };
+      });
+
+      setComparisonRadarData(mergedData);
+
+    } catch (error) {
+      console.error("Error fetching comparison data:", error);
+      setComparisonRadarData([]);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedSurvey && radarData.length > 0) {
+      fetchComparisonData(selectedSurvey.id);
+    }
+  }, [selectedSurvey, radarData]);
+
 
   const fetchSurveyStats = async (surveyId: string, company: string) => {
     // Step 1: get all question details
@@ -332,8 +469,6 @@ const sortedRoleData = roleChartData.sort(
 );
 
 setRoleData(sortedRoleData);
-
-
   };
  
 
@@ -351,10 +486,6 @@ setRoleData(sortedRoleData);
     };
     fetchSurveys();
   }, []);
-
-
-
-
   
   return (
     <div className="min-h-screen px-2 space-y-2">
@@ -434,7 +565,7 @@ setRoleData(sortedRoleData);
         </Card>
   
         {/* Radar Chart */}
-        <Card className="w-full border-0 shadow-lg">
+        {/* <Card className="w-full border-0 shadow-lg">
           <CardHeader className="flex justify-between items-center">
             <CardTitle>Radar</CardTitle>
             <Button variant="ghost" size="icon" onClick={() => setOpenChart("radar")}>
@@ -455,6 +586,46 @@ setRoleData(sortedRoleData);
                   fillOpacity={0.4}
                 />
                 <Tooltip content={<CustomTooltip />} />
+              </RadarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card> */}
+
+        {/* 🔹 NEW: Comparison Radar Chart */}
+        <Card className="w-full border-0 shadow-lg">
+          <CardHeader className="flex justify-between items-center">
+            <CardTitle>Survey vs Average</CardTitle>
+            <Button variant="ghost" size="icon" onClick={() => setOpenChart("comparison")}>
+              <Maximize2 className="w-4 h-4" />
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={comparisonRadarData}>
+                <PolarGrid opacity={0.4} />
+                <PolarAngleAxis dataKey="subject" fontSize={10} />
+                <PolarRadiusAxis angle={30} domain={[0, 4]} />
+                <Radar
+                  name="Your score"
+                  dataKey="current"
+                  stroke="#FF7A40"
+                  fill="#FF7A40"
+                  fillOpacity={0.4}
+                />
+                <Radar
+                  name="Industry Average "
+                  dataKey="average"
+                  stroke="#4A90E2"
+                  fill="#4A90E2"
+                  fillOpacity={0.2}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend 
+                  verticalAlign="bottom"
+                  height={1}
+                  iconType="circle" // "line", "circle", "square"
+                  wrapperStyle={{ fontSize: "12px" }}
+                />
               </RadarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -503,9 +674,6 @@ setRoleData(sortedRoleData);
         </Card>
         </div>
   
-        
-      
-  
       {/* 🔹 Modals */}
       <ChartModal open={openChart === "gauge"} onClose={() => setOpenChart(null)} title="Gauge Chart">
         <GaugeChart score={avgScore} />
@@ -542,13 +710,38 @@ setRoleData(sortedRoleData);
       </ChartModal>
   
       <ChartModal
-  open={openChart === "role"}
-  onClose={() => setOpenChart(null)}
-  title="Scores by Role"
->
-  <RoleAreaChart data={roleData} bare />
-</ChartModal>
+        open={openChart === "role"}
+        onClose={() => setOpenChart(null)}
+        title="Scores by Role"
+      >
+        <RoleAreaChart data={roleData} bare />
+      </ChartModal>
+
+      {/* 🔹 NEW: Comparison Radar Modal */}
+      <ChartModal open={openChart === "comparison"} onClose={() => setOpenChart(null)} title="Survey vs Average Comparison">
+        <ResponsiveContainer width="100%" height={450}>
+          <RadarChart cx="50%" cy="30%" outerRadius="50%" data={comparisonRadarData}>
+            <PolarGrid opacity={0.4} />
+            <PolarAngleAxis dataKey="subject" fontSize={12} />
+            <PolarRadiusAxis angle={30} domain={[0, 4]} />
+            <Radar
+              name="Current Survey"
+              dataKey="current"
+              stroke="#FF7A40"
+              fill="#FF7A40"
+              fillOpacity={0.4}
+            />
+            <Radar
+              name="Average"
+              dataKey="average"
+              stroke="#4A90E2"
+              fill="#4A90E2"
+              fillOpacity={0.2}
+            />
+            <Tooltip content={<CustomTooltip />} />
+          </RadarChart>
+        </ResponsiveContainer>
+      </ChartModal>
     </div>
   );
-  
 }
