@@ -18,6 +18,25 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
 
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast.error('Please enter your email address first.')
+      return
+    }
+  
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${location.origin}/reset-password`, // Adjust this route
+    })
+  
+    if (error) {
+      toast.error(error.message || 'Failed to send password reset email')
+    } else {
+      toast.success('Password reset link sent! Check your email.')
+    }
+  }
+
+  
   const handleLogin = async () => {
     setLoading(true)
 
@@ -82,7 +101,14 @@ export default function AdminLoginPage() {
             </button>
           </div>
 
-          <a href="#" className="text-sm text-orange-600 mb-6">Forgot your password?</a>
+          <button
+            onClick={() => handleForgotPassword()}
+            className="text-sm text-orange-600 mb-6 text-left"
+            type="button"
+          >
+            Forgot your password?
+          </button>
+
 
           <Button
             onClick={handleLogin}
