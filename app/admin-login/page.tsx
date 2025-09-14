@@ -36,9 +36,14 @@ export default function AdminLoginPage() {
     }
 
     setForgotLoading(true)
+    
+    // Get the correct base URL for both development and production
+    const baseUrl = process.env.NODE_ENV === 'production' 
+      ? process.env.NEXT_PUBLIC_SITE_URL || 'https://safetyvitals.petros-global.com/'
+      : 'http://localhost:3000'
   
     const { data, error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
-      redirectTo: `${location.origin}/reset-password`,
+      redirectTo: `${baseUrl}/reset-password`,
     })
   
     if (error) {
