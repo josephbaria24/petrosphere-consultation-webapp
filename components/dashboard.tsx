@@ -7,7 +7,8 @@ import { Button } from "../components/ui/button";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
-  Legend
+  Legend,
+  ReferenceLine
 } from "recharts";
 import { Separator } from "../@/components/ui/separator";
 import { Progress } from "../@/components/ui/progress";
@@ -24,6 +25,7 @@ import CustomTooltip from "./chart/custom-tooltip";
 import { BarChart3, Building2, GaugeCircle, Maximize2, Minimize2, TrendingDown, TrendingUp, Users2 } from "lucide-react";
 import ChartModal from "./chart-modal";
 import { RoleAreaChart } from "./chart/area-chart";
+import ProfessionalSurveySummaryCard from "./summary-card";
 
 export default function Dashboard() {
   const [surveys, setSurveys] = useState<any[]>([]);
@@ -41,7 +43,16 @@ export default function Dashboard() {
   "bar" | "radar" | "gauge" | "role" | "comparison" | null
 >(null);
   const [roleData, setRoleData] = useState<any[]>([]);
+  // 🔹 NEW: Add state for minimum acceptable score
+  const [minAcceptableScore, setMinAcceptableScore] = useState<number>(2.0);
 
+  const getLevelLabel = (score: number) => {
+    if (score >= 4.20 && score <= 5.0) return "Level 5 – Excellence (Resilient & Learning Culture)";
+    if (score >= 3.40) return "Level 4 – Integrated (Cooperative Culture)";
+    if (score >= 2.60) return "Level 3 – Interdependent (Engaged Workforce)";
+    if (score >= 1.80) return "Level 2 – Independent (Managing Safely)";
+    return "Level 1 – Dependent (Rules-Driven)";
+  };
   
   // 🔹 NEW: Track expanded card
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
@@ -232,6 +243,27 @@ const { data: questions, error: qError } = await supabase
 
     if (qError || !questions) return;
   
+    // 🔹 NEW: Calculate minimum acceptable score from questions
+    const calculateMinAcceptableScore = () => {
+      if (questions.length === 0) return 2.0; // fallback
+      
+      // Find the minimum score that would be considered "acceptable"
+      // This could be based on your business logic
+      // For example, if most questions have min_score of 1 and max_score of 5,
+      // you might want the minimum acceptable to be 2.6 (Level 3 threshold)
+      const minScores = questions.map(q => q.min_score || 1);
+      const maxScores = questions.map(q => q.max_score || 5);
+      
+      // Calculate average range and set minimum acceptable as 60% of the range
+      const avgMin = minScores.reduce((a, b) => a + b, 0) / minScores.length;
+      const avgMax = maxScores.reduce((a, b) => a + b, 0) / maxScores.length;
+      
+      // Set minimum acceptable score (you can adjust this logic based on your needs)
+      // Here I'm using 2.6 as it represents "Level 3 – Interdependent" from your getLevelLabel function
+      return 2.6;
+    };
+
+    setMinAcceptableScore(calculateMinAcceptableScore());
 
 // 🔹 Add this line: Collect question IDs
 const questionIds = questions.map((q) => q.id);
@@ -487,6 +519,8 @@ setRoleData(sortedRoleData);
     fetchSurveys();
   }, []);
   
+
+  
   return (
     <div className="min-h-screen px-2 space-y-2">
       {/* Survey Selector */}
@@ -517,39 +551,15 @@ setRoleData(sortedRoleData);
       {/* Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
         {/* Survey Summary (no modal needed) */}
-        <Card className="w-full border-0 shadow-lg">
-          <CardHeader className="flex justify-between items-center">
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-primary" /> Survey Summary
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm">
-            <div className="flex items-center gap-2">
-              <Building2 className="w-4 h-4" />
-              <span className="font-medium">Company:</span> {selectedSurvey?.target_company || "N/A"}
-            </div>
-            <div className="flex items-center gap-2">
-              <Users2 className="w-4 h-4" />
-              <span className="font-medium">Respondents:</span> {respondentCount}
-            </div>
-            <div className="flex items-center gap-2">
-              <GaugeCircle className="w-4 h-4" />
-              <span className="font-medium">Avg Score:</span> {avgScore.toFixed(2)}
-            </div>
-            <Separator />
-            <div className="flex items-center gap-2">
-              {trend >= 0 ? (
-                <TrendingUp className="w-4 h-4 text-green-500" />
-              ) : (
-                <TrendingDown className="w-4 h-4 text-red-500" />
-              )}
-              <span className="font-medium">Trending Direction:</span>
-              {trend > 0 ? "+" : ""}
-              {trend.toFixed(2)}
-            </div>
-            <Progress value={Math.abs(trend * 100)} className="h-2" />
-          </CardContent>
-        </Card>
+        <div className="w-full">
+        <ProfessionalSurveySummaryCard 
+            selectedSurvey={selectedSurvey}
+            respondentCount={respondentCount}
+            avgScore={avgScore}
+            trend={trend}
+          />
+          
+        </div>
   
         {/* Gauge Chart */}
         <Card className="w-full shadow-lg border-0">
@@ -652,9 +662,27 @@ setRoleData(sortedRoleData);
                   interval={0}
                   height={100}
                 />
-                <YAxis domain={[0, 4]} />
+                <YAxis domain={[0, Math.max(5, Math.ceil(Math.max(...barData.map(d => d.score || 0)) + 0.5))]} />
+
+
                 <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey="score" fill="#FF7A40" radius={[4, 4, 0, 0]} />
+                {/* 🔹 UPDATED: Dynamic reference line */}
+                <ReferenceLine
+  y={minAcceptableScore}
+  stroke="red"
+  strokeDasharray="6 6"
+  strokeWidth={2}
+  ifOverflow="visible"
+  label={{
+    position: "insideTopRight",
+    value: `Minimum Level (${minAcceptableScore.toFixed(1)})`,
+    fill: "red",
+    fontSize: 12
+  }}
+/>
+
+                
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -692,21 +720,41 @@ setRoleData(sortedRoleData);
       </ChartModal>
   
       <ChartModal open={openChart === "bar"} onClose={() => setOpenChart(null)} title="Bar Chart">
-        <ResponsiveContainer width="100%" height={400}>
-          <BarChart data={barData} margin={{ top: 10, right: 10, left: 0, bottom: 30 }}>
-            <XAxis
-              dataKey="name"
-              angle={-20}
-              textAnchor="end"
-              fontSize={12}
-              interval={0}
-              height={200}
-            />
-            <YAxis domain={[0, 4]} />
-            <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="score" fill="#FF7A40" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+      <ResponsiveContainer width="100%" height={300}>
+  <BarChart
+    data={barData}
+    margin={{ top: 50, right: 10, left: 0, bottom: 0 }}
+  >
+    <XAxis
+      dataKey="name"
+      angle={-20}
+      textAnchor="end"
+      fontSize={12}
+      interval={0}
+      height={100}
+    />
+    <YAxis domain={[0, Math.max(5, Math.ceil(Math.max(...barData.map(d => d.score || 0)) + 0.5))]} />
+
+    <Tooltip content={<CustomTooltip />} />
+
+    <Bar dataKey="score" fill="#FF7A40" radius={[4, 4, 0, 0]} />
+
+    <ReferenceLine
+      y={minAcceptableScore}
+      stroke="red"
+      strokeDasharray="6 6"
+      strokeWidth={2}
+      ifOverflow="visible"
+      label={{
+        position: "insideTopRight",
+        value: `Minimum Level (${minAcceptableScore.toFixed(1)})`,
+        fill: "red",
+        fontSize: 12
+      }}
+    />
+  </BarChart>
+</ResponsiveContainer>
+
       </ChartModal>
   
       <ChartModal

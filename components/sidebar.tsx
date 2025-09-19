@@ -78,14 +78,14 @@ export default function Sidebar() {
           >
             <div className="flex flex-col pt-12 items-start gap-1">
               <Image
-                src="/icons/pinklogo.png"
+                src="/icons/logo.png"
                 alt="Petrosphere Logo"
                 width={60}
                 height={60}
                 className="hidden dark:block"
               />
               <Image
-                src="/icons/pinklogo.png"
+                src="/icons/logo.png"
                 alt="Petrosphere Logo"
                 width={60}
                 height={60}
