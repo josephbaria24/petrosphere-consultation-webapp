@@ -1,4 +1,3 @@
-//area-chart.tsx
 "use client";
 
 import * as React from "react";
@@ -8,7 +7,6 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from "../../components/ui/card";
 import {
   ChartContainer,
@@ -18,8 +16,12 @@ import {
 
 interface RoleAreaChartProps {
   data: any[]; // [{ dimension: "Engagement", Manager: 3.8, Staff: 3.4 }]
-  bare?: boolean; // NEW: allows modal to use chart without Card wrapper
+  bare?: boolean;
 }
+
+// 🔹 Helper: convert 1–5 scale into percentage (20%–100%)
+const toPercentage = (score: number): number =>
+  ((score - 1) / (5 - 1)) * 100;
 
 export function RoleAreaChart({ data, bare }: RoleAreaChartProps) {
   const roles =
@@ -27,9 +29,19 @@ export function RoleAreaChart({ data, bare }: RoleAreaChartProps) {
       ? Object.keys(data[0]).filter((k) => k !== "dimension")
       : [];
 
+  // 🔹 Convert all role scores to percentage
+  const percentData = data.map((row) => {
+    const newRow: any = { dimension: row.dimension };
+    roles.forEach((role) => {
+      const score = row[role];
+      newRow[role] = typeof score === "number" ? toPercentage(score) : score;
+    });
+    return newRow;
+  });
+
   const chartContent = (
     <ChartContainer config={{}} className="aspect-auto h-[300px] w-full">
-      <AreaChart data={data}>
+      <AreaChart data={percentData}>
         <CartesianGrid vertical={false} />
 
         {/* X axis with slanted labels */}
@@ -42,16 +54,17 @@ export function RoleAreaChart({ data, bare }: RoleAreaChartProps) {
           textAnchor="end"
           interval={0}
           height={150}
-          tick={{ fontSize: 11 }} // Adjust text color
+          tick={{ fontSize: 11 }}
         />
 
-        {/* Y axis for scores */}
+        {/* ✅ Y axis now in percentage */}
         <YAxis
-          domain={[0, 5]} // adjust if scores can go higher/lower
+          domain={[0, 100]}
           tick={{ fontSize: 12 }}
+          tickFormatter={(val) => `${val}%`}
           axisLine={false}
           tickLine={false}
-          label={{ value: "Score", angle: -90, position: "insideLeft" }}
+          label={{ value: "Percentage", angle: -90, position: "insideLeft" }}
         />
 
         <ChartTooltip
@@ -68,11 +81,10 @@ export function RoleAreaChart({ data, bare }: RoleAreaChartProps) {
             fillOpacity={0.2}
             stroke={`var(--chart-${(idx % 5) + 1})`}
             fill={`var(--chart-${(idx % 5) + 1})`}
-            name={role} // <- Legend shows role names
+            name={role}
           />
         ))}
 
-        {/* Built-in Recharts Legend */}
         <Legend />
       </AreaChart>
     </ChartContainer>
@@ -89,7 +101,9 @@ export function RoleAreaChart({ data, bare }: RoleAreaChartProps) {
           </CardDescription>
         </div>
       </CardHeader>
-      <CardContent className="px-2 pt-1 sm:px-6 sm:pt-6">{chartContent}</CardContent>
+      <CardContent className="px-2 pt-1 sm:px-6 sm:pt-6">
+        {chartContent}
+      </CardContent>
     </Card>
   );
 }

@@ -8,11 +8,11 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   Legend,
-  ReferenceLine
+  ReferenceLine, Cell
 } from "recharts";
-import { Separator } from "../@/components/ui/separator";
-import { Progress } from "../@/components/ui/progress";
+import { useRef } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { useTheme } from "next-themes";
 import {
   Select,
   SelectContent,
@@ -22,7 +22,7 @@ import {
 } from "../components/ui/select";
 import GaugeChart from "./chart/gauge-chart";
 import CustomTooltip from "./chart/custom-tooltip";
-import { BarChart3, Building2, GaugeCircle, Maximize2, Minimize2, TrendingDown, TrendingUp, Users2 } from "lucide-react";
+import { BarChart3, Building2, GaugeCircle, Maximize2, Minimize2, TrendingDown, TrendingUp, Users2, AlertTriangle, CheckCircle2, Target, Navigation, FileText, Activity, PieChart } from "lucide-react";
 import ChartModal from "./chart-modal";
 import { RoleAreaChart } from "./chart/area-chart";
 import ProfessionalSurveySummaryCard from "./summary-card";
@@ -45,22 +45,135 @@ export default function Dashboard() {
   const [roleData, setRoleData] = useState<any[]>([]);
   // 🔹 NEW: Add state for minimum acceptable score
   const [minAcceptableScore, setMinAcceptableScore] = useState<number>(2.0);
+  // 🔹 NEW: Add state for dimensions analysis
+  const [belowMinimumDimensions, setBelowMinimumDimensions] = useState<string[]>([]);
+  const [atRiskDimensions, setAtRiskDimensions] = useState<string[]>([]);
+  const [strongDimensions, setStrongDimensions] = useState<string[]>([]);
+  // 🔹 NEW: Add state for scroll-based compact mode
+  const [, setIsCompact] = useState<boolean>(false);
+  // 🔹 NEW: Add state for active section tracking
+  const [activeSection, setActiveSection] = useState<string>('selector');
 
-  const getLevelLabel = (score: number) => {
-    if (score >= 4.20 && score <= 5.0) return "Level 5 – Excellence (Resilient & Learning Culture)";
-    if (score >= 3.40) return "Level 4 – Integrated (Cooperative Culture)";
-    if (score >= 2.60) return "Level 3 – Interdependent (Engaged Workforce)";
-    if (score >= 1.80) return "Level 2 – Independent (Managing Safely)";
-    return "Level 1 – Dependent (Rules-Driven)";
+  const { theme } = useTheme(); 
+  const responseSummaryRef = useRef<HTMLDivElement | null>(null);
+  const topRef = useRef<HTMLDivElement | null>(null);
+  const [showGoToTop, setShowGoToTop] = useState(false);
+
+  // 🔹 NEW: Add refs for all sections
+  const selectorRef = useRef<HTMLDivElement | null>(null);
+  const overviewRef = useRef<HTMLDivElement | null>(null);
+  const chartsRef = useRef<HTMLDivElement | null>(null);
+  const summaryRef = useRef<HTMLDivElement | null>(null);
+  const actionPlanRef = useRef<HTMLDivElement | null>(null);
+  const [lowestDimensionPercent, setLowestDimensionPercent] = useState<number | null>(null);
+
+
+  const toPercentage = (score: number): number => {
+    return (score / 5 ) * 100;
   };
+
+  // 🔹 NEW: Navigation items configuration
+  const navigationItems = [
+    {
+      id: 'overview',
+      label: 'Overview',
+      icon: Activity,
+      ref: selectorRef
+    },
+    {
+      id: 'charts',
+      label: 'Charts',
+      icon: BarChart3,
+      ref: chartsRef
+    },
+    {
+      id: 'summary',
+      label: 'Summary',
+      icon: PieChart,
+      ref: summaryRef
+    },
+    {
+      id: 'actions',
+      label: 'Action Plan',
+      icon: Target,
+      ref: actionPlanRef
+    }
+  ];
+
+  // 🔹 NEW: Scroll to section function
+  const scrollToSection = (sectionRef: React.RefObject<HTMLDivElement>, sectionId: string) => {
+    // Immediately update active section for instant feedback
+    setActiveSection(sectionId);
+    
+    if (sectionRef.current) {
+      // Method 1: Try scrollIntoView first (most reliable)
+      sectionRef.current.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      });
+      
+      // Method 2: Fallback to manual calculation if needed
+      setTimeout(() => {
+        if (sectionRef.current) {
+          const yOffset = -80;
+          const element = sectionRef.current;
+          const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+          
+          window.scrollTo({
+            top: y,
+            behavior: 'smooth'
+          });
+        }
+      }, 100);
+    }
+  };
+
+  // 🔹 NEW: Track active section based on scroll position
+  useEffect(() => {
+    const handleScroll = () => {
+      const summaryTop = responseSummaryRef.current?.getBoundingClientRect().top || 0;
+      setShowGoToTop(summaryTop < window.innerHeight * 0.3);
+
+      // Find which section is currently in view
+      const sections = navigationItems.map(item => ({
+        id: item.id,
+        element: item.ref.current,
+        top: item.ref.current?.getBoundingClientRect().top || Infinity
+      })).filter(section => section.element !== null);
+
+      // Sort sections by their position from top
+      sections.sort((a, b) => a.top - b.top);
+
+      // Find the active section based on scroll position
+      let currentSection = 'selector';
+      
+      // Check which section is currently most visible
+      for (let i = 0; i < sections.length; i++) {
+        const section = sections[i];
+        const nextSection = sections[i + 1];
+        
+        // If this section is above the fold (top <= 200px) and the next section is below
+        // or if this is the last section and it's visible
+        if (section.top <= 200) {
+          if (!nextSection || nextSection.top > 200) {
+            currentSection = section.id;
+            break;
+          } else {
+            currentSection = section.id;
+          }
+        }
+      }
+
+      setActiveSection(currentSection);
+    };
+
+    // Call once to set initial state
+    handleScroll();
   
-  // 🔹 NEW: Track expanded card
-  const [expandedCard, setExpandedCard] = useState<string | null>(null);
-
-  const toggleExpand = (card: string) => {
-    setExpandedCard((prev) => (prev === card ? null : card));
-  };
-
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []); // Remove navigationItems dependency to avoid stale closures
+  
   // Fetch survey questions when survey changes
   useEffect(() => {
     if (!selectedSurvey) return;
@@ -186,7 +299,7 @@ export default function Dashboard() {
         // Store for dimension
         if (!dimensionScores[question.dimension]) dimensionScores[question.dimension] = [];
         dimensionScores[question.dimension].push(score);
-      }
+      } 
 
       // Calculate averages and prepare comparison data
       const comparisonData = Object.entries(dimensionScores).map(([dim, scores]) => {
@@ -213,8 +326,8 @@ export default function Dashboard() {
         const currentItem = radarData.find(r => r.subject === item.subject);
         return {
           subject: item.subject,
-          current: currentItem ? currentItem.you : 0,
-          average: item.average
+          current: currentItem ? toPercentage(currentItem.you) : 0,
+          average: toPercentage(item.average)
         };
       });
 
@@ -231,6 +344,17 @@ export default function Dashboard() {
       fetchComparisonData(selectedSurvey.id);
     }
   }, [selectedSurvey, radarData]);
+
+  // 🔹 NEW: Handle scroll for compact mode
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      setIsCompact(scrollTop > 100); // Switch to compact after 100px scroll
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
 
   const fetchSurveyStats = async (surveyId: string, company: string) => {
@@ -263,7 +387,8 @@ const { data: questions, error: qError } = await supabase
       return 2.6;
     };
 
-    setMinAcceptableScore(calculateMinAcceptableScore());
+    const calculatedMinScore = calculateMinAcceptableScore();
+    setMinAcceptableScore(calculatedMinScore);
 
 // 🔹 Add this line: Collect question IDs
 const questionIds = questions.map((q) => q.id);
@@ -336,6 +461,31 @@ for (const t of templates) {
       normalizedScores.push(normalized);
     }
     
+    // 🔹 NEW: Analyze dimensions
+    const analyzeDimensions = (dimensionScores: Record<string, number[]>) => {
+      const belowMin: string[] = [];
+      const atRisk: string[] = [];
+      const strong: string[] = [];
+      
+      Object.entries(dimensionScores).forEach(([dim, scores]) => {
+        const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+        const clampedAvg = Math.min(avg, 5);
+        
+        if (clampedAvg <= calculatedMinScore) {
+          belowMin.push(dim);
+        } else if (clampedAvg <= calculatedMinScore + 0.5) {
+          atRisk.push(dim);
+        } else {
+          strong.push(dim);
+        }
+      });
+      
+      setBelowMinimumDimensions(belowMin);
+      setAtRiskDimensions(atRisk);
+      setStrongDimensions(strong);
+    };
+
+    analyzeDimensions(dimensionScores);
   
     // Step 4: reliability = average normalized score * 100
     if (normalizedScores.length > 0) {
@@ -347,18 +497,36 @@ for (const t of templates) {
     } else {
       setReliability(0);
     }
-  
-    // Step 5: prepare charts
-    const bar = Object.entries(dimensionScores).map(([dim, scores]) => {
-      const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-      return {
-        name: dim,
-        score: Math.min(avg, 5),
-      };
-    });
-    
 
-    // Helper to extract numeric prefix
+    
+  
+      // Step 5: prepare charts
+      let tempBar = Object.entries(dimensionScores).map(([dim, scores]) => {
+        const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+        const score = Math.min(avg, 5);
+        return {
+          name: dim,
+          score,
+          scorePercent: toPercentage(score)
+        };
+      });
+      
+      // ✅ Find lowest dimension in %
+      const lowest = tempBar.reduce(
+        (min, curr) => (curr.scorePercent < min ? curr.scorePercent : min),
+        100
+      );
+      setLowestDimensionPercent(lowest);
+      
+      // ✅ Add dynamic fill
+      const bar = tempBar.map(item => ({
+        ...item,
+        fill: item.scorePercent <= lowest ? "#EF4444" : "#4A90E2"
+      }));
+      
+      setBarData(bar);
+
+    // Helper to extract numeric <YAxis 
     const extractNumber = (dim: string) => {
       const match = dim.match(/^(\d+)\./);
       return match ? parseInt(match[1], 10) : Infinity;
@@ -522,9 +690,51 @@ setRoleData(sortedRoleData);
 
   
   return (
-    <div className="min-h-screen px-2 space-y-2">
+    <div ref={topRef} className="min-h-screen px-2 space-y-2">
+      {/* 🔹 NEW: Floating Navigation Menu */}
+      <div className="fixed right-4 top-1/2 transform -translate-y-1/2 z-50">
+        <div className="bg-transparent backdrop-blur-sm border-0 border-border/50 rounded-2xl p-2 shadow-2xl">
+          <div className="flex flex-col space-y-2">
+            {navigationItems.map((item) => {
+              const IconComponent = item.icon;
+              const isActive = activeSection === item.id;
+              
+              return (
+                <Button
+                  key={item.id}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => scrollToSection(item.ref, item.id)}
+                  className={`
+                    w-10 h-10 p-0 rounded-xl transition-all duration-200
+                    ${isActive 
+                      ? 'bg-primary text-primary-foreground shadow-md scale-110' 
+                      : 'hover:bg-muted hover:scale-105'
+                    }
+                  `}
+                  title={item.label}
+                >
+                  <IconComponent className="w-4 h-4" />
+                </Button>
+              );
+            })}
+          </div>
+          
+          {/* Timeline connector */}
+          <div className="absolute left-1/2 top-2 bottom-2 w-0.5 bg-border/30 transform -translate-x-1/2 -z-10 rounded-full" />
+          
+          {/* Active section indicator */}
+          <div 
+            className="absolute left-1/2 w-3 h-3 bg-primary rounded-full transform -translate-x-1/2 transition-all duration-300 ease-out"
+            style={{
+              top: `${8 + navigationItems.findIndex(item => item.id === activeSection) * 48}px`
+            }}
+          />
+        </div>
+      </div>
+
       {/* Survey Selector */}
-      <div className="inline-flex gap-2 dark:bg-card bg-zinc-800 p-1 pl-2 rounded-3xl shadow-md">
+      <div ref={selectorRef} className="inline-flex gap-2 dark:bg-card bg-zinc-800 p-1 pl-2 rounded-3xl shadow-xl">
         <div className="flex items-center text-sm text-white">
           <h1>Select survey</h1>
         </div>
@@ -549,7 +759,7 @@ setRoleData(sortedRoleData);
       </div>
   
       {/* Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
+      <div ref={overviewRef} className="grid grid-cols-1 lg:grid-cols-3 gap-2">
         {/* Survey Summary (no modal needed) */}
         <div className="w-full">
         <ProfessionalSurveySummaryCard 
@@ -574,33 +784,6 @@ setRoleData(sortedRoleData);
           </CardContent>
         </Card>
   
-        {/* Radar Chart */}
-        {/* <Card className="w-full border-0 shadow-lg">
-          <CardHeader className="flex justify-between items-center">
-            <CardTitle>Radar</CardTitle>
-            <Button variant="ghost" size="icon" onClick={() => setOpenChart("radar")}>
-              <Maximize2 className="w-4 h-4" />
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-                <PolarGrid opacity={0.4} />
-                <PolarAngleAxis dataKey="subject" fontSize={12} />
-                <PolarRadiusAxis angle={30} domain={[0, 4]} />
-                <Radar
-                  name="You"
-                  dataKey="you"
-                  stroke="#FF7A40"
-                  fill="#FF7A40"
-                  fillOpacity={0.4}
-                />
-                <Tooltip content={<CustomTooltip />} />
-              </RadarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card> */}
-
         {/* 🔹 NEW: Comparison Radar Chart */}
         <Card className="w-full border-0 shadow-lg">
           <CardHeader className="flex justify-between items-center">
@@ -611,38 +794,53 @@ setRoleData(sortedRoleData);
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={comparisonRadarData}>
-                <PolarGrid opacity={0.4} />
-                <PolarAngleAxis dataKey="subject" fontSize={10} />
-                <PolarRadiusAxis angle={30} domain={[0, 4]} />
-                <Radar
-                  name="Your score"
-                  dataKey="current"
-                  stroke="#FF7A40"
-                  fill="#FF7A40"
-                  fillOpacity={0.4}
-                />
-                <Radar
-                  name="Industry Average "
-                  dataKey="average"
-                  stroke="#4A90E2"
-                  fill="#4A90E2"
-                  fillOpacity={0.2}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend 
-                  verticalAlign="bottom"
-                  height={1}
-                  iconType="circle" // "line", "circle", "square"
-                  wrapperStyle={{ fontSize: "12px" }}
-                />
-              </RadarChart>
+            <RadarChart cx="50%" cy="50%" outerRadius="80%" data={comparisonRadarData}>
+          <PolarGrid opacity={0.4} />
+          <PolarAngleAxis 
+            dataKey="subject" 
+            fontSize={10} 
+            tick={{ fill: theme === "dark" ? "#fff" : "#000" }} 
+          />
+            <PolarRadiusAxis 
+              angle={90} 
+              domain={[20, 100]}   // ✅ matches Likert 1–5 → 20–100%
+              tickCount={5}        // 20, 40, 60, 80, 100
+              tickFormatter={(val) => `${val}%`} // ✅ show %
+              fontSize={13}
+              stroke={theme === "dark" ? "#ccc" : "#000"}
+              strokeWidth={0.5}
+              tick={{ fill: theme === "dark" ? "#fff" : "#000", fontSize: 13, fontWeight: "bold" }}
+              axisLine={{ stroke: theme === "dark" ? "#888" : "#000", strokeWidth: 0.5 }}
+            />
+
+          <Radar
+            name="Your score"
+            dataKey="current"
+            stroke="#FF7A40"
+            fill="#FF7A40"
+            fillOpacity={0.4}
+          />
+          <Radar
+            name="Industry Average"
+            dataKey="average"
+            stroke="#4A90E2"
+            fill="#4A90E2"
+            fillOpacity={0.2}
+          />
+          <Tooltip content={<CustomTooltip />} />
+          <Legend
+            verticalAlign="bottom"
+            height={1}
+            iconType="circle"
+            wrapperStyle={{ fontSize: "12px", color: theme === "dark" ? "#fff" : "#000" }}
+          />
+        </RadarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-1 gap-2">
+        <div ref={chartsRef} className="grid grid-cols-1 lg:grid-cols-1 gap-2">
           {/* Bar Chart */}
         <Card className="w-full border-0 shadow-lg">
           <CardHeader className="flex justify-between items-center">
@@ -662,25 +860,34 @@ setRoleData(sortedRoleData);
                   interval={0}
                   height={100}
                 />
-                <YAxis domain={[0, Math.max(5, Math.ceil(Math.max(...barData.map(d => d.score || 0)) + 0.5))]} />
+                <YAxis 
+          domain={[0, 100]} 
+          tickFormatter={(val) => `${val}%`} 
+        />
 
 
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="score" fill="#FF7A40" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="scorePercent" radius={[4, 4, 0, 0]}>
+  {barData.map((entry, index) => (
+    <Cell key={`cell-${index}`} fill={entry.fill} />
+  ))}
+</Bar>
+
                 {/* 🔹 UPDATED: Dynamic reference line */}
                 <ReferenceLine
-  y={minAcceptableScore}
-  stroke="red"
-  strokeDasharray="6 6"
-  strokeWidth={2}
-  ifOverflow="visible"
-  label={{
-    position: "insideTopRight",
-    value: `Minimum Level (${minAcceptableScore.toFixed(1)})`,
-    fill: "red",
-    fontSize: 12
-  }}
-/>
+                y={lowestDimensionPercent ?? 0}   // ✅ red line at lowest % score
+                stroke="red"
+                strokeDasharray="6 6"
+                strokeWidth={2}
+                ifOverflow="visible"
+                label={{
+                  position: "insideTopRight",
+                  value: `Lowest Dimension (${(lowestDimensionPercent ?? 0).toFixed(1)}%)`,
+                  fill: "red",
+                  fontSize: 12
+                }}
+              />
+
 
                 
               </BarChart>
@@ -701,6 +908,214 @@ setRoleData(sortedRoleData);
           </CardContent>
         </Card>
         </div>
+
+
+
+      {/* 🔹 NEW: Summary Section */}
+      <div ref={summaryRef} className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+        {/* Total Responses Summary */}
+        <Card className="border-0 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <PieChart className="w-5 h-5" />
+              Response Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-4 bg-muted rounded-lg">
+                <div className="text-2xl font-bold">{respondentCount}</div>
+                <div className="text-sm text-muted-foreground">Total Responses</div>
+              </div>
+              <div className="text-center p-4 bg-muted rounded-lg">
+              <div className="text-2xl font-bold">
+                {toPercentage(avgScore).toFixed(1)}%
+              </div>
+
+                <div className="text-sm text-muted-foreground">Overall Score</div>
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              <div className="flex justify-between">
+
+                <span>Dimension Status</span>
+                <span>Dimension Count</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-sm">
+                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                  Critical (≤ {minAcceptableScore.toFixed(1)})
+                </span>
+                <span className="font-semibold">{belowMinimumDimensions.length}</span>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-sm">
+                  <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                  At Risk ({minAcceptableScore.toFixed(1)} - {(minAcceptableScore + 0.5).toFixed(1)})
+                </span>
+                <span className="font-semibold">{atRiskDimensions.length}</span>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-sm">
+                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                  Strong (&gt; {(minAcceptableScore + 0.5).toFixed(1)})
+                </span>
+                <span className="font-semibold">{strongDimensions.length}</span>
+              </div>
+            </div>
+
+            {/* Dimension Status Lists */}
+            <div className="space-y-4 pt-4">
+              {belowMinimumDimensions.length > 0 && (
+                <div className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
+                  <h4 className="flex items-center gap-2 font-semibold text-red-700 dark:text-red-400 mb-2">
+                    <AlertTriangle className="w-4 h-4" />
+                    Critical Areas
+                  </h4>
+                  <div className="space-y-1">
+                    {belowMinimumDimensions.map((dim) => (
+                      <div key={dim} className="text-sm text-red-600 dark:text-red-400">
+                        • {dim}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {atRiskDimensions.length > 0 && (
+                <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                  <h4 className="flex items-center gap-2 font-semibold text-yellow-700 dark:text-yellow-400 mb-2">
+                    <Target className="w-4 h-4" />
+                    At Risk Areas
+                  </h4>
+                  <div className="space-y-1">
+                    {atRiskDimensions.map((dim) => (
+                      <div key={dim} className="text-sm text-yellow-600 dark:text-yellow-400">
+                        • {dim}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {strongDimensions.length > 0 && (
+                <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                  <h4 className="flex items-center gap-2 font-semibold text-green-700 dark:text-green-400 mb-2">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Strengths
+                  </h4>
+                  <div className="space-y-1">
+                    {strongDimensions.map((dim) => (
+                      <div key={dim} className="text-sm text-green-600 dark:text-green-400">
+                        • {dim}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Action Plan */}
+        <Card ref={actionPlanRef} className="border-0 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="w-5 h-5" />
+              Action Plan
+            </CardTitle>
+            <CardDescription>
+              Recommended actions to address critical and at-risk dimensions
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {belowMinimumDimensions.length === 0 && atRiskDimensions.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <CheckCircle2 className="w-12 h-12 mx-auto mb-2 text-green-500" />
+                <p>Excellent! All dimensions are performing well.</p>
+                <p className="text-sm mt-1">Continue monitoring and maintaining current practices.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <h4 className="font-semibold text-lg">Priority Actions</h4>
+                
+                {belowMinimumDimensions.length > 0 && (
+                  <div className="space-y-3">
+                    <h5 className="font-medium text-red-600 dark:text-red-400"> Immediate Action Required:</h5>
+                    {belowMinimumDimensions.map((dim, index) => (
+                      <div key={dim} className="p-3 bg-card border border-red-200 dark:border-red-800 rounded-lg">
+                        <div className="font-medium text-sm">{index + 1}. {dim}</div>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          • Conduct detailed assessment and root cause analysis
+                          <br />
+                          • Develop immediate improvement strategy
+                          <br />
+                          • Assign dedicated resources and timeline
+                          <br />
+                          • Implement weekly progress monitoring
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {atRiskDimensions.length > 0 && (
+                  <div className="space-y-3">
+                    <h5 className="font-medium text-yellow-600 dark:text-yellow-400">Monitor & Improve:</h5>
+                    {atRiskDimensions.map((dim, index) => (
+                      <div key={dim} className="p-3 bg-card border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                        <div className="font-medium text-sm">{belowMinimumDimensions.length + index + 1}. {dim}</div>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          • Review current processes and identify gaps
+                          <br />
+                          • Implement preventive measures
+                          <br />
+                          • Establish regular monitoring schedule
+                          <br />
+                          • Consider additional training or resources
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <h5 className="font-medium text-blue-700 dark:text-blue-400 mb-2">Next Steps:</h5>
+                  <div className="text-sm text-blue-600 dark:text-blue-400 space-y-1">
+                    <div>1. Prioritize actions based on business impact and urgency</div>
+                    <div>2. Assign responsible teams and set clear deadlines</div>
+                    <div>3. Establish success metrics and monitoring processes</div>
+                    <div>4. Schedule regular review meetings to track progress</div>
+                    <div>5. Plan follow-up assessment in 3-6 months</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   
       {/* 🔹 Modals */}
       <ChartModal open={openChart === "gauge"} onClose={() => setOpenChart(null)} title="Gauge Chart">
@@ -721,38 +1136,41 @@ setRoleData(sortedRoleData);
   
       <ChartModal open={openChart === "bar"} onClose={() => setOpenChart(null)} title="Bar Chart">
       <ResponsiveContainer width="100%" height={300}>
-  <BarChart
-    data={barData}
-    margin={{ top: 50, right: 10, left: 0, bottom: 0 }}
-  >
-    <XAxis
-      dataKey="name"
-      angle={-20}
-      textAnchor="end"
-      fontSize={12}
-      interval={0}
-      height={100}
-    />
-    <YAxis domain={[0, Math.max(5, Math.ceil(Math.max(...barData.map(d => d.score || 0)) + 0.5))]} />
+      <BarChart data={barData} margin={{ top: 50, right: 10, left: 0, bottom: 0 }}>
+                <XAxis
+                  dataKey="name"
+                  angle={-20}
+                  textAnchor="end"
+                  fontSize={12}
+                  interval={0}
+                  height={100}
+                />
+                <YAxis 
+          domain={[0, 100]} 
+          tickFormatter={(val) => `${val}%`} 
+        />
 
-    <Tooltip content={<CustomTooltip />} />
 
-    <Bar dataKey="score" fill="#FF7A40" radius={[4, 4, 0, 0]} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="scorePercent" fill="#4A90E2" radius={[4, 4, 0, 0]} />
+                {/* 🔹 UPDATED: Dynamic reference line */}
+                <ReferenceLine
+                y={lowestDimensionPercent ?? 0}   // ✅ red line at lowest % score
+                stroke="red"
+                strokeDasharray="6 6"
+                strokeWidth={2}
+                ifOverflow="visible"
+                label={{
+                  position: "insideTopRight",
+                  value: `Lowest Dimension (${(lowestDimensionPercent ?? 0).toFixed(1)}%)`,
+                  fill: "red",
+                  fontSize: 12
+                }}
+              />
 
-    <ReferenceLine
-      y={minAcceptableScore}
-      stroke="red"
-      strokeDasharray="6 6"
-      strokeWidth={2}
-      ifOverflow="visible"
-      label={{
-        position: "insideTopRight",
-        value: `Minimum Level (${minAcceptableScore.toFixed(1)})`,
-        fill: "red",
-        fontSize: 12
-      }}
-    />
-  </BarChart>
+
+                
+              </BarChart>
 </ResponsiveContainer>
 
       </ChartModal>

@@ -1,6 +1,12 @@
 import React from 'react';
 import { Award, BarChart3, Building2, GaugeCircle, Star, TrendingDown, TrendingUp, Users2 } from "lucide-react";
 
+
+
+const toPercentage = (score) => {
+  return (score / 5) * 100; 
+};
+
 // Basic UI Components
 const Card = ({ children, className = '' }) => (
   <div className={`bg-white rounded-xl border border-gray-200 ${className}`}>
@@ -86,17 +92,20 @@ export const ProfessionalSurveySummaryCard = ({
         {/* Level Highlight Section */}
         <div className="bg-card from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium text-gray-600 dark:text-zinc-300 ">Performance Level</span>
+            <span className="text-sm font-medium text-gray-600 dark:text-zinc-300 ">Your Company Score:</span>
             <LevelIcon className="w-5 h-5 text-gray-500" />
           </div>
           <div className="flex flex-col gap-3">
-            <Badge variant={levelInfo.variant} className="text-xs font-semibold px-3 py-1 self-start">
-              {levelInfo.label}
+            <Badge variant={levelInfo.variant} className="text-lg font-semibold px-3 py-1 self-start">
+              { levelInfo.label}
             </Badge>
             <div className="text-2xl font-bold text-gray-900 dark:text-zinc-300">
-              {avgScore.toFixed(2)}
-              <span className="text-sm text-gray-500 font-normal ml-1">/5.0</span>
+              {toPercentage(avgScore).toFixed(0)}%
+              <span className="text-sm text-gray-500 font-normal ml-2">
+                ({avgScore.toFixed(2)} / 5.0)
+              </span>
             </div>
+
           </div>
         </div>
 
@@ -137,9 +146,10 @@ export const ProfessionalSurveySummaryCard = ({
           </div>
           
           <div className="flex items-center gap-2 mb-3">
-            <span className={`text-lg font-bold ${trend >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-              {trend > 0 ? "+" : ""}{trend.toFixed(2)}
-            </span>
+          <span className={`text-lg font-bold ${trend >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+  {trend > 0 ? "+" : ""}{toPercentage(trend + avgScore).toFixed(0)}%
+</span>
+
             <span className="text-sm text-gray-500  dark:text-zinc-300">vs previous period</span>
           </div>
           
