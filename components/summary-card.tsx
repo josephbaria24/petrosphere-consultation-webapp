@@ -78,7 +78,7 @@ export const ProfessionalSurveySummaryCard = ({
   return (
     <Card className="w-full shadow-xl border-0 bg-card overflow-hidden">
       {/* Header with gradient background */}
-      <CardHeader className="bg-blue-600 dark:bg-zinc-800 text-white border-0 relative overflow-hidden">
+      {/* <CardHeader className="bg-blue-600 dark:bg-zinc-800 text-white border-0 relative overflow-hidden">
         <div className="absolute inset-0 bg-black/5"></div>
         <CardTitle className="flex items-center gap-3 text-white relative z-10">
           <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
@@ -86,11 +86,16 @@ export const ProfessionalSurveySummaryCard = ({
           </div>
           <span className="font-semibold">Survey Summary</span>
         </CardTitle>
-      </CardHeader>
+      </CardHeader> */}
+      <div className="pt-3 pl-5 bg-card flex gap-2">
+            <BarChart3 className="w-5 h-5" />
+            <span className="font-semibold">Survey Summary</span>
+          </div>
+          
 
       <CardContent className="space-y-6 bg-card">
         {/* Level Highlight Section */}
-        <div className="bg-card from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200">
+        {/* <div className="bg-card from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-medium text-gray-600 dark:text-zinc-300 ">Your Company Score:</span>
             <LevelIcon className="w-5 h-5 text-gray-500" />
@@ -107,10 +112,11 @@ export const ProfessionalSurveySummaryCard = ({
             </div>
 
           </div>
-        </div>
+        </div> */}
 
         {/* Company and Stats */}
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 w-full">
+
           <div className="flex items-center gap-3 p-3 bg-card rounded-lg border border-gray-100">
             <div className="p-2 bg-blue-50 dark:bg-zinc-700 rounded-lg">
               <Building2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
@@ -132,9 +138,7 @@ export const ProfessionalSurveySummaryCard = ({
               <p className="font-semibold text-gray-900  dark:text-primary">{respondentCount.toLocaleString()}</p>
             </div>
           </div>
-        </div>
-
-        {/* Trend Section */}
+              {/* Trend Section */}
         <div className="bg-card rounded-lg border border-gray-100 p-4">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-medium text-gray-600  dark:text-zinc-300">Trending Direction</span>
@@ -147,8 +151,8 @@ export const ProfessionalSurveySummaryCard = ({
           
           <div className="flex items-center gap-2 mb-3">
           <span className={`text-lg font-bold ${trend >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-  {trend > 0 ? "+" : ""}{toPercentage(trend + avgScore).toFixed(0)}%
-</span>
+            {trend > 0 ? "+" : ""}{toPercentage(trend + avgScore).toFixed(0)}%
+          </span>
 
             <span className="text-sm text-gray-500  dark:text-zinc-300">vs previous period</span>
           </div>
@@ -159,6 +163,9 @@ export const ProfessionalSurveySummaryCard = ({
             <span>Change Impact</span>
           </div>
         </div>
+        </div>
+
+    
       </CardContent>
     </Card>
   );
