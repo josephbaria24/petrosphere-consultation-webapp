@@ -4,7 +4,7 @@ import "./globals.css"
 import { ThemeProvider } from "../components/theme-provider"
 import { Toaster } from "sonner"
 
-const poppins = Geist({
+const geist = Geist({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"], // include the weights you plan to use
 })
@@ -23,7 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head />
-      <body className={poppins.className}>
+      <body className={geist.className}>
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
