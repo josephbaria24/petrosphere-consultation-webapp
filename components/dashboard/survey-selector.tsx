@@ -28,7 +28,7 @@ export function SurveySelector({
     setSelectedSurvey,
     containerRef,
 }: SurveySelectorProps) {
-    console.log(`[SurveySelector] Rendering with ${surveys?.length || 0} surveys`);
+
     return (
         <div
             ref={containerRef}

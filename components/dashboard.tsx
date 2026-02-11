@@ -289,7 +289,7 @@ export default function Dashboard() {
       dashboardCache.current[currentSurveyId].comparisonData = sorted;
       return sorted;
     } catch (err) { console.error("Comparison Error:", err); setComparisonRadarData([]); return []; }
-  }, [radarData]);
+  }, []); // Removed radarData from dependency to prevent loop
 
   const handleUpdateOrgName = async (newName: string) => {
     if (!org?.id) return;
@@ -465,28 +465,31 @@ export default function Dashboard() {
           />
         </div>
 
-        <div ref={summaryRef}>
-          <ResponseSummary
-            respondentCount={respondentCount}
-            avgScore={avgScore}
-            minAcceptableScore={minAcceptableScore}
-            belowMinimumDimensions={belowMinimumDimensions}
-            atRiskDimensions={atRiskDimensions}
-            strongDimensions={strongDimensions}
-            actions={actions}
-            onAddAction={handleCreateActionForDimension}
-            onDeleteAction={deleteAction}
-            onToggleAction={toggleActionCompletion}
-          />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start" ref={summaryRef}>
+          <div className="h-full">
+            <ResponseSummary
+              respondentCount={respondentCount}
+              avgScore={avgScore}
+              minAcceptableScore={minAcceptableScore}
+              belowMinimumDimensions={belowMinimumDimensions}
+              atRiskDimensions={atRiskDimensions}
+              strongDimensions={strongDimensions}
+              actions={actions}
+              onAddAction={handleCreateActionForDimension}
+              onDeleteAction={deleteAction}
+              onToggleAction={toggleActionCompletion}
+            />
+          </div>
+          <div className="h-full">
+            <ActionPlan
+              actions={actions}
+              onDeleteAction={deleteAction}
+              onUpdateAction={handleUpdateAction}
+              onViewDetails={(a) => { setSelectedActionForDetail(a); setIsDetailDialogOpen(true); }}
+              containerRef={summaryRef}
+            />
+          </div>
         </div>
-
-        <ActionPlan
-          actions={actions}
-          onDeleteAction={deleteAction}
-          onUpdateAction={handleUpdateAction}
-          onViewDetails={(a) => { setSelectedActionForDetail(a); setIsDetailDialogOpen(true); }}
-          containerRef={summaryRef}
-        />
 
         <ActionDialog
           isOpen={isActionDialogOpen}
