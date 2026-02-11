@@ -1,33 +1,44 @@
-import { cookies } from "next/headers"
-import { redirect } from "next/navigation"
+//app\(main)\dashboard\page.tsx
 
-import Dashboard from "../../../components/dashboard"
-import { supabase } from "../../../lib/supabaseClient"
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { createServerClient } from "@supabase/ssr";
+
+import Dashboard from "../../../components/dashboard";
+import { supabase } from "../../../lib/supabaseClient";
+
+import { createClient } from "../../../lib/supabase/server";
 
 export default async function DashboardPage() {
-  const cookieStore = await cookies()
-  const token = cookieStore.get("admin_id")?.value
+  const cookieStore = await cookies();
+  const adminToken = cookieStore.get("admin_id")?.value;
 
-  console.log("Dashboard - Token from cookies:", token) // Debug log
+  // Check for admin cookie first (existing admin flow)
+  if (adminToken) {
+    const { data, error } = await supabase
+      .from("admin_users")
+      .select("id")
+      .eq("id", adminToken)
+      .single();
 
-  if (!token) {
-    console.log("Dashboard - No token found, redirecting to login") // Debug log
-    redirect("/admin-login")
+    if (data && !error) {
+      // Valid admin user
+      return <Dashboard />;
+    }
   }
 
-  // Verify the token is a valid admin ID in the database
-  const { data, error } = await supabase
-    .from("admin_users")
-    .select("id")
-    .eq("id", token)
-    .single()
+  // Check for Supabase auth session (new demo user flow)
+  const supabaseClient = await createClient();
 
-  console.log("Dashboard - Database verification:", { data, error }) // Debug log
+  const {
+    data: { session },
+  } = await supabaseClient.auth.getSession();
 
-  if (!data || error) {
-    console.log("Dashboard - Invalid token, redirecting to login") // Debug log
-    redirect("/admin-login")
+  if (session) {
+    // Valid Supabase session (demo user)
+    return <Dashboard />;
   }
 
-  return <Dashboard />
+  // No valid auth found
+  redirect("/admin-login");
 }

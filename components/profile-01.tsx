@@ -6,6 +6,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { createAvatar } from '@dicebear/core';
 import { glass } from '@dicebear/collection';
+import { supabase } from "../lib/supabaseClient"
 
 
 interface MenuItem {
@@ -24,8 +25,25 @@ export default function Profile01Client({ name, role }: ProfileProps) {
   const router = useRouter()
 
   const handleLogout = async () => {
-    await fetch('/api/logout', { method: 'POST' })
-    router.push('/admin-login')
+    try {
+      // 1. Sign out of Supabase (for demo users)
+      await supabase.auth.signOut()
+
+      // 2. Clear server-side cookies via API
+      await fetch('/api/logout', { method: 'POST' })
+
+      // 3. Client-side fallback for cookies
+      const { Cookies } = await import("../lib/cookies-client")
+      Cookies.remove('admin_id', { path: '/' })
+      Cookies.remove('admin_token', { path: '/' })
+
+      // 4. Redirect
+      router.push('/')
+      router.refresh()
+    } catch (error) {
+      console.error("Logout error:", error)
+      router.push('/')
+    }
   }
 
   const menuItems: MenuItem[] = [

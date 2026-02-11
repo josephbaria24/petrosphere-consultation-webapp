@@ -1,0 +1,316 @@
+﻿components/dashboard.tsx(34,44): error TS1005: ',' expected.
+components/dashboard.tsx(34,46): error TS1134: Variable declaration expected.
+components/dashboard.tsx(34,56): error TS1005: ',' expected.
+components/dashboard.tsx(34,57): error TS17008: JSX element 'number' has no corresponding closing tag.
+components/dashboard.tsx(35,45): error TS1003: Identifier expected.
+components/dashboard.tsx(35,47): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(36,49): error TS1003: Identifier expected.
+components/dashboard.tsx(36,51): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(37,69): error TS1003: Identifier expected.
+components/dashboard.tsx(37,71): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(38,46): error TS1003: Identifier expected.
+components/dashboard.tsx(38,102): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(39,47): error TS1003: Identifier expected.
+components/dashboard.tsx(39,49): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(40,64): error TS17008: JSX element 'number' has no corresponding closing tag.
+components/dashboard.tsx(41,78): error TS1003: Identifier expected.
+components/dashboard.tsx(41,80): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(42,66): error TS1003: Identifier expected.
+components/dashboard.tsx(42,68): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(43,66): error TS1003: Identifier expected.
+components/dashboard.tsx(43,68): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(44,54): error TS17008: JSX element 'string' has no corresponding closing tag.
+components/dashboard.tsx(45,81): error TS1003: Identifier expected.
+components/dashboard.tsx(45,87): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(48,56): error TS17008: JSX element 'boolean' has no corresponding closing tag.
+components/dashboard.tsx(49,66): error TS17008: JSX element 'boolean' has no corresponding closing tag.
+components/dashboard.tsx(50,54): error TS1003: Identifier expected.
+components/dashboard.tsx(50,56): error TS1005: '...' expected.
+components/dashboard.tsx(50,58): error TS1005: '}' expected.
+components/dashboard.tsx(50,81): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(50,84): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(51,54): error TS17008: JSX element 'string' has no corresponding closing tag.
+components/dashboard.tsx(58,17): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(59,5): error TS1109: Expression expected.
+components/dashboard.tsx(59,59): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(62,3): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(68,48): error TS1003: Identifier expected.
+components/dashboard.tsx(68,50): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(70,62): error TS17008: JSX element 'string' has no corresponding closing tag.
+components/dashboard.tsx(71,56): error TS1003: Identifier expected.
+components/dashboard.tsx(71,78): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(72,48): error TS17008: JSX element 'ActionFormState' has no corresponding closing tag.
+components/dashboard.tsx(73,10): error TS1005: '}' expected.
+components/dashboard.tsx(78,3): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(82,45): error TS1003: Identifier expected.
+components/dashboard.tsx(82,51): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(83,43): error TS1003: Identifier expected.
+components/dashboard.tsx(83,49): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(84,44): error TS1003: Identifier expected.
+components/dashboard.tsx(84,50): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(85,79): error TS1003: Identifier expected.
+components/dashboard.tsx(85,85): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(87,33): error TS17008: JSX element 'Record' has no corresponding closing tag.
+components/dashboard.tsx(95,41): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(97,37): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(98,9): error TS1005: '}' expected.
+components/dashboard.tsx(98,75): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(99,9): error TS1005: '}' expected.
+components/dashboard.tsx(99,70): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(100,9): error TS1005: '}' expected.
+components/dashboard.tsx(100,72): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(103,81): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(104,5): error TS1109: Expression expected.
+components/dashboard.tsx(106,7): error TS1109: Expression expected.
+components/dashboard.tsx(107,61): error TS1005: '}' expected.
+components/dashboard.tsx(109,7): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(112,43): error TS1005: '}' expected.
+components/dashboard.tsx(113,7): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(114,74): error TS1005: '}' expected.
+components/dashboard.tsx(114,82): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(118,126): error TS1005: '}' expected.
+components/dashboard.tsx(119,7): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(122,5): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(122,70): error TS1005: '}' expected.
+components/dashboard.tsx(122,72): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(123,3): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(125,48): error TS17008: JSX element 'any' has no corresponding closing tag.
+components/dashboard.tsx(128,81): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(129,5): error TS1109: Expression expected.
+components/dashboard.tsx(131,7): error TS1109: Expression expected.
+components/dashboard.tsx(131,19): error TS1005: '}' expected.
+components/dashboard.tsx(131,30): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(132,55): error TS1005: '}' expected.
+components/dashboard.tsx(132,65): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(152,15): error TS1005: '}' expected.
+components/dashboard.tsx(153,34): error TS1005: '}' expected.
+components/dashboard.tsx(153,55): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(155,19): error TS1005: '}' expected.
+components/dashboard.tsx(155,28): error TS1005: '}' expected.
+components/dashboard.tsx(155,108): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(155,117): error TS1005: '}' expected.
+components/dashboard.tsx(155,143): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(156,9): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(157,7): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(165,67): error TS1005: '}' expected.
+components/dashboard.tsx(165,141): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(166,5): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(166,60): error TS1005: '}' expected.
+components/dashboard.tsx(166,62): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(166,98): error TS1005: '}' expected.
+components/dashboard.tsx(166,100): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(167,3): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(169,196): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(170,5): error TS1109: Expression expected.
+components/dashboard.tsx(172,7): error TS1109: Expression expected.
+components/dashboard.tsx(185,43): error TS1005: '}' expected.
+components/dashboard.tsx(185,209): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(187,5): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(189,155): error TS1005: '}' expected.
+components/dashboard.tsx(189,162): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(195,42): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(198,7): error TS1109: Expression expected.
+components/dashboard.tsx(198,68): error TS1005: '}' expected.
+components/dashboard.tsx(198,103): error TS1005: '}' expected.
+components/dashboard.tsx(198,124): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(198,168): error TS1005: '}' expected.
+components/dashboard.tsx(198,218): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(198,221): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(200,5): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(201,11): error TS1005: '}' expected.
+components/dashboard.tsx(204,5): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(206,37): error TS1003: Identifier expected.
+components/dashboard.tsx(206,42): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(207,30): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(207,94): error TS1005: '}' expected.
+components/dashboard.tsx(207,96): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(208,56): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(211,41): error TS1003: Identifier expected.
+components/dashboard.tsx(211,51): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(213,26): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(214,7): error TS1109: Expression expected.
+components/dashboard.tsx(214,36): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(217,88): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(223,5): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(226,62): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(227,7): error TS1109: Expression expected.
+components/dashboard.tsx(227,50): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(228,16): error TS1003: Identifier expected.
+components/dashboard.tsx(229,21): error TS1003: Identifier expected.
+components/dashboard.tsx(231,5): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(234,70): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(235,7): error TS1109: Expression expected.
+components/dashboard.tsx(235,50): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(236,20): error TS1005: '}' expected.
+components/dashboard.tsx(236,69): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(237,5): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(238,44): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(240,33): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(240,48): error TS1005: '}' expected.
+components/dashboard.tsx(240,66): error TS1003: Identifier expected.
+components/dashboard.tsx(240,99): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(241,47): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(241,51): error TS1109: Expression expected.
+components/dashboard.tsx(241,126): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(242,45): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(243,58): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(243,70): error TS1005: '}' expected.
+components/dashboard.tsx(243,93): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(245,92): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(248,44): error TS1005: '}' expected.
+components/dashboard.tsx(248,190): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(248,315): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(248,327): error TS1005: '}' expected.
+components/dashboard.tsx(248,350): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(248,454): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(249,86): error TS1005: '}' expected.
+components/dashboard.tsx(249,160): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(251,41): error TS1005: '}' expected.
+components/dashboard.tsx(251,181): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(253,3): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(255,138): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(256,5): error TS1109: Expression expected.
+components/dashboard.tsx(257,7): error TS1109: Expression expected.
+components/dashboard.tsx(258,87): error TS1005: '}' expected.
+components/dashboard.tsx(260,7): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(261,19): error TS1005: '}' expected.
+components/dashboard.tsx(261,34): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(262,62): error TS1005: '}' expected.
+components/dashboard.tsx(262,72): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(263,110): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(264,99): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(266,39): error TS1003: Identifier expected.
+components/dashboard.tsx(266,44): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(267,28): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(267,92): error TS1005: '}' expected.
+components/dashboard.tsx(267,94): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(268,43): error TS1003: Identifier expected.
+components/dashboard.tsx(268,53): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(269,25): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(270,9): error TS1109: Expression expected.
+components/dashboard.tsx(270,34): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(273,88): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(278,7): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(279,75): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(280,9): error TS1109: Expression expected.
+components/dashboard.tsx(280,52): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(282,55): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(283,25): error TS1005: '}' expected.
+components/dashboard.tsx(283,117): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(284,7): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(285,49): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(285,53): error TS1109: Expression expected.
+components/dashboard.tsx(285,128): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(286,42): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(288,102): error TS1005: '}' expected.
+components/dashboard.tsx(288,176): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(291,5): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(291,60): error TS1005: '}' expected.
+components/dashboard.tsx(291,101): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(292,3): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(294,56): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(295,5): error TS1109: Expression expected.
+components/dashboard.tsx(297,7): error TS1109: Expression expected.
+components/dashboard.tsx(297,75): error TS1005: '}' expected.
+components/dashboard.tsx(297,85): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(299,30): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(299,44): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(299,76): error TS1005: '}' expected.
+components/dashboard.tsx(299,86): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(301,5): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(301,70): error TS1005: '}' expected.
+components/dashboard.tsx(301,72): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(302,3): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(304,72): error TS17008: JSX element 'Action' has no corresponding closing tag.
+components/dashboard.tsx(304,82): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(305,84): error TS1005: '}' expected.
+components/dashboard.tsx(307,7): error TS1109: Expression expected.
+components/dashboard.tsx(307,87): error TS1005: '}' expected.
+components/dashboard.tsx(307,114): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(309,5): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(309,59): error TS1005: '}' expected.
+components/dashboard.tsx(309,61): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(310,3): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(312,50): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(313,5): error TS1109: Expression expected.
+components/dashboard.tsx(314,7): error TS1109: Expression expected.
+components/dashboard.tsx(316,24): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(316,41): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(317,5): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(317,59): error TS1005: '}' expected.
+components/dashboard.tsx(317,61): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(318,3): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(320,34): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(321,5): error TS1109: Expression expected.
+components/dashboard.tsx(323,7): error TS1109: Expression expected.
+components/dashboard.tsx(323,80): error TS1005: '}' expected.
+components/dashboard.tsx(323,414): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(325,24): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(327,28): error TS1005: '}' expected.
+components/dashboard.tsx(327,104): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(328,5): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(328,59): error TS1005: '}' expected.
+components/dashboard.tsx(328,61): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(329,3): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(331,95): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(332,36): error TS1005: '}' expected.
+components/dashboard.tsx(335,3): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(337,76): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(337,121): error TS1005: '}' expected.
+components/dashboard.tsx(337,135): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(339,56): error TS17008: JSX element 'HTMLDivElement' has no corresponding closing tag.
+components/dashboard.tsx(339,93): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(340,32): error TS1005: '}' expected.
+components/dashboard.tsx(342,80): error TS1005: '}' expected.
+components/dashboard.tsx(343,22): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(344,9): error TS1109: Expression expected.
+components/dashboard.tsx(346,30): error TS1005: '}' expected.
+components/dashboard.tsx(346,54): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(347,7): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(348,5): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(349,3): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(351,17): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(352,5): error TS1109: Expression expected.
+components/dashboard.tsx(355,37): error TS1005: '}' expected.
+components/dashboard.tsx(359,5): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(360,36): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(361,7): error TS1109: Expression expected.
+components/dashboard.tsx(361,136): error TS1005: '}' expected.
+components/dashboard.tsx(361,143): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(363,56): error TS1005: '}' expected.
+components/dashboard.tsx(363,97): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(368,88): error TS1005: '}' expected.
+components/dashboard.tsx(368,162): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(369,49): error TS1005: '}' expected.
+components/dashboard.tsx(369,190): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(371,5): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(373,3): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(375,17): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(376,5): error TS1109: Expression expected.
+components/dashboard.tsx(377,36): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(378,11): error TS1005: '}' expected.
+components/dashboard.tsx(378,152): error TS1005: '}' expected.
+components/dashboard.tsx(378,160): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(381,9): error TS1109: Expression expected.
+components/dashboard.tsx(383,7): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(386,9): error TS1109: Expression expected.
+components/dashboard.tsx(386,47): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(386,71): error TS1005: '}' expected.
+components/dashboard.tsx(386,143): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(387,47): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(387,51): error TS1109: Expression expected.
+components/dashboard.tsx(387,146): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(389,7): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(390,5): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(392,3): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(394,17): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(395,5): error TS1109: Expression expected.
+components/dashboard.tsx(396,36): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(397,7): error TS1109: Expression expected.
+components/dashboard.tsx(399,5): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(401,3): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(403,44): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/dashboard.tsx(404,28): error TS1005: '}' expected.
+components/dashboard.tsx(405,3): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(518,1): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/dashboard.tsx(518,2): error TS1005: '</' expected.

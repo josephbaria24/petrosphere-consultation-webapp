@@ -1,0 +1,35 @@
+<svg width="1000" height="600" viewBox="0 0 1000 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Stylized Background Curve -->
+  <path d="M-50,300 C150,150 400,450 600,300 C800,150 1050,450 1050,300" stroke="#FF7A40" stroke-width="3" stroke-linecap="round" stroke-dasharray="10 10" opacity="0.3" />
+  <path d="M-50,320 C100,100 450,550 550,350 C650,150 950,450 1050,320" stroke="#FF7A40" stroke-width="4" stroke-linecap="round" />
+
+  <!-- Collaborative Figure 1 (Left) -->
+  <g transform="translate(150, 200)">
+    <circle cx="30" cy="30" r="15" stroke="#FF7A40" stroke-width="3" />
+    <path d="M10,60 Q30,45 50,60 L55,90 Q30,85 5,90 Z" fill="#FF7A40" opacity="0.1" stroke="#FF7A40" stroke-width="2" />
+    <rect x="40" y="20" width="40" height="30" rx="5" stroke="#FF7A40" stroke-width="2" fill="white" />
+    <line x1="45" y1="30" x2="75" y2="30" stroke="#FF7A40" stroke-width="1" />
+    <line x1="45" y1="38" x2="65" y2="38" stroke="#FF7A40" stroke-width="1" />
+  </g>
+
+  <!-- Collaborative Figure 2 (Center) -->
+  <g transform="translate(500, 350)">
+    <circle cx="20" cy="20" r="12" stroke="#FF7A40" stroke-width="3" />
+    <path d="M0,50 Q20,35 40,50 L45,80 Q20,75 -5,80 Z" fill="#FF7A40" opacity="0.2" stroke="#FF7A40" stroke-width="2" />
+    <path d="M50,10 L80,30 L70,40 L40,20 Z" fill="white" stroke="#FF7A40" stroke-width="2" />
+    <circle cx="90" cy="50" r="20" stroke="#FF7A40" stroke-width="1" stroke-dasharray="2 2" />
+  </g>
+
+  <!-- Collaborative Figure 3 (Right) -->
+  <g transform="translate(800, 150)">
+    <circle cx="25" cy="25" r="14" stroke="#FF7A40" stroke-width="3" />
+    <path d="M5,55 Q25,40 45,55 L50,85 Q25,80 0,85 Z" fill="#FF7A40" opacity="0.1" stroke="#FF7A40" stroke-width="2" />
+    <rect x="-50" y="30" width="30" height="40" rx="2" stroke="#FF7A40" stroke-width="2" fill="white" />
+    <path d="M-45,40 L-25,40 M-45,50 L-30,50 M-45,60 L-25,60" stroke="#FF7A40" stroke-width="1" />
+  </g>
+
+  <!-- Scattered Elements -->
+  <circle cx="300" cy="450" r="8" fill="#FF7A40" opacity="0.4" />
+  <rect x="700" y="400" width="15" height="15" rx="3" rotate="15" fill="#FF7A40" opacity="0.3" />
+  <path d="M450,150 L470,170 M470,150 L450,170" stroke="#FF7A40" stroke-width="2" opacity="0.5" />
+</svg>

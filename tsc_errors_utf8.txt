@@ -1,0 +1,31 @@
+﻿components/dashboard.tsx(413,28): error TS2322: Type '{ items: { id: string; label: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; ref: RefObject<...>; }[]; activeSection: string; onNavigate: (sectionRef: RefObject<...>, sectionId: string) => void; }' is not assignable to type 'IntrinsicAttributes & DashboardNavigationProps'.
+  Property 'items' does not exist on type 'IntrinsicAttributes & DashboardNavigationProps'.
+components/dashboard.tsx(422,79): error TS2322: Type '{ surveys: any[]; selectedSurvey: any; onSurveySelect: Dispatch<any>; }' is not assignable to type 'IntrinsicAttributes & SurveySelectorProps'.
+  Property 'onSurveySelect' does not exist on type 'IntrinsicAttributes & SurveySelectorProps'.
+components/dashboard.tsx(427,42): error TS2322: Type '{ title: string; value: string; trend: number; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; description: string; variant: string; }' is not assignable to type 'IntrinsicAttributes & ProfessionalSurveySummaryCardProps'.
+  Property 'title' does not exist on type 'IntrinsicAttributes & ProfessionalSurveySummaryCardProps'.
+components/dashboard.tsx(428,42): error TS2322: Type '{ title: string; value: string; type: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; description: string; variant: string; }' is not assignable to type 'IntrinsicAttributes & ProfessionalSurveySummaryCardProps'.
+  Property 'title' does not exist on type 'IntrinsicAttributes & ProfessionalSurveySummaryCardProps'.
+components/dashboard.tsx(429,42): error TS2322: Type '{ title: string; value: string; type: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; description: string; variant: string; }' is not assignable to type 'IntrinsicAttributes & ProfessionalSurveySummaryCardProps'.
+  Property 'title' does not exist on type 'IntrinsicAttributes & ProfessionalSurveySummaryCardProps'.
+components/dashboard.tsx(430,42): error TS2322: Type '{ title: string; value: string; trend: number; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; description: string; variant: string; }' is not assignable to type 'IntrinsicAttributes & ProfessionalSurveySummaryCardProps'.
+  Property 'title' does not exist on type 'IntrinsicAttributes & ProfessionalSurveySummaryCardProps'.
+components/dashboard.tsx(433,25): error TS2322: Type '{ barData: any[]; radarData: any[]; totalAvg: number; minAcceptableScore: number; respondentCount: number; lowestDimensionPercent: number; onOpenChart: Dispatch<SetStateAction<"role" | "bar" | "radar" | "gauge" | "comparison">>; }' is not assignable to type 'IntrinsicAttributes & OverviewChartsProps'.
+  Property 'barData' does not exist on type 'IntrinsicAttributes & OverviewChartsProps'.
+components/dashboard.tsx(434,68): error TS2322: Type '{ radarData: any[]; comparisonRadarData: any[]; roleData: any[]; onOpenChart: Dispatch<SetStateAction<"role" | "bar" | "radar" | "gauge" | "comparison">>; isLoadingComparison: boolean; }' is not assignable to type 'IntrinsicAttributes & DetailedChartsProps'.
+  Property 'comparisonRadarData' does not exist on type 'IntrinsicAttributes & DetailedChartsProps'.
+components/dashboard.tsx(435,208): error TS2322: Type '{ belowMinimumDimensions: string[]; atRiskDimensions: string[]; strongDimensions: string[]; minAcceptableScore: number; onCreateAction: (dimension: string, status: "critical" | "at_risk") => void; isRestricted: boolean; }' is not assignable to type 'IntrinsicAttributes & ResponseSummaryProps'.
+  Property 'onCreateAction' does not exist on type 'IntrinsicAttributes & ResponseSummaryProps'.
+components/dashboard.tsx(436,39): error TS2322: Type '{ actions: Action[]; onToggleComplete: (actionId: string, isCompleted: boolean) => Promise<void>; onDelete: (actionId: string) => Promise<void>; onUpdateAction: (actionId: string, updates: Partial<...>) => Promise<...>; onActionClick: (a: any) => void; isRestricted: boolean; }' is not assignable to type 'IntrinsicAttributes & ActionPlanProps'.
+  Property 'onToggleComplete' does not exist on type 'IntrinsicAttributes & ActionPlanProps'.
+components/dashboard.tsx(438,23): error TS2322: Type '{ open: boolean; onOpenChange: Dispatch<SetStateAction<boolean>>; dimension: string; status: "critical" | "at_risk"; form: ActionFormState; onFormChange: Dispatch<...>; onSubmit: () => Promise<...>; }' is not assignable to type 'IntrinsicAttributes & ActionDialogProps'.
+  Property 'open' does not exist on type 'IntrinsicAttributes & ActionDialogProps'.
+components/dashboard.tsx(439,29): error TS2322: Type '{ open: boolean; onOpenChange: Dispatch<SetStateAction<boolean>>; action: Action; onUpdate: (actionId: string, updates: Partial<Action>) => Promise<...>; }' is not assignable to type 'IntrinsicAttributes & ActionDetailDialogProps'.
+  Property 'open' does not exist on type 'IntrinsicAttributes & ActionDetailDialogProps'.
+components/kokonutui/bento-grid.tsx(30,23): error TS2307: Cannot find module '@/components/icons/anthropic' or its corresponding type declarations.
+components/kokonutui/bento-grid.tsx(31,27): error TS2307: Cannot find module '@/components/icons/anthropic-dark' or its corresponding type declarations.
+components/kokonutui/bento-grid.tsx(32,22): error TS2307: Cannot find module '@/components/icons/deepseek' or its corresponding type declarations.
+components/kokonutui/bento-grid.tsx(33,20): error TS2307: Cannot find module '@/components/icons/gemini' or its corresponding type declarations.
+components/kokonutui/bento-grid.tsx(34,23): error TS2307: Cannot find module '@/components/icons/mistral' or its corresponding type declarations.
+components/kokonutui/bento-grid.tsx(35,20): error TS2307: Cannot find module '@/components/icons/open-ai' or its corresponding type declarations.
+components/kokonutui/bento-grid.tsx(36,24): error TS2307: Cannot find module '@/components/icons/open-ai-dark' or its corresponding type declarations.

@@ -5,8 +5,10 @@ import Image from "next/image"
 import { Bell, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { ThemeToggle } from "./theme-toggle"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "./ui/dropdown-menu"
-import Profile01 from "./profile-01"
+import ProfileDropdown from "./kokonutui/profile-dropdown"
+import { useRouter } from "next/navigation"
+import { supabase } from "../lib/supabaseClient"
+import { useApp } from "./app/AppProvider"
 
 interface BreadcrumbItem {
   label: string
@@ -14,10 +16,34 @@ interface BreadcrumbItem {
 }
 
 export default function TopNav({ fullName, email }: { fullName: string; email: string }) {
+  const router = useRouter()
+  const { subscription } = useApp()
   const breadcrumbs: BreadcrumbItem[] = [
     { label: "Safety Vitals", href: "#" },
     { label: "dashboard", href: "#" },
   ]
+
+  const handleLogout = async () => {
+    try {
+      // 1. Sign out of Supabase (for demo users)
+      await supabase.auth.signOut()
+
+      // 2. Clear server-side cookies via API
+      await fetch('/api/logout', { method: 'POST' })
+
+      // 3. Client-side fallback for cookies
+      const { Cookies } = await import("../lib/cookies-client")
+      Cookies.remove('admin_id', { path: '/' })
+      Cookies.remove('admin_token', { path: '/' })
+
+      // 4. Redirect
+      router.push('/')
+      router.refresh()
+    } catch (error) {
+      console.error("Logout error:", error)
+      router.push('/')
+    }
+  }
 
   return (
     <nav className="px-3 sm:px-6 flex items-center justify-between bg-gray-100 dark:bg-[#0F0F12] border-0 h-full">
@@ -39,7 +65,7 @@ export default function TopNav({ fullName, email }: { fullName: string; email: s
         ))}
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-2 ml-auto sm:ml-0 px-1 bg-card rounded-xl shadow-md">
+      <div className="flex items-center gap-2 sm:gap-2 ml-auto sm:ml-0 px-1 py-1 rounded-2xl">
         <button
           type="button"
           className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-[#1F1F23] rounded-full transition-colors"
@@ -49,20 +75,18 @@ export default function TopNav({ fullName, email }: { fullName: string; email: s
 
         <ThemeToggle />
 
-        <DropdownMenu>
-          <DropdownMenuTrigger className="focus:outline-none">
-            <Image
-              src="https://api.dicebear.com/9.x/glass/svg?seed=Leah"
-              alt="User avatar"
-              width={28}
-              height={28}
-              className="rounded-full ring-1 ring-gray-200 dark:ring-[#2B2B30] sm:w-7 sm:h-7 cursor-pointer"
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" sideOffset={8} className="w-[280px] sm:w-80 bg-card border-0 rounded-lg shadow-lg">
-            <Profile01 name={fullName} role={email} />
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="ml-2">
+          <ProfileDropdown
+            data={{
+              name: fullName,
+              email: email,
+              avatar: `https://api.dicebear.com/9.x/glass/svg?seed=${fullName}`,
+              subscription: subscription?.plan === "demo" ? "DEMO" : "PRO",
+              model: "Safety Insights 2.0"
+            }}
+            onLogout={handleLogout}
+          />
+        </div>
       </div>
     </nav>
   )

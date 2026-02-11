@@ -1,8 +1,7 @@
 
 import { Geist } from "next/font/google"
 import "./globals.css"
-import { ThemeProvider } from "../components/theme-provider"
-import { Toaster } from "sonner"
+import LayoutShell from "../@/components/LayoutShell"
 
 const geist = Geist({
   subsets: ["latin"],
@@ -24,15 +23,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head />
       <body className={geist.className}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <Toaster richColors position="top-right" />
-          {children}
-        </ThemeProvider>
+        <LayoutShell>{children}</LayoutShell>
       </body>
     </html>
   )

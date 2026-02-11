@@ -1,0 +1,51 @@
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Elements -->
+  <path d="M0,800 C400,700 800,900 1200,800 C1600,700 1920,850 1920,850 V1080 H0 V800 Z" fill="#FF7A40" opacity="0.05" />
+  <path d="M-100,600 C300,500 700,700 1100,600 C1500,500 2000,700 2100,600" stroke="#FF7A40" stroke-width="2" stroke-dasharray="20 20" opacity="0.2" />
+
+  <!-- Office Furniture / Environment -->
+  <rect x="200" y="600" width="300" height="20" rx="2" fill="#FF7A40" opacity="0.1" /> <!-- Desk Left -->
+  <rect x="1400" y="650" width="300" height="20" rx="2" fill="#FF7A40" opacity="0.1" /> <!-- Desk Right -->
+  <rect x="800" y="550" width="300" height="180" rx="10" stroke="#FF7A40" stroke-width="2" fill="none" opacity="0.3" /> <!-- Whiteboard/Screen Center -->
+
+  <!-- Staff Member 1 (Left - Standing) -->
+  <g transform="translate(300, 400)">
+    <circle cx="30" cy="30" r="20" stroke="#FF7A40" stroke-width="3" fill="white" /> <!-- Head -->
+    <path d="M10,60 Q30,50 50,60 L50,140 Q30,150 10,140 Z" stroke="#FF7A40" stroke-width="3" fill="white" /> <!-- Body -->
+    <path d="M5,70 Q-10,100 0,110" stroke="#FF7A40" stroke-width="3" stroke-linecap="round" /> <!-- Arm L -->
+    <path d="M55,70 Q70,90 60,110" stroke="#FF7A40" stroke-width="3" stroke-linecap="round" /> <!-- Arm R -->
+    <path d="M20,140 L15,190" stroke="#FF7A40" stroke-width="3" stroke-linecap="round" /> <!-- Leg L -->
+    <path d="M40,140 L45,190" stroke="#FF7A40" stroke-width="3" stroke-linecap="round" /> <!-- Leg R -->
+    <path d="M0,60 L60,100 L0,120 Z" fill="#FF7A40" opacity="0.1" /> <!-- Abstract Shape -->
+  </g>
+
+  <!-- Staff Member 2 (Center - Sitting/Pointing) -->
+  <g transform="translate(900, 500)">
+    <circle cx="30" cy="30" r="20" stroke="#FF7A40" stroke-width="3" fill="white" />
+    <path d="M10,60 Q30,50 50,60 L55,120 L5,120 Z" stroke="#FF7A40" stroke-width="3" fill="white" />
+    <path d="M55,70 L90,50" stroke="#FF7A40" stroke-width="3" stroke-linecap="round" /> <!-- Pointing Arm -->
+    <path d="M5,70 L-10,100" stroke="#FF7A40" stroke-width="3" stroke-linecap="round" />
+    <rect x="5" y="120" width="15" height="40" fill="white" stroke="#FF7A40" stroke-width="3" /> <!-- Leg Chair -->
+    <rect x="40" y="120" width="15" height="40" fill="white" stroke="#FF7A40" stroke-width="3" />
+    <rect x="-10" y="110" width="80" height="10" rx="2" fill="#FF7A40" /> <!-- Chair Seat -->
+  </g>
+
+  <!-- Staff Member 3 (Right - Walking with paper) -->
+  <g transform="translate(1500, 420)">
+    <circle cx="30" cy="30" r="20" stroke="#FF7A40" stroke-width="3" fill="white" />
+    <path d="M10,60 Q30,50 50,60 L55,130 Q30,140 5,130 Z" stroke="#FF7A40" stroke-width="3" fill="white" />
+    <rect x="60" y="90" width="30" height="40" stroke="#FF7A40" stroke-width="2" fill="white" /> <!-- Paper -->
+    <path d="M65,100 H85 M65,110 H85 M65,120 H80" stroke="#FF7A40" stroke-width="1" />
+    <path d="M20,130 L10,180" stroke="#FF7A40" stroke-width="3" stroke-linecap="round" />
+    <path d="M40,130 L60,170" stroke="#FF7A40" stroke-width="3" stroke-linecap="round" />
+  </g>
+
+  <!-- Stylized Flow/Connection Lines -->
+  <path d="M350,450 C500,300 700,600 900,530 C1100,460 1300,500 1500,450" stroke="#FF7A40" stroke-width="2" fill="none" />
+  
+  <!-- Decorative Elements -->
+  <circle cx="1000" cy="200" r="5" fill="#FF7A40" opacity="0.5" />
+  <circle cx="1700" cy="300" r="8" fill="#FF7A40" opacity="0.3" />
+  <rect x="100" y="300" width="10" height="10" stroke="#FF7A40" stroke-width="2" transform="rotate(20 105 305)" />
+
+</svg>

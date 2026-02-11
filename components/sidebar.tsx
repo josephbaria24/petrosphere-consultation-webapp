@@ -1,3 +1,16 @@
+/**
+ * File: components/sidebar.tsx
+ * Description: Primary navigation component for the application.
+ * Dynamically renders navigation links based on user roles (Admin vs. User) and handles mobile visibility.
+ * Functions:
+ * - Sidebar(): Main component managing navigation state and layout.
+ * - NavItem({ href, icon, children }): Sub-component for individual navigation links with active state detection.
+ * - handleNavigation(): Closes the mobile menu upon link selection.
+ * Connections:
+ * - Integrated into (main)/layout.tsx.
+ * - Uses AppProvider for subscription plan detection (isDemo).
+ * - Reads admin_id cookie to determine the base navigation path (/admin vs /user).
+ */
 "use client"
 
 import {
@@ -10,16 +23,29 @@ import {
   FileText,
   Home,
   SquareRoundCorner,
+  Building2,
 } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { cn } from "../lib/utils"
+import { getClientCookie } from "../lib/cookies-client";
+import { useApp } from "./app/AppProvider"
+import { Lock } from "lucide-react"
+import { Badge } from "../@/components/ui/badge"
+import { UpgradeRequiredModal } from "./upgrade-required-modal"
 
 export default function Sidebar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const pathname = usePathname()
+  const isAdmin = !!getClientCookie("admin_id")
+  const basePath = isAdmin ? "/admin" : "/user"
+  const { subscription } = useApp()
+  const isDemo = subscription?.plan === "demo" && !isAdmin
+
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
+  const [lockedFeatureName, setLockedFeatureName] = useState("")
 
   function handleNavigation() {
     setIsMobileMenuOpen(false)
@@ -29,33 +55,61 @@ export default function Sidebar() {
     href,
     icon: Icon,
     children,
+    isLocked = false,
   }: {
     href: string
     icon: React.ComponentType<{ className?: string }>
     children: React.ReactNode
+    isLocked?: boolean
   }) {
     const isActive = pathname === href
-  
+
+    const handleClick = (e: React.MouseEvent) => {
+      handleNavigation() // Always close mobile menu first
+      if (isLocked) {
+        e.preventDefault()
+        setLockedFeatureName(children as string)
+        setUpgradeModalOpen(true)
+      }
+    }
+
     return (
       <Link
-        href={href}
-        onClick={handleNavigation}
+        href={isLocked ? "#" : href}
+        onClick={handleClick}
         className={cn(
-          "flex items-center px-3 py-2 text-sm rounded-md transition-colors",
+          "flex items-center px-3 py-2 text-sm rounded-md transition-colors w-full group",
           isActive
             ? "bg-gray-100 text-orange-500 font-semibold dark:bg-[#1F1F23] dark:text-orange-500"
-            : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-[#1F1F23]"
+            : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-[#1F1F23]",
+          isLocked && "cursor-pointer"
         )}
       >
-        <Icon className="h-4 w-4 mr-3 flex-shrink-0" />
-        {children}
+        <div className="flex items-center flex-1">
+          <Icon className="h-4 w-4 mr-3 flex-shrink-0" />
+          <div className="flex items-center justify-between w-full">
+            <span>{children}</span>
+            {isLocked && (
+              <div className="flex items-center gap-1 ml-auto">
+                <Lock className="h-3 w-3 text-muted-foreground mr-1" />
+                <Badge variant="outline" className="text-[10px] px-1 h-4 bg-orange-500/10 text-orange-600 border-orange-500/20">Paid</Badge>
+              </div>
+            )}
+          </div>
+        </div>
       </Link>
     )
   }
-  
+
 
   return (
     <>
+      <UpgradeRequiredModal
+        open={upgradeModalOpen}
+        onOpenChange={setUpgradeModalOpen}
+        title={lockedFeatureName ? `${lockedFeatureName} Restricted` : "Upgrade Required"}
+      />
+
       <button
         type="button"
         className="lg:hidden fixed top-4 left-4 z-[70] p-2 rounded-lg bg-white dark:bg-[#0F0F12] shadow-md"
@@ -76,7 +130,7 @@ export default function Sidebar() {
             href="#"
             className="h-16 px-6 flex items-center border-0"
           >
-            <div className="flex flex-col pt-12 items-start gap-1">
+            <div className="flex flex-col pt-2 items-start gap-1">
               <Image
                 src="/icons/logo.png"
                 alt="Petrosphere Logo"
@@ -92,12 +146,8 @@ export default function Sidebar() {
                 className="block dark:hidden"
               />
               <div className="flex flex-col">
-                <span className="text-2xl font-semibold text-gray-900 dark:text-[#ff7261]">
-                  Safety Vitals
-                </span>
-                <span className="text-[12px] font-normal text-gray-900 dark:text-white">
-                  by Petrosphere Incorporated
-                </span>
+                <img src="/logo_trans.png" alt="logo" />
+
               </div>
             </div>
           </Link>
@@ -108,12 +158,37 @@ export default function Sidebar() {
                 Overview
               </div> */}
               <div className="space-y-1">
-                <NavItem href="/dashboard" icon={Home}>Dashboard</NavItem>
-                <NavItem href="/admin/create-survey" icon={PlusCircle}>Create Survey</NavItem>
-                <NavItem href="/admin/survey-responses" icon={FileText}>Survey Responses</NavItem>
-                <NavItem href="/admin/view-survey" icon={Folder}>View Survey</NavItem>
-                <NavItem href="/admin/respondents" icon={Users2}>Respondents</NavItem>
-                <NavItem href="/admin/dimensions" icon={SquareRoundCorner}>Dimensions</NavItem>
+                <div id="tour-sidebar-dashboard">
+                  <NavItem href="/dashboard" icon={Home}>Dashboard</NavItem>
+                </div>
+                <NavItem href={`${basePath}/create-survey`} icon={PlusCircle}>Create Survey</NavItem>
+                <NavItem
+                  href={`${basePath}/survey-responses`}
+                  icon={FileText}
+                  isLocked={isDemo}
+                >
+                  Survey Responses
+                </NavItem>
+                <div id="tour-sidebar-view-survey">
+                  <NavItem href={`${basePath}/view-survey`} icon={Folder}>View Survey</NavItem>
+                </div>
+                {isAdmin && (
+                  <NavItem href={`${basePath}/organizations`} icon={Building2}>Manage Organizations</NavItem>
+                )}
+                <NavItem
+                  href={`${basePath}/respondents`}
+                  icon={Users2}
+                  isLocked={isDemo}
+                >
+                  Respondents
+                </NavItem>
+                <NavItem
+                  href={`${basePath}/dimensions`}
+                  icon={SquareRoundCorner}
+                  isLocked={isDemo}
+                >
+                  Dimensions
+                </NavItem>
               </div>
             </div>
 
@@ -122,14 +197,14 @@ export default function Sidebar() {
                 Management
               </div> */}
               <div className="space-y-1">
-                
+
               </div>
             </div>
           </div>
 
           <div className="px-4 py-4 border-0 space-y-1">
-            <NavItem href="/admin/settings" icon={Settings}>Settings</NavItem>
-            <NavItem href="/admin/help" icon={HelpCircle}>Help</NavItem>
+            <NavItem href={`${basePath}/settings`} icon={Settings}>Settings</NavItem>
+            <NavItem href={`${basePath}/help`} icon={HelpCircle}>Help</NavItem>
           </div>
         </div>
       </nav>

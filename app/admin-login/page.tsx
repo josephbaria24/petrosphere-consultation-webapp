@@ -1,14 +1,26 @@
+/**
+ * File: app/admin-login/page.tsx
+ * Description: Specialized login page for Platform Administrators.
+ * Authenticates users via a secure passcode and sets the admin_id cookie for platform-wide access.
+ * Functions:
+ * - AdminLoginPage(): Component for the administrative authentication interface.
+ * - handleLogin(): Validates the password against environment variables and manages secure cookies.
+ * Connections:
+ * - Sets the administrative context required for /api/admin/* routes.
+ * - Redirects to the /dashboard upon successful authentication.
+ */
 'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { toast } from 'sonner'
 import { supabase } from '../../lib/supabaseClient'
 import bcrypt from 'bcryptjs'
 import { Label } from '../../@/components/ui/label'
 import { Input } from '../../components/ui/input'
 import { Button } from '../../components/ui/button'
-import Cookies from 'js-cookie'
+import { Cookies } from '../../lib/cookies-client'
 import { Eye, EyeOff, X, Mail } from 'lucide-react'
 
 export default function AdminLoginPage() {
@@ -36,16 +48,16 @@ export default function AdminLoginPage() {
     }
 
     setForgotLoading(true)
-    
+
     // Get the correct base URL for both development and production
-    const baseUrl = process.env.NODE_ENV === 'production' 
+    const baseUrl = process.env.NODE_ENV === 'production'
       ? process.env.NEXT_PUBLIC_SITE_URL || 'https://safetyvitals.petros-global.com/'
       : 'http://localhost:3000'
-  
+
     const { data, error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
       redirectTo: `${baseUrl}/reset-password`,
     })
-  
+
     if (error) {
       toast.error(error.message || 'Failed to send password reset email')
     } else {
@@ -53,7 +65,7 @@ export default function AdminLoginPage() {
       setShowForgotModal(false)
       setForgotEmail('')
     }
-    
+
     setForgotLoading(false)
   }
 
@@ -66,13 +78,13 @@ export default function AdminLoginPage() {
         },
         body: JSON.stringify({ adminId }),
       })
-      
+
       if (!response.ok) {
         throw new Error('Failed to set cookie')
       }
     } catch (error) {
       console.error('Error setting cookie:', error)
-      Cookies.set('admin_id', adminId, { 
+      Cookies.set('admin_id', adminId, {
         expires: 1,
         secure: true,
         sameSite: 'strict'
@@ -85,7 +97,7 @@ export default function AdminLoginPage() {
 
     try {
       await supabase.auth.signOut()
-      
+
       const { data: admin, error } = await supabase
         .from('admin_users')
         .select('id, email, password_hash')
@@ -105,15 +117,15 @@ export default function AdminLoginPage() {
 
       Cookies.remove('admin_id')
       await setCookieServerSide(admin.id)
-      
-      Cookies.set('admin_id', admin.id, { 
+
+      Cookies.set('admin_id', admin.id, {
         expires: 1,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict'
       })
-      
+
       toast.success('Welcome to Safety Vitals')
-      
+
       setTimeout(() => {
         window.location.href = '/dashboard'
       }, 500)
@@ -188,10 +200,12 @@ export default function AdminLoginPage() {
 
           {/* Right side - image with overlay text */}
           <div className="hidden md:flex w-1/2 relative">
-            <img
+            <Image
               src="/loginpic.jpg"
               alt="Safety equipment"
-              className="object-cover w-full h-full"
+              fill
+              className="object-cover"
+              priority
             />
             <div className="absolute inset-0 bg-black/10 flex items-center p-8">
               <div className="bg-white/40 p-6 rounded-xl max-w-sm">
@@ -227,11 +241,11 @@ export default function AdminLoginPage() {
                 <X size={20} />
               </button>
             </div>
-            
+
             <p className="text-gray-600 mb-4 text-sm">
               Enter your email address and we'll send you a link to reset your password.
             </p>
-            
+
             <div className="mb-4">
               <Input
                 type="email"
@@ -242,7 +256,7 @@ export default function AdminLoginPage() {
                 autoFocus
               />
             </div>
-            
+
             <div className="flex gap-3">
               <Button
                 onClick={() => {

@@ -1,0 +1,98 @@
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Organic Background Blobs -->
+  <path d="M-100,500 C100,300 400,300 600,500 C800,700 400,900 200,800 C-100,700 -200,600 -100,500" fill="#FF7A40" opacity="0.03" />
+  <path d="M1200,200 C1400,100 1700,200 1800,400 C1900,600 1600,800 1400,700 C1200,600 1100,400 1200,200" fill="#FF7A40" opacity="0.04" />
+  <path d="M600,900 C800,800 1100,900 1200,1000 C1300,1100 1000,1200 800,1150 C600,1100 500,1000 600,900" fill="#FF7A40" opacity="0.03" />
+
+  <!-- Connecting Lines -->
+  <path d="M200,500 C500,300 1000,800 1500,500" stroke="#FF7A40" stroke-width="2" stroke-dasharray="15 15" opacity="0.2" />
+
+  <!-- Floating Papers Background -->
+  <rect x="400" y="300" width="40" height="50" transform="rotate(-15 420 325)" stroke="#FF7A40" stroke-width="1" fill="white" opacity="0.6" />
+  <rect x="1600" y="350" width="40" height="50" transform="rotate(25 1620 375)" stroke="#FF7A40" stroke-width="1" fill="white" opacity="0.6" />
+  <rect x="1000" y="200" width="30" height="40" transform="rotate(10 1015 220)" stroke="#FF7A40" stroke-width="1" fill="white" opacity="0.5" />
+
+  <!-- Staff Member 1 (Left - Engineer with Construction Hat & Blueprints) -->
+  <g transform="translate(300, 500)">
+    <!-- Body -->
+    <path d="M10,70 Q30,60 50,70 L55,160 Q30,170 5,160 Z" stroke="#FF7A40" stroke-width="3" fill="white" />
+    <circle cx="30" cy="40" r="22" stroke="#FF7A40" stroke-width="3" fill="white" />
+    
+    <!-- Safety Helmet -->
+    <path d="M5,40 Q30,10 55,40" fill="#FF7A40" stroke="#FF7A40" stroke-width="2" />
+    <path d="M3,40 H57" stroke="#FF7A40" stroke-width="3" stroke-linecap="round" />
+    
+    <!-- Rolled Blueprints -->
+    <rect x="50" y="100" width="40" height="15" rx="2" transform="rotate(-20 70 107.5)" fill="white" stroke="#FF7A40" stroke-width="2" />
+    <line x1="50" y1="90" x2="60" y2="120" stroke="#FF7A40" stroke-width="2" transform="rotate(-20 55 105)" />
+    
+    <!-- Arm holding blueprints -->
+    <path d="M50,80 Q70,90 60,110" stroke="#FF7A40" stroke-width="3" stroke-linecap="round" />
+    <path d="M5,80 Q-10,110 0,120" stroke="#FF7A40" stroke-width="3" stroke-linecap="round" />
+    
+    <!-- Legs -->
+    <path d="M15,160 L10,220" stroke="#FF7A40" stroke-width="3" stroke-linecap="round" />
+    <path d="M45,160 L50,220" stroke="#FF7A40" stroke-width="3" stroke-linecap="round" />
+  </g>
+
+  <!-- Central Desk Setup -->
+  <rect x="750" y="700" width="400" height="10" rx="2" fill="#FF7A40" /> <!-- Desk Top -->
+  <rect x="780" y="710" width="20" height="100" fill="#FF7A40" opacity="0.2" /> <!-- Leg L -->
+  <rect x="1100" y="710" width="20" height="100" fill="#FF7A40" opacity="0.2" /> <!-- Leg R -->
+
+  <!-- Laptop on Desk -->
+  <g transform="translate(850, 660)">
+    <rect x="0" y="0" width="60" height="40" rx="3" fill="white" stroke="#FF7A40" stroke-width="2" /> <!-- Screen -->
+    <path d="M-10,40 H70 L65,45 H-5 Z" fill="#FF7A40" /> <!-- Base -->
+    <path d="M25,15 L35,25 L45,15" stroke="#FF7A40" stroke-width="2" fill="none" opacity="0.5" /> <!-- Logo/Graph -->
+  </g>
+
+  <!-- Stack of Papers -->
+  <g transform="translate(1050, 680)">
+    <rect x="0" y="0" width="30" height="5" fill="white" stroke="#FF7A40" stroke-width="1" />
+    <rect x="2" y="-5" width="30" height="5" fill="white" stroke="#FF7A40" stroke-width="1" />
+    <rect x="-2" y="-10" width="30" height="5" fill="white" stroke="#FF7A40" stroke-width="1" />
+  </g>
+
+  <!-- Staff Member 2 (Center - Working/Sitting) -->
+  <g transform="translate(950, 580)">
+    <circle cx="30" cy="30" r="20" stroke="#FF7A40" stroke-width="3" fill="white" />
+    <path d="M10,60 Q30,50 50,60 L55,120 L5,120 Z" stroke="#FF7A40" stroke-width="3" fill="white" />
+    <!-- Arms typing -->
+    <path d="M5,70 L-20,90 L0,100" stroke="#FF7A40" stroke-width="3" fill="none" />
+    <path d="M55,70 L80,90 L60,100" stroke="#FF7A40" stroke-width="3" fill="none" />
+    <!-- Chair Back -->
+    <path d="M-10,130 L-15,60 Q10,50 30,50 Q70,60 75,130" stroke="#FF7A40" stroke-width="2" fill="none" opacity="0.3" /> 
+  </g>
+
+  <!-- Staff Member 3 (Right - Executive with Briefcase) -->
+  <g transform="translate(1400, 450)">
+    <circle cx="25" cy="25" r="20" stroke="#FF7A40" stroke-width="3" fill="white" />
+    <!-- Body -->
+    <path d="M5,60 Q25,50 45,60 L50,140 Q25,150 0,140 Z" stroke="#FF7A40" stroke-width="3" fill="white" />
+    
+    <!-- Briefcase -->
+    <g transform="translate(55, 100)">
+      <rect x="0" y="0" width="40" height="30" rx="2" fill="white" stroke="#FF7A40" stroke-width="2" />
+      <path d="M12,0 V-5 Q20,-10 28,-5 V0" stroke="#FF7A40" stroke-width="2" fill="none" />
+    </g>
+    
+    <!-- Arm holding briefcase -->
+    <path d="M45,70 L65,100" stroke="#FF7A40" stroke-width="3" stroke-linecap="round" />
+    <!-- Other arm -->
+    <path d="M5,70 L-10,100 L-5,110" stroke="#FF7A40" stroke-width="3" stroke-linecap="round" />
+    
+    <!-- Legs walking -->
+    <path d="M10,140 L-5,190" stroke="#FF7A40" stroke-width="3" stroke-linecap="round" />
+    <path d="M40,140 L50,190" stroke="#FF7A40" stroke-width="3" stroke-linecap="round" />
+  </g>
+
+  <!-- Floating Blobs/Data Visualization Elements -->
+  <circle cx="1300" cy="300" r="10" fill="#FF7A40" opacity="0.6" />
+  <circle cx="250" cy="250" r="6" fill="#FF7A40" opacity="0.4" />
+  <rect x="600" y="200" width="20" height="20" rx="5" fill="#FF7A40" opacity="0.2" transform="rotate(45 610 210)" />
+  
+  <!-- Modern Chart Element -->
+  <path d="M1600,200 L1620,180 L1640,210 L1660,150" stroke="#FF7A40" stroke-width="2" fill="none" />
+
+</svg>
