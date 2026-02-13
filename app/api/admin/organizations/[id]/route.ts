@@ -12,7 +12,7 @@ const DEFAULT_SURVEY_ID = "00000000-0000-0000-0000-000000000000";
 
 export async function GET(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const { id: orgId } = await params;
@@ -64,7 +64,7 @@ export async function GET(
 
 export async function PATCH(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const { id: orgId } = await params;
@@ -115,7 +115,7 @@ export async function PATCH(
 
 export async function DELETE(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const { id: orgId } = await params;
