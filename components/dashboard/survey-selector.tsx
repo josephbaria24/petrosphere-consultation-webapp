@@ -32,9 +32,9 @@ export function SurveySelector({
     return (
         <div
             ref={containerRef}
-            className="inline-flex gap-1.5 md:gap-2 dark:bg-card bg-zinc-800 p-1 pl-2 rounded-3xl shadow-xl transition-all"
+            className="inline-flex gap-1.5 md:gap-2 dark:bg-card bg-zinc-800 p-0.5 md:p-1 pl-2 rounded-2xl shadow-xl transition-all"
         >
-            <div className="flex items-center text-[10px] md:text-sm text-white">
+            <div className="flex items-center text-[9px] md:text-[11px] text-white font-bold uppercase tracking-wider">
                 <h1 className="whitespace-nowrap">Select survey</h1>
             </div>
             <Select
@@ -44,12 +44,12 @@ export function SurveySelector({
                     setSelectedSurvey(surveyObj || null);
                 }}
             >
-                <SelectTrigger className="bg-card rounded-2xl border-0 h-8 md:h-10 px-3 md:px-4 text-xs md:text-sm">
+                <SelectTrigger className="bg-card rounded-xl border-0 h-7 md:h-8 px-2 md:px-3 text-[10px] md:text-xs font-bold">
                     <SelectValue placeholder="Select a Survey" />
                 </SelectTrigger>
                 <SelectContent>
                     {surveys.map((survey) => (
-                        <SelectItem key={survey.id} value={survey.id}>
+                        <SelectItem key={survey.id} value={survey.id} className="text-xs">
                             {survey.title} {survey.organizations?.name ? `(${survey.organizations.name})` : ""}
                         </SelectItem>
                     ))}

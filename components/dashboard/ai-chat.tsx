@@ -140,15 +140,24 @@ export default function SafetyAIChat({ stats, isDemo, onUpgradeClick }: SafetyAI
                 })
             });
 
-            if (!response.ok) throw new Error("Failed to get AI response");
+            if (!response.ok) {
+                const errorData = await response.json();
+                if (errorData.isConfigError) {
+                    throw new Error("AI Setup Required: Please ensure Cloudflare credentials are set in Vercel environment variables.");
+                }
+                throw new Error("Failed to get AI response");
+            }
 
             const data = await response.json();
             const aiText = data?.result?.response || "I'm sorry, I couldn't process that request.";
 
             setMessages(prev => [...prev, { role: "assistant", content: aiText }]);
-        } catch (err) {
+        } catch (err: any) {
             console.error("Chat Error:", err);
-            setMessages(prev => [...prev, { role: "assistant", content: "Sorry, I encountered an error. Please check your connection and try again." }]);
+            setMessages(prev => [...prev, {
+                role: "assistant",
+                content: `**Error**: ${err.message || "I encountered an unexpected issue."}\n\n*Please check your connection or system configuration and try again.*`
+            }]);
         } finally {
             setIsLoading(false);
         }
@@ -274,11 +283,11 @@ export default function SafetyAIChat({ stats, isDemo, onUpgradeClick }: SafetyAI
                     "h-14 w-14 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95 group border-2 border-primary/50 relative",
                     isOpen
                         ? "bg-primary text-muted-foreground rotate-180"
-                        : "bg-white text-primary hover:bg-white/90"
+                        : "bg-card text-primary hover:bg-white/90"
                 )}
             >
                 {isOpen ? (
-                    <ChevronDown className="w-6 h-6 " />
+                    <ChevronDown className="w-6 h-6 text-white" />
                 ) : (
                     <div className="relative">
                         <Sparkles className="w-6 h-6 text-primary group-hover:rotate-12 transition-transform" />

@@ -13,7 +13,9 @@
  */
 
 import { useState } from 'react';
-import { Award, BarChart3, Building2, GaugeCircle, Pencil, Check, X, Star, TrendingDown, TrendingUp, Users2, Sparkles, Lock } from "lucide-react";
+import { Award, BarChart3, Building2, GaugeCircle, Pencil, Check, X, Star, TrendingDown, TrendingUp, Users2, Sparkles, Lock, Loader2 } from "lucide-react";
+import { useApp } from "./app/AppProvider";
+import { toast } from "sonner";
 
 const toPercentage = (score: number) => {
   return (score / 5) * 100;
@@ -88,11 +90,46 @@ export const ProfessionalSurveySummaryCard = ({
   const [isEditing, setIsEditing] = useState(false);
   const [tempName, setTempName] = useState(orgName || "");
 
+  const { user } = useApp();
+  const [isSending, setIsSending] = useState(false);
+
   const handleSave = async () => {
     if (tempName.trim() && onUpdateOrgName) {
       await onUpdateOrgName(tempName);
     }
     setIsEditing(false);
+  };
+
+  const handleConsultationRequest = async () => {
+    setIsSending(true);
+    try {
+      const response = await fetch("/api/email/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: "training@petrosphere.com.ph",
+          subject: `Consultation Request - ${orgName || "Unknown Org"}`,
+          html: `
+            <h1>New Consultation Request</h1>
+            <p><strong>Organization:</strong> ${orgName || "N/A"}</p>
+            <p><strong>User:</strong> ${user?.email || "No email"}</p>
+            <p><strong>Survey Score:</strong> ${avgScore.toFixed(2)}</p>
+            <p>Please contact them to schedule a consultation.</p>
+          `,
+          text: `New Consultation Request from ${orgName}. User: ${user?.email}. Score: ${avgScore.toFixed(2)}`
+        })
+      });
+
+      if (response.ok) {
+        toast.success("Consultation request sent successfully! We will contact you shortly.");
+      } else {
+        toast.error("Failed to send request. Please try again.");
+      }
+    } catch (error) {
+      toast.error("An error occurred while sending the request.");
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const getLevelLabel = (score: number) => {
@@ -108,9 +145,19 @@ export const ProfessionalSurveySummaryCard = ({
   return (
     <Card className="w-full shadow-xl border-0 bg-card overflow-visible">
       <div className="pt-3 pl-5 bg-card flex justify-between items-center pr-5">
-        <div className="flex gap-2">
-          <BarChart3 className="w-5 h-5" />
-          <span className="font-semibold">Survey Summary</span>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="flex gap-2">
+            <BarChart3 className="w-5 h-5" />
+            <span className="font-semibold">Survey Summary</span>
+          </div>
+          <button
+            onClick={handleConsultationRequest}
+            disabled={isSending}
+            className="text-[10px] md:text-xs font-bold text-primary hover:underline flex items-center gap-1 bg-primary/5 px-2 py-0.5 rounded-full border border-primary/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+            {isSending ? "Sending Request..." : "Need help for your workplace? Apply for consultation now!"}
+          </button>
         </div>
       </div>
 

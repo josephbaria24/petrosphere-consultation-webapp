@@ -9,6 +9,7 @@ interface AppContextType extends BootstrapData {
     refresh: () => Promise<void>;
     hasCompletedTour: boolean;
     markTourAsCompleted: () => void;
+    resetTour: () => void;
     currentStep: number;
     setCurrentStep: (step: number) => void;
 }
@@ -24,6 +25,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // Initialize from Cookies (Safe on client)
         const stored = getClientCookie("petrosphere_tour_completed");
         setHasCompletedTour(stored === "true");
+        // console.log("[AppProvider] Tour State Initialized:", { stored, hasCompleted: stored === "true" });
 
         const storedStep = localStorage.getItem("petrosphere_tour_step");
         if (storedStep) setCurrentStepState(parseInt(storedStep, 10));
@@ -33,6 +35,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setClientCookie("petrosphere_tour_completed", "true", { expires: 1 });
         setHasCompletedTour(true);
         localStorage.removeItem("petrosphere_tour_step");
+    };
+
+    const resetTour = () => {
+        setClientCookie("petrosphere_tour_completed", "false", { expires: 1 });
+        setHasCompletedTour(false);
+        setCurrentStepState(0);
+        localStorage.setItem("petrosphere_tour_step", "0");
     };
 
     const setCurrentStep = (step: number) => {
@@ -68,6 +77,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             refresh,
             hasCompletedTour,
             markTourAsCompleted,
+            resetTour,
             currentStep,
             setCurrentStep
         }}>

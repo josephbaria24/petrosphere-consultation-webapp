@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
     Dialog,
     DialogContent,
@@ -8,7 +8,9 @@ import {
     DialogDescription,
 } from "./ui/dialog";
 import { Button } from "./ui/button";
-import { Lock, Target, CheckCircle2 } from "lucide-react";
+import { Lock, Target, CheckCircle2, Loader2 } from "lucide-react";
+import { useApp } from "./app/AppProvider";
+import { toast } from "sonner";
 
 interface UpgradeRequiredModalProps {
     open: boolean;
@@ -44,6 +46,40 @@ const PREMIUM_FEATURES = [
 ];
 
 export function UpgradeRequiredModal({ open, onOpenChange, title = "Upgrade Required" }: UpgradeRequiredModalProps) {
+    const { user } = useApp();
+    const [isSending, setIsSending] = useState(false);
+
+    const handleContactSales = async () => {
+        setIsSending(true);
+        try {
+            const response = await fetch("/api/email/send", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    to: "sales@petrosphere.com.ph",
+                    subject: "Upgrade Inquiry - Safety Vitals",
+                    html: `
+                        <h1>Upgrade Inquiry</h1>
+                        <p>User <strong>${user?.email}</strong> is interested in upgrading.</p>
+                        <p>Please contact them.</p>
+                    `,
+                    text: `Upgrade Inquiry from user ${user?.email}`
+                })
+            });
+
+            if (response.ok) {
+                toast.success("Inquiry sent! Our sales team will contact you.");
+                onOpenChange(false);
+            } else {
+                toast.error("Failed to send inquiry.");
+            }
+        } catch (error) {
+            toast.error("An error occurred.");
+        } finally {
+            setIsSending(false);
+        }
+    };
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md bg-card border-none p-0 overflow-hidden rounded-[1.5rem]">
@@ -82,9 +118,17 @@ export function UpgradeRequiredModal({ open, onOpenChange, title = "Upgrade Requ
                     <div className="pt-1">
                         <Button
                             className="w-full h-11 font-black bg-primary hover:bg-primary/90 text-white rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-95"
-                            onClick={() => window.open('mailto:hello@petrosphere.com?subject=Upgrade Inquiry')}
+                            onClick={handleContactSales}
+                            disabled={isSending}
                         >
-                            Contact Sales to Upgrade
+                            {isSending ? (
+                                <div className="flex items-center gap-2">
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Sending...
+                                </div>
+                            ) : (
+                                "Contact Sales to Upgrade"
+                            )}
                         </Button>
                         <p className="mt-3 text-[10px] text-muted-foreground font-medium">
                             Join organizations already using SafetyVitals.

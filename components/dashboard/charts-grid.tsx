@@ -8,7 +8,7 @@ import {
     CardContent,
 } from "../ui/card";
 import { Button } from "../ui/button";
-import { Maximize2 } from "lucide-react";
+import { Maximize2, Info } from "lucide-react";
 import {
     BarChart,
     Bar,
@@ -79,6 +79,22 @@ const radarConfig = {
     },
 } satisfies ChartConfig;
 
+// Helper to determine improvement level text
+const getImprovementLevel = (scorePercent: number) => {
+    if (scorePercent < 60) return "Priority Improvement Area";
+    if (scorePercent < 65) return "Top Improvement Priority";
+    if (scorePercent < 70) return "Most Needed Improvement";
+    if (scorePercent < 75) return "Key Opportunity Area";
+    if (scorePercent < 80) return "Area for Improvement";
+    return "Primary Focus Area";
+};
+
+// Helper to determine bar color
+const getBarColor = (scorePercent: number) => {
+    if (scorePercent < 70) return "#ef4444"; // Red for < 70%
+    if (scorePercent < 75) return "#f97316"; // Orange for < 75%
+    return "#2563eb"; // Blue (Tailwind blue-600) for >= 75%
+};
 
 export function OverviewCharts({
     avgScore,
@@ -99,7 +115,7 @@ export function OverviewCharts({
     };
 
     return (
-        <div ref={containerRef} className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+        <div ref={containerRef} id="tour-overview-charts" className="grid grid-cols-1 lg:grid-cols-2 gap-2">
             {/* Gauge Chart */}
             <Card className="w-full shadow-lg border-0 relative overflow-hidden">
                 {isLoadingStats && <LoadingOverlay />}
@@ -267,6 +283,17 @@ export function DetailedCharts({
     radarData,
     isLoadingStats,
 }: DetailedChartsProps) {
+
+    // Process bar data with colors
+    const coloredBarData = barData.map(d => ({
+        ...d,
+        fill: getBarColor(d.scorePercent)
+    }));
+
+    const improvementLabel = lowestDimensionPercent !== null
+        ? getImprovementLevel(lowestDimensionPercent)
+        : "Improvement Area";
+
     return (
         <div ref={containerRef} className="grid grid-cols-1 lg:grid-cols-1 gap-2">
             {/* Bar Chart */}
@@ -274,19 +301,26 @@ export function DetailedCharts({
                 {isLoadingStats && <LoadingOverlay />}
                 <CardHeader className="flex justify-between items-center">
                     <CardTitle>Bar Chart</CardTitle>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setOpenChart("bar")}
-                        disabled={isLoadingStats}
-                    >
-                        <Maximize2 className="w-4 h-4" />
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        {/* Legend for color meaning */}
+                        <div className="hidden md:flex items-center gap-3 text-[10px] text-muted-foreground mr-4">
+                            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[#ef4444]"></div>&lt;70% Critical</div>
+                            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[#f97316]"></div>&lt;75% Review</div>
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setOpenChart("bar")}
+                            disabled={isLoadingStats}
+                        >
+                            <Maximize2 className="w-4 h-4" />
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent className={isLoadingStats ? "filter blur-[4px] grayscale-[0.5] transition-all duration-500 opacity-50" : "transition-all duration-500"}>
                     <ChartContainer config={barConfig} className="h-[300px] w-full">
                         <BarChart
-                            data={barData}
+                            data={coloredBarData}
                             margin={{ top: 50, right: 10, left: 0, bottom: 0 }}
                         >
                             <XAxis
@@ -301,7 +335,7 @@ export function DetailedCharts({
 
                             <ChartTooltip content={<ChartTooltipContent />} />
                             <Bar dataKey="scorePercent" radius={[4, 4, 0, 0]}>
-                                {barData.map((entry, index) => (
+                                {coloredBarData.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={entry.fill} />
                                 ))}
                             </Bar>
@@ -314,11 +348,11 @@ export function DetailedCharts({
                                 ifOverflow="visible"
                                 label={{
                                     position: "insideTopRight",
-                                    value: `Lowest Dimension (${(
-                                        lowestDimensionPercent ?? 0
-                                    ).toFixed(1)}%)`,
+                                    value: `${improvementLabel} (${(lowestDimensionPercent ?? 0).toFixed(1)}%)`,
                                     fill: "red",
                                     fontSize: 12,
+                                    fontWeight: "bold",
+                                    dy: -10
                                 }}
                             />
                         </BarChart>
@@ -353,7 +387,7 @@ export function DetailedCharts({
             >
                 <ChartContainer config={barConfig} className="h-[300px] w-full">
                     <BarChart
-                        data={barData}
+                        data={coloredBarData}
                         margin={{ top: 50, right: 10, left: 0, bottom: 0 }}
                     >
                         <XAxis
@@ -367,7 +401,11 @@ export function DetailedCharts({
                         <YAxis domain={[0, 100]} tickFormatter={(val) => `${val}%`} />
 
                         <ChartTooltip content={<ChartTooltipContent />} />
-                        <Bar dataKey="scorePercent" fill="#4A90E2" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="scorePercent" radius={[4, 4, 0, 0]}>
+                            {coloredBarData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.fill} />
+                            ))}
+                        </Bar>
                         <ReferenceLine
                             y={lowestDimensionPercent ?? 0}
                             stroke="red"
@@ -376,11 +414,11 @@ export function DetailedCharts({
                             ifOverflow="visible"
                             label={{
                                 position: "insideTopRight",
-                                value: `Lowest Dimension (${(
-                                    lowestDimensionPercent ?? 0
-                                ).toFixed(1)}%)`,
+                                value: `${improvementLabel} (${(lowestDimensionPercent ?? 0).toFixed(1)}%)`,
                                 fill: "red",
                                 fontSize: 12,
+                                fontWeight: "bold",
+                                dy: -10
                             }}
                         />
                     </BarChart>

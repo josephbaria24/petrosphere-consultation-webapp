@@ -204,7 +204,7 @@ export default function Sidebar() {
 
           <div className="px-4 py-4 border-0 space-y-1">
             <NavItem href={`${basePath}/settings`} icon={Settings}>Settings</NavItem>
-            <NavItem href={`${basePath}/help`} icon={HelpCircle}>Help</NavItem>
+            {/* <NavItem href={`${basePath}/help`} icon={HelpCircle}>Help</NavItem> */}
           </div>
         </div>
       </nav>

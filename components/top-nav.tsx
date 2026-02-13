@@ -2,13 +2,20 @@
 "use client"
 
 import Image from "next/image"
-import { Bell, ChevronRight } from "lucide-react"
+import { Bell, ChevronRight, HelpCircle } from "lucide-react"
 import Link from "next/link"
 import { ThemeToggle } from "./theme-toggle"
 import ProfileDropdown from "./kokonutui/profile-dropdown"
 import { useRouter } from "next/navigation"
 import { supabase } from "../lib/supabaseClient"
 import { useApp } from "./app/AppProvider"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
+} from "./ui/tooltip"
+import { toast } from "sonner"
 
 interface BreadcrumbItem {
   label: string
@@ -17,7 +24,7 @@ interface BreadcrumbItem {
 
 export default function TopNav({ fullName, email }: { fullName: string; email: string }) {
   const router = useRouter()
-  const { subscription } = useApp()
+  const { subscription, resetTour } = useApp()
   const breadcrumbs: BreadcrumbItem[] = [
     { label: "Safety Vitals", href: "#" },
     { label: "dashboard", href: "#" },
@@ -66,12 +73,40 @@ export default function TopNav({ fullName, email }: { fullName: string; email: s
       </div>
 
       <div className="flex items-center gap-2 sm:gap-2 ml-auto sm:ml-0 px-1 py-1 rounded-2xl">
-        <button
-          type="button"
-          className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-[#1F1F23] rounded-full transition-colors"
-        >
-          <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600 dark:text-gray-300" />
-        </button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-[#1F1F23] rounded-full transition-colors"
+                onClick={() => {
+                  resetTour();
+                  toast.success("Tutorial restarted! Starting from Step 1.");
+                  router.refresh();
+                }}
+              >
+                <HelpCircle className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600 dark:text-gray-300" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="font-bold uppercase tracking-widest text-[10px]">
+              Restart Tutorial
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-[#1F1F23] rounded-full transition-colors"
+              >
+                <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600 dark:text-gray-300" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="font-bold uppercase tracking-widest text-[10px]">
+              Notifications
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
         <ThemeToggle />
 

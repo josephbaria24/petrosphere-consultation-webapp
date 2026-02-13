@@ -23,6 +23,12 @@ import { ActionDetailDialog } from "./dashboard/action-detail-dialog";
 import { OrganizationSelector } from "./dashboard/organization-selector";
 import SafetyAIChat from "./dashboard/ai-chat";
 import { UpgradeRequiredModal } from "./upgrade-required-modal";
+import { Button } from "./ui/button";
+import { ExportDialog } from "./export-dialog";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+import { sanitizeDomForPdf } from "../lib/export-utils";
+import { Lock } from "lucide-react";
 
 export default function Dashboard() {
   const [surveys, setSurveys] = useState<any[]>([]);
@@ -50,7 +56,7 @@ export default function Dashboard() {
   const [organizations, setOrganizations] = useState<{ id: string, name: string }[]>([]);
   const [selectedOrgId, setSelectedOrgId] = useState<string>("all");
 
-  const { user, membership, subscription, org } = useApp();
+  const { user, membership, subscription, org, resetTour } = useApp();
   const { theme } = useTheme();
   const [isAdminCookie, setIsAdminCookie] = useState(false);
   const [adminChecked, setAdminChecked] = useState(false);
@@ -82,6 +88,7 @@ export default function Dashboard() {
   const selectorRef = useRef<HTMLDivElement | null>(null);
   const chartsRef = useRef<HTMLDivElement | null>(null);
   const summaryRef = useRef<HTMLDivElement | null>(null);
+  const dashboardRef = useRef<HTMLDivElement>(null);
   const [lowestDimensionPercent, setLowestDimensionPercent] = useState<number | null>(null);
 
   const dashboardCache = useRef<Record<string, {
@@ -99,6 +106,20 @@ export default function Dashboard() {
     { id: 'charts', label: 'Charts', icon: BarChart3, ref: chartsRef },
     { id: 'summary', label: 'Summary', icon: PieChart, ref: summaryRef },
   ], []);
+
+  const filteredSurveys = useMemo(() => {
+    const DEFAULT_SURVEY_ID = '67813802-0821-4013-8b96-ddc5ba288c60';
+    if (selectedOrgId === "all") return surveys;
+    return surveys.filter(s => s.org_id === selectedOrgId || s.id === DEFAULT_SURVEY_ID);
+  }, [surveys, selectedOrgId]);
+
+  useEffect(() => {
+    if (!selectedSurvey || !filteredSurveys.length) return;
+    const isStillAvailable = filteredSurveys.some(s => s.id === selectedSurvey.id);
+    if (!isStillAvailable) {
+      setSelectedSurvey(filteredSurveys[0]);
+    }
+  }, [filteredSurveys, selectedSurvey]);
 
   const fetchActions = useCallback(async (surveyId: string, skipCache = false) => {
     if (!surveyId) return;
@@ -404,6 +425,54 @@ export default function Dashboard() {
     setSelectedOrgId(orgId);
   };
 
+  const handleExportDashboard = async () => {
+    if (!dashboardRef.current) return;
+
+    try {
+      const canvas = await html2canvas(dashboardRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+        onclone: (clonedDoc) => {
+          sanitizeDomForPdf(clonedDoc);
+        },
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const totalPdfHeight = (imgHeight * pdfWidth) / imgWidth;
+
+      if (totalPdfHeight < pageHeight) {
+        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, totalPdfHeight);
+      } else {
+        let heightLeft = totalPdfHeight;
+        let position = 0;
+
+        pdf.addImage(imgData, "PNG", 0, position, pdfWidth, totalPdfHeight);
+        heightLeft -= pageHeight;
+
+        while (heightLeft >= 0) {
+          position = heightLeft - totalPdfHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, "PNG", 0, position, pdfWidth, totalPdfHeight);
+          heightLeft -= pageHeight;
+        }
+      }
+
+      pdf.save(`Dashboard-Report-${selectedSurvey.title}.pdf`);
+    } catch (error) {
+      console.error("PDF Export Error:", error);
+      toast.error("Failed to generate PDF");
+      throw error;
+    }
+  };
+
   if (!selectedSurvey) return <div className="p-8">Loading Dashboard...</div>;
 
   return (
@@ -417,11 +486,16 @@ export default function Dashboard() {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             {isPlatformAdmin && <OrganizationSelector organizations={organizations} selectedOrgId={selectedOrgId} onOrgChange={handleOrgChange} />}
-            <SurveySelector surveys={surveys} selectedSurvey={selectedSurvey} setSelectedSurvey={setSelectedSurvey} containerRef={selectorRef} />
+            <SurveySelector surveys={filteredSurveys} selectedSurvey={selectedSurvey} setSelectedSurvey={setSelectedSurvey} containerRef={selectorRef} />
+            <ExportDialog
+              type="dashboard"
+              title={selectedSurvey.title}
+              onExport={handleExportDashboard}
+            />
           </div>
         </div>
 
-        <div className="grid grid-cols-1" ref={selectorRef}>
+        <div className="grid grid-cols-1" ref={selectorRef} id="tour-summary-card">
           <ProfessionalSurveySummaryCard
             selectedSurvey={selectedSurvey}
             respondentCount={respondentCount}
@@ -465,29 +539,51 @@ export default function Dashboard() {
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start" ref={summaryRef}>
-          <div className="h-full">
-            <ResponseSummary
-              respondentCount={respondentCount}
-              avgScore={avgScore}
-              minAcceptableScore={minAcceptableScore}
-              belowMinimumDimensions={belowMinimumDimensions}
-              atRiskDimensions={atRiskDimensions}
-              strongDimensions={strongDimensions}
-              actions={actions}
-              onAddAction={handleCreateActionForDimension}
-              onDeleteAction={deleteAction}
-              onToggleAction={toggleActionCompletion}
-            />
-          </div>
-          <div className="h-full">
-            <ActionPlan
-              actions={actions}
-              onDeleteAction={deleteAction}
-              onUpdateAction={handleUpdateAction}
-              onViewDetails={(a) => { setSelectedActionForDetail(a); setIsDetailDialogOpen(true); }}
-              containerRef={summaryRef}
-            />
+        <div className="relative group/gated">
+          {isDemo && (
+            <div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-[2px] flex flex-col items-center justify-center p-6 text-center border border-primary/20 rounded-xl">
+              <div className="bg-primary/10 p-4 rounded-full mb-4 animate-in zoom-in duration-300">
+                <Lock className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 mb-2">
+                Premium Feature
+              </h3>
+              <p className="text-sm text-muted-foreground max-w-md mb-6 font-medium">
+                Detailed response summaries and actionable improvement plans are available in the Professional plan.
+              </p>
+              <Button
+                onClick={() => setShowUpgradeModal(true)}
+                className="font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all"
+              >
+                Unlock with Pro
+              </Button>
+            </div>
+          )}
+
+          <div className={`grid grid-cols-1 lg:grid-cols-2 gap-8 items-start ${isDemo ? 'blur-sm pointer-events-none select-none opacity-50' : ''}`} ref={summaryRef}>
+            <div className="h-full">
+              <ResponseSummary
+                respondentCount={respondentCount}
+                avgScore={avgScore}
+                minAcceptableScore={minAcceptableScore}
+                belowMinimumDimensions={belowMinimumDimensions}
+                atRiskDimensions={atRiskDimensions}
+                strongDimensions={strongDimensions}
+                actions={actions}
+                onAddAction={handleCreateActionForDimension}
+                onDeleteAction={deleteAction}
+                onToggleAction={toggleActionCompletion}
+              />
+            </div>
+            <div className="h-full">
+              <ActionPlan
+                actions={actions}
+                onDeleteAction={deleteAction}
+                onUpdateAction={handleUpdateAction}
+                onViewDetails={(a) => { setSelectedActionForDetail(a); setIsDetailDialogOpen(true); }}
+                containerRef={summaryRef}
+              />
+            </div>
           </div>
         </div>
 

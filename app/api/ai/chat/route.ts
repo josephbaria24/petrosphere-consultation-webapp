@@ -14,9 +14,19 @@ export async function POST(req: Request) {
         const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
         const token = process.env.CLOUDFLARE_API_TOKEN;
 
+        console.log(`[API AI] Environment Check:`, {
+            hasAccountId: !!accountId,
+            hasToken: !!token,
+            accountIdPrefix: accountId ? accountId.substring(0, 4) + '...' : 'none'
+        });
+
         if (!accountId || !token) {
             return NextResponse.json(
-                { error: "Missing CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN" },
+                {
+                    error: "Missing Cloudflare Credentials",
+                    details: "CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN is not set in environment variables.",
+                    isConfigError: true
+                },
                 { status: 500 }
             );
         }
