@@ -49,7 +49,7 @@ export default function DemoLoginPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#f9f7f2] text-zinc-900 font-sans relative overflow-hidden flex flex-col">
+        <div className="min-h-screen text-zinc-900 font-sans relative overflow-hidden flex flex-col">
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden flex items-center justify-center p-0">
                 <Image
                     src="/images/workplace-staff-detailed.svg"
@@ -131,7 +131,7 @@ export default function DemoLoginPage() {
                                         <Mail className="w-8 h-8 text-green-600" />
                                     </div>
                                     <div className="space-y-2">
-                                        <h3 className="text-xl font-bold text-green-900">Sweet Success!</h3>
+                                        <h3 className="text-xl font-bold text-green-900">Success!</h3>
                                         <p className="text-green-700 font-medium leading-relaxed">
                                             Please click the magic link we just sent to your email to instantly sign in.
                                         </p>

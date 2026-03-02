@@ -10,6 +10,11 @@ export interface PlanLimits {
     allow_collect_responses: boolean;
     allow_exports: boolean;
     allow_action_plans: boolean;
+    allow_chat_ai: boolean;
+    allow_ai_insights: boolean;
+    allow_individual_responses: boolean;
+    allow_dimensions: boolean;
+    allow_respondents: boolean;
 }
 
 export interface BootstrapData {

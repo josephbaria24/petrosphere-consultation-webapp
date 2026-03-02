@@ -41,8 +41,12 @@ export default function Sidebar() {
   const pathname = usePathname()
   const isAdmin = !!getClientCookie("admin_id")
   const basePath = isAdmin ? "/admin" : "/user"
-  const { subscription } = useApp()
+  const { subscription, limits, membership } = useApp()
   const isDemo = subscription?.plan === "demo" && !isAdmin
+  const isExportsLocked = !isAdmin && !limits?.allow_exports;
+  const isDimensionsLocked = !isAdmin && !limits?.allow_dimensions;
+  const isRespondentsLocked = !isAdmin && !limits?.allow_respondents;
+  const isIndividualResponsesLocked = !isAdmin && !limits?.allow_individual_responses;
 
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
   const [lockedFeatureName, setLockedFeatureName] = useState("")
@@ -165,7 +169,7 @@ export default function Sidebar() {
                 <NavItem
                   href={`${basePath}/survey-responses`}
                   icon={FileText}
-                  isLocked={isDemo}
+                  isLocked={isIndividualResponsesLocked}
                 >
                   Survey Responses
                 </NavItem>
@@ -178,14 +182,14 @@ export default function Sidebar() {
                 <NavItem
                   href={`${basePath}/respondents`}
                   icon={Users2}
-                  isLocked={isDemo}
+                  isLocked={isRespondentsLocked}
                 >
                   Respondents
                 </NavItem>
                 <NavItem
                   href={`${basePath}/dimensions`}
                   icon={SquareRoundCorner}
-                  isLocked={isDemo}
+                  isLocked={isDimensionsLocked}
                 >
                   Dimensions
                 </NavItem>

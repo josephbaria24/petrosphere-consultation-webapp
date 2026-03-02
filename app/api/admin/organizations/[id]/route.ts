@@ -85,25 +85,33 @@ export async function PATCH(
 
         // 1. Update Organization Name
         if (name) {
-            await supabaseAdmin.from("organizations").update({ name }).eq("id", orgId);
+            const { error: nameError } = await supabaseAdmin.from("organizations").update({ name }).eq("id", orgId);
+            if (nameError) console.error("Error updating org name:", nameError);
         }
 
         // 2. Update Subscription Plan
         if (plan) {
-            await supabaseAdmin.from("subscriptions").upsert({
+            const { error: subError } = await supabaseAdmin.from("subscriptions").upsert({
                 org_id: orgId,
                 plan,
                 updated_at: new Date().toISOString()
             }, { onConflict: 'org_id' });
+            if (subError) console.error("Error updating subscription:", subError);
         }
 
         // 3. Update/Upsert Overrides
         if (overrides) {
-            await supabaseAdmin.from("org_limit_overrides").upsert({
+            console.log(`[Admin] Updating overrides for ${orgId}:`, overrides);
+            const { error: overrideError } = await supabaseAdmin.from("org_limit_overrides").upsert({
                 org_id: orgId,
                 ...overrides,
                 updated_at: new Date().toISOString()
             }, { onConflict: 'org_id' });
+
+            if (overrideError) {
+                console.error("Error updating overrides:", overrideError);
+                throw overrideError;
+            }
         }
 
         return NextResponse.json({ success: true });

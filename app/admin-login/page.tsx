@@ -140,7 +140,7 @@ export default function AdminLoginPage() {
 
   return (
     <>
-      <div className="flex min-h-screen items-center justify-center bg-orange-50">
+      <div className="flex min-h-screen items-center justify-center">
         <div className="flex w-full max-w-5xl rounded-3xl overflow-hidden shadow-2xl bg-white/70 backdrop-blur-lg">
           {/* Left side - form */}
           <div className="w-full md:w-1/2 p-10 flex flex-col justify-center">

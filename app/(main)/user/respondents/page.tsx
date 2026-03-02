@@ -26,9 +26,9 @@ type Respondent = {
 export default function RespondentsPage() {
   const [respondents, setRespondents] = useState<Respondent[]>([])
   const [loading, setLoading] = useState(true)
-  const { org, subscription } = useApp()
+  const { org, subscription, limits } = useApp()
   const isAdmin = !!Cookies.get("admin_id")
-  const isRestricted = subscription?.plan === "demo" && !isAdmin
+  const isRestricted = !isAdmin && !limits?.allow_respondents;
 
 
 

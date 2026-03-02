@@ -81,10 +81,11 @@ const getBadgeColor = (answer: string) => {
   return 'bg-secondary text-secondary-foreground'
 }
 export default function SurveyResponsesPage() {
-  const { user, org, membership, subscription } = useApp()
+  const { user, org, membership, subscription, limits } = useApp()
   const isAdminCookie = !!Cookies.get("admin_id");
   const isPlatformAdmin = isAdminCookie;
   const isRestrictedToAuthored = !isPlatformAdmin && (subscription?.plan === "demo" || membership?.role !== "admin");
+  const isIndividualResponsesRestricted = !isPlatformAdmin && !limits?.allow_individual_responses;
 
   const [surveys, setSurveys] = useState<Survey[]>([])
   const [selectedSurveyId, setSelectedSurveyId] = useState<string>('')
@@ -260,7 +261,7 @@ export default function SurveyResponsesPage() {
 
   return (
     <GatedFeature
-      isRestricted={isRestrictedToAuthored}
+      isRestricted={isIndividualResponsesRestricted}
       featureName="Individual Responses"
     >
       <div className="max-w-6xl mx-auto p-6 space-y-6">

@@ -56,7 +56,7 @@ export default function Dashboard() {
   const [organizations, setOrganizations] = useState<{ id: string, name: string }[]>([]);
   const [selectedOrgId, setSelectedOrgId] = useState<string>("all");
 
-  const { user, membership, subscription, org, resetTour } = useApp();
+  const { user, membership, subscription, org, limits, resetTour } = useApp();
   const { theme } = useTheme();
   const [isAdminCookie, setIsAdminCookie] = useState(false);
   const [adminChecked, setAdminChecked] = useState(false);
@@ -69,7 +69,7 @@ export default function Dashboard() {
 
   const isPlatformAdmin = isAdminCookie;
   const isRestrictedToAuthored = !isPlatformAdmin && (subscription?.plan === "demo" || membership?.role !== "admin");
-  const isRestricted = isRestrictedToAuthored;
+  const isActionsRestricted = !isPlatformAdmin && !limits?.allow_action_plans;
 
   const [actions, setActions] = useState<Action[]>([]);
   const [isActionDialogOpen, setIsActionDialogOpen] = useState(false);
@@ -84,6 +84,8 @@ export default function Dashboard() {
   });
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const isDemo = subscription?.plan === "demo";
+  const isChatRestricted = !isPlatformAdmin && !limits?.allow_chat_ai;
+  const isAIInsightsRestricted = !isPlatformAdmin && !limits?.allow_ai_insights;
 
   const selectorRef = useRef<HTMLDivElement | null>(null);
   const chartsRef = useRef<HTMLDivElement | null>(null);
@@ -477,7 +479,6 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col min-h-screen bg-transparent">
-      <DashboardNavigation navigationItems={itemsWithRefs} activeSection={activeSection} scrollToSection={scrollToSection} />
       <div className="flex-1 space-y-8 p-4 md:p-8 pt-6 max-w-[1600px] mx-auto w-full">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -506,7 +507,7 @@ export default function Dashboard() {
             isPlatformAdmin={isPlatformAdmin}
             aiInsights={aiInsights}
             isGeneratingAI={isGeneratingAI}
-            isDemo={isDemo}
+            isDemo={isAIInsightsRestricted}
             onUpgradeClick={() => setShowUpgradeModal(true)}
           />
         </div>
@@ -522,7 +523,7 @@ export default function Dashboard() {
           isLoadingComparison={isLoadingComparison}
           aiInsights={aiInsights}
           isGeneratingAI={isGeneratingAI}
-          isDemo={isDemo}
+          isDemo={isAIInsightsRestricted}
           onUpgradeClick={() => setShowUpgradeModal(true)}
         />
 
@@ -540,7 +541,7 @@ export default function Dashboard() {
         </div>
 
         <div className="relative group/gated">
-          {isDemo && (
+          {isActionsRestricted && (
             <div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-[2px] flex flex-col items-center justify-center p-6 text-center border border-primary/20 rounded-xl">
               <div className="bg-primary/10 p-4 rounded-full mb-4 animate-in zoom-in duration-300">
                 <Lock className="w-8 h-8 text-primary" />
@@ -560,7 +561,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          <div className={`grid grid-cols-1 lg:grid-cols-2 gap-8 items-start ${isDemo ? 'blur-sm pointer-events-none select-none opacity-50' : ''}`} ref={summaryRef}>
+          <div className={`grid grid-cols-1 lg:grid-cols-2 gap-8 items-start ${isActionsRestricted ? 'blur-sm pointer-events-none select-none opacity-50' : ''}`} ref={summaryRef}>
             <div className="h-full">
               <ResponseSummary
                 respondentCount={respondentCount}
@@ -608,7 +609,7 @@ export default function Dashboard() {
 
         <SafetyAIChat
           stats={{ avgScore, respondentCount, strongDimensions, belowMinDimensions: belowMinimumDimensions, atRiskDimensions }}
-          isDemo={isDemo} onUpgradeClick={() => setShowUpgradeModal(true)}
+          isDemo={isChatRestricted} onUpgradeClick={() => setShowUpgradeModal(true)}
         />
         <UpgradeRequiredModal open={showUpgradeModal} onOpenChange={setShowUpgradeModal} title="AI Insights Required Upgrade" />
       </div>

@@ -42,12 +42,19 @@ export async function GET() {
 
         if (subsError) throw subsError;
 
-        // Fetch membership counts
+        // Fetch memberships
         const { data: mems, error: memsError } = await supabaseAdmin
             .from("memberships")
-            .select("org_id");
+            .select("org_id, role, created_at, user_id");
 
         if (memsError) throw memsError;
+
+        // Fetch profiles to get emails
+        const { data: profiles, error: profilesError } = await supabaseAdmin
+            .from("profiles")
+            .select("user_id, email");
+
+        if (profilesError) throw profilesError;
 
         // Fetch survey counts
         const { data: surveys, error: surveysError } = await supabaseAdmin
@@ -66,7 +73,23 @@ export async function GET() {
         // Aggregate data
         const stats = orgs.map(org => {
             const sub = subs.find(s => s.org_id === org.id);
-            const membershipsCount = mems.filter(m => m.org_id === org.id).length;
+            const orgMembers = mems.filter(m => m.org_id === org.id);
+
+            // Find the primary email (prefer admin/demo role, joined earliest)
+            const primaryMember = [...orgMembers]
+                .sort((a, b) => {
+                    const rolePriority: Record<string, number> = { admin: 0, demo: 1, member: 2 };
+                    if (rolePriority[a.role] !== rolePriority[b.role]) {
+                        return (rolePriority[a.role] ?? 99) - (rolePriority[b.role] ?? 99);
+                    }
+                    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+                })[0];
+
+            let email = "N/A";
+            if (primaryMember) {
+                const profile = profiles.find(p => p.user_id === primaryMember.user_id);
+                email = profile?.email || "N/A";
+            }
             const surveysCount = surveys.filter(s => s.org_id === org.id).length;
 
             // Count unique respondents for this org
@@ -78,9 +101,10 @@ export async function GET() {
 
             return {
                 ...org,
+                email,
                 plan: sub?.plan || "none",
                 sub_status: sub?.status || "inactive",
-                memberships_count: membershipsCount,
+                memberships_count: orgMembers.length,
                 surveys_count: surveysCount,
                 respondents_count: uniqueRespondents
             };
@@ -89,6 +113,9 @@ export async function GET() {
         return NextResponse.json(stats);
     } catch (error: any) {
         console.error("Error fetching organizations stats:", error);
-        return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+        return NextResponse.json({
+            error: error.message || "Internal server error",
+            details: error.details || error.hint || null
+        }, { status: 500 });
     }
 }

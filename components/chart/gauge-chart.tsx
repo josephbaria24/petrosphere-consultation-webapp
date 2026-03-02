@@ -71,6 +71,7 @@ const getAISuggestions = (score: number) => {
 };
 
 import { Sparkles, Lock } from "lucide-react";
+import { useState } from "react";
 
 export default function GaugeChart({
   score,
@@ -80,51 +81,68 @@ export default function GaugeChart({
   isDemo,
   onUpgradeClick
 }: GaugeChartProps) {
+  const [hoveredTooltip, setHoveredTooltip] = useState<string | null>(null);
+
   const levelInfo = getLevelLabel(score);
   const aiSuggestions = getAISuggestions(score);
-
   const Content = (
     <div className="flex flex-col items-center space-y-4">
-      <GaugeComponent
-        value={toPercentage(score)}
-        minValue={20}
-        maxValue={100}
-        type="radial"
-        labels={{
-          tickLabels: {
-            type: "inner",
-            ticks: [
-              { value: 20, valueConfig: { formatTextValue: () => "1.0" } },
-              { value: 40, valueConfig: { formatTextValue: () => "2.0" } },
-              { value: 60, valueConfig: { formatTextValue: () => "3.0" } },
-              { value: 80, valueConfig: { formatTextValue: () => "4.0" } },
-              { value: 100, valueConfig: { formatTextValue: () => "5.0" } },
+      <div className="relative w-full flex justify-center">
+        <GaugeComponent
+          value={toPercentage(score)}
+          minValue={20}
+          maxValue={100}
+          type="radial"
+          marginInPercent={{ top: 0.12, bottom: 0.05, left: 0.16, right: 0.16 }}
+          style={{ width: "100%", overflow: "visible" }}
+          labels={{
+            tickLabels: {
+              type: "outer",
+              ticks: [
+                { value: 20, valueConfig: { formatTextValue: () => "1.0" } },
+                { value: 28, valueConfig: { formatTextValue: () => "Level 1", style: { fontSize: "11px", fontWeight: "bold" } } },
+                { value: 40, valueConfig: { formatTextValue: () => "2.0" } },
+                { value: 44, valueConfig: { formatTextValue: () => "Level 2", style: { fontSize: "11px", fontWeight: "bold" } } },
+                { value: 60, valueConfig: { formatTextValue: () => "Level 3", style: { fontSize: "11px", fontWeight: "bold" } } },
+                { value: 76, valueConfig: { formatTextValue: () => "Level 4", style: { fontSize: "11px", fontWeight: "bold" } } },
+                { value: 80, valueConfig: { formatTextValue: () => "4.0" } },
+                { value: 92, valueConfig: { formatTextValue: () => "Level 5", style: { fontSize: "11px", fontWeight: "bold" } } },
+                { value: 100, valueConfig: { formatTextValue: () => "5.0" } },
+              ],
+              defaultTickValueConfig: { style: { fontSize: "9px" } }
+            },
+            valueLabel: {
+              formatTextValue: () => `${toPercentage(score).toFixed(0)}%`,
+              style: { fontSize: "24px", fontWeight: "bold" },
+            },
+          }}
+          arc={{
+            colorArray: ["#991b1b", "#dc2626", "#f97316", "#fbbf24", "#22c55e"],
+            subArcs: [
+              { limit: 36, onMouseMove: () => setHoveredTooltip("Level 1 – Dependent (Rules-driven; safety not priority)"), onMouseLeave: () => setHoveredTooltip(null) },
+              { limit: 52, onMouseMove: () => setHoveredTooltip("Level 2 – Independent (Needs Intervention)"), onMouseLeave: () => setHoveredTooltip(null) },
+              { limit: 68, onMouseMove: () => setHoveredTooltip("Level 3 – Interdependent (At risk: over-reliance on systems)"), onMouseLeave: () => setHoveredTooltip(null) },
+              { limit: 84, onMouseMove: () => setHoveredTooltip("Level 4 – Integrated (Cooperative Culture)"), onMouseLeave: () => setHoveredTooltip(null) },
+              { limit: 100, onMouseMove: () => setHoveredTooltip("Level 5 – Excellence (Resilient & Learning Culture)"), onMouseLeave: () => setHoveredTooltip(null) },
             ],
-          },
-          valueLabel: {
-            formatTextValue: () => `${toPercentage(score).toFixed(0)}%`,
-            style: { fontSize: "24px", fontWeight: "bold" },
-          },
-        }}
-        arc={{
-          colorArray: ["#7f1d1d", "#b91c1c", "#f97316", "#facc15", "#22c55e"],
-          subArcs: [
-            { limit: 36 },
-            { limit: 52 },
-            { limit: 68 },
-            { limit: 84 },
-            { limit: 100 },
-          ],
-          padding: 0.01,
-          width: 0.3,
-        }}
-        pointer={{
-          type: "needle",
-          elastic: true,
-          animationDelay: 0,
-          length: 0.7,
-        }}
-      />
+            padding: 0.01,
+            width: 0.3,
+          }}
+          pointer={{
+            type: "needle",
+            elastic: true,
+            animationDelay: 0,
+            length: 0.7,
+          }}
+        />
+        {/* Custom Animated Tooltip */}
+        <div
+          className={`absolute top-0 left-1/2 -translate-x-1/2 max-w-[250px] bg-zinc-900 dark:bg-zinc-100 text-white dark:text-black text-xs font-medium px-3 py-2 rounded-md shadow-xl border border-zinc-800 dark:border-zinc-200 pointer-events-none transition-all duration-300 z-50 text-center
+            ${hoveredTooltip ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-4 scale-95'}`}
+        >
+          {hoveredTooltip}
+        </div>
+      </div>
 
       <div className="w-full mt-4 p-4 border border-gray dark:border-zinc-800 rounded-lg bg-card text-start">
         <div className="text-gray-600 dark:text-zinc-400 text-sm font-medium mb-1">

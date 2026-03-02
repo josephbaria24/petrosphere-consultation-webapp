@@ -151,6 +151,10 @@ export async function GET() {
             .eq("org_id", org.id)
             .maybeSingle();
 
+        console.log(`[Bootstrap] Org: ${org.id} (${org.name}), Plan: ${activePlan}`);
+        console.log(`[Bootstrap] Base Limits:`, planLimits);
+        console.log(`[Bootstrap] Overrides:`, overrides);
+
         const effectiveLimits: PlanLimits = {
             max_surveys: overrides?.max_surveys ?? planLimits?.max_surveys ?? 10,
             max_questions_per_survey: overrides?.max_questions_per_survey ?? planLimits?.max_questions_per_survey ?? 50,
@@ -159,7 +163,13 @@ export async function GET() {
             allow_collect_responses: overrides?.allow_collect_responses ?? planLimits?.allow_collect_responses ?? true,
             allow_exports: overrides?.allow_exports ?? planLimits?.allow_exports ?? false,
             allow_action_plans: overrides?.allow_action_plans ?? planLimits?.allow_action_plans ?? false,
+            allow_chat_ai: overrides?.allow_chat_ai ?? planLimits?.allow_chat_ai ?? false,
+            allow_ai_insights: overrides?.allow_ai_insights ?? planLimits?.allow_ai_insights ?? false,
+            allow_individual_responses: overrides?.allow_individual_responses ?? planLimits?.allow_individual_responses ?? false,
+            allow_dimensions: overrides?.allow_dimensions ?? planLimits?.allow_dimensions ?? false,
+            allow_respondents: overrides?.allow_respondents ?? planLimits?.allow_respondents ?? false,
         };
+        console.log(`[Bootstrap] Effective Limits:`, effectiveLimits);
 
         const bootstrapData: BootstrapData = {
             user: {

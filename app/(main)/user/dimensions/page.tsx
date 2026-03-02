@@ -46,9 +46,9 @@ type Dimension = {
 }
 
 export default function ManageDimensionsPage() {
-  const { subscription } = useApp()
+  const { subscription, limits } = useApp()
   const isAdmin = !!Cookies.get("admin_id")
-  const isRestricted = subscription?.plan === "demo" && !isAdmin
+  const isRestricted = !isAdmin && !limits?.allow_dimensions;
 
   const [dimensions, setDimensions] = React.useState<Dimension[]>([])
   const [newDimension, setNewDimension] = React.useState<Dimension>({

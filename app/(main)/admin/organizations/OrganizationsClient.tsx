@@ -67,6 +67,7 @@ const formatDate = (dateString: string) => {
 interface OrgStats {
     id: string;
     name: string;
+    email: string;
     created_at: string;
     plan: string;
     sub_status: string;
@@ -94,7 +95,12 @@ export default function OrganizationsClient() {
             allow_create_survey: true,
             allow_collect_responses: true,
             allow_exports: false,
-            allow_action_plans: false
+            allow_action_plans: false,
+            allow_chat_ai: false,
+            allow_ai_insights: false,
+            allow_individual_responses: false,
+            allow_dimensions: false,
+            allow_respondents: false
         }
     });
 
@@ -190,7 +196,12 @@ export default function OrganizationsClient() {
                     allow_create_survey: data.overrides?.allow_create_survey ?? true,
                     allow_collect_responses: data.overrides?.allow_collect_responses ?? true,
                     allow_exports: data.overrides?.allow_exports ?? false,
-                    allow_action_plans: data.overrides?.allow_action_plans ?? false
+                    allow_action_plans: data.overrides?.allow_action_plans ?? false,
+                    allow_chat_ai: data.overrides?.allow_chat_ai ?? false,
+                    allow_ai_insights: data.overrides?.allow_ai_insights ?? false,
+                    allow_individual_responses: data.overrides?.allow_individual_responses ?? false,
+                    allow_dimensions: data.overrides?.allow_dimensions ?? false,
+                    allow_respondents: data.overrides?.allow_respondents ?? false
                 }
             });
         } catch (err) {
@@ -346,6 +357,7 @@ export default function OrganizationsClient() {
                                             Organization {sortConfig?.key === 'name' && <ArrowUpDown className="w-3 h-3" />}
                                         </div>
                                     </th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-muted-foreground">Admin Email</th>
                                     <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-muted-foreground">Status & Plan</th>
                                     <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-muted-foreground text-center">Stats</th>
                                     <th
@@ -373,6 +385,9 @@ export default function OrganizationsClient() {
                                                         <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-tighter opacity-50">{org.id.slice(0, 8)}...</span>
                                                     </div>
                                                 </div>
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                <span className="text-sm font-medium text-foreground">{org.email}</span>
                                             </td>
                                             <td className="px-6 py-5">
                                                 <div className="flex items-center gap-2">
@@ -411,7 +426,12 @@ export default function OrganizationsClient() {
                                                     <span className="text-sm font-bold text-foreground">
                                                         {formatDate(org.created_at)}
                                                     </span>
-                                                    <Button variant="link" size="sm" className="h-auto p-0 text-[10px] text-primary font-black uppercase tracking-widest flex items-center gap-1">
+                                                    <Button
+                                                        variant="link"
+                                                        size="sm"
+                                                        className="h-auto p-0 text-[10px] text-primary font-black uppercase tracking-widest flex items-center gap-1"
+                                                        onClick={() => handleEditInitiate(org.id)}
+                                                    >
                                                         Details
                                                         <ExternalLink className="w-3 h-3" />
                                                     </Button>
@@ -584,6 +604,11 @@ export default function OrganizationsClient() {
                                             { id: 'allow_create_survey', label: 'Create Surveys', icon: Building2 },
                                             { id: 'allow_exports', label: 'Data Exports', icon: BarChart },
                                             { id: 'allow_action_plans', label: 'Action Plans', icon: Settings },
+                                            { id: 'allow_chat_ai', label: 'Chat AI', icon: Zap },
+                                            { id: 'allow_ai_insights', label: 'AI Insights', icon: TrendingUp },
+                                            { id: 'allow_individual_responses', label: 'Individual Responses', icon: ClipboardList },
+                                            { id: 'allow_dimensions', label: 'Manage Dimensions', icon: Settings },
+                                            { id: 'allow_respondents', label: 'Manage Respondents', icon: Users },
                                         ].map((feature) => (
                                             <div
                                                 key={feature.id}
