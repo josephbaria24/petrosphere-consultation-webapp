@@ -24,6 +24,8 @@ import {
   Home,
   SquareRoundCorner,
   Building2,
+  ClipboardCheck,
+  ChevronDown,
 } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
@@ -105,6 +107,40 @@ export default function Sidebar() {
     )
   }
 
+  function NavGroup({
+    title,
+    icon: Icon,
+    children,
+    defaultExpanded = false
+  }: {
+    title: string
+    icon: React.ComponentType<{ className?: string }>
+    children: React.ReactNode
+    defaultExpanded?: boolean
+  }) {
+    const [isExpanded, setIsExpanded] = useState(defaultExpanded)
+
+    return (
+      <div className="space-y-1">
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center px-3 py-2 text-sm rounded-md transition-colors w-full group text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-[#1F1F23]"
+        >
+          <Icon className="h-4 w-4 mr-3 flex-shrink-0" />
+          <div className="flex items-center justify-between w-full">
+            <span className="font-medium">{title}</span>
+            <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", isExpanded ? "transform rotate-180" : "")} />
+          </div>
+        </button>
+        {isExpanded && (
+          <div className="pl-4 space-y-1">
+            {children}
+          </div>
+        )}
+      </div>
+    )
+  }
+
 
   return (
     <>
@@ -165,33 +201,41 @@ export default function Sidebar() {
                 <div id="tour-sidebar-dashboard">
                   <NavItem href="/dashboard" icon={Home}>Dashboard</NavItem>
                 </div>
-                <NavItem href={`${basePath}/create-survey`} icon={PlusCircle}>Create Survey</NavItem>
-                <NavItem
-                  href={`${basePath}/survey-responses`}
-                  icon={FileText}
-                  isLocked={isIndividualResponsesLocked}
-                >
-                  Survey Responses
-                </NavItem>
-                <div id="tour-sidebar-view-survey">
-                  <NavItem href={`${basePath}/view-survey`} icon={Folder}>View Survey</NavItem>
-                </div>
+
+                <NavGroup title="Survey" icon={FileText} defaultExpanded={true}>
+                  <NavItem href={`${basePath}/create-survey`} icon={PlusCircle}>Create Survey</NavItem>
+                  <NavItem
+                    href={`${basePath}/survey-responses`}
+                    icon={FileText}
+                    isLocked={isIndividualResponsesLocked}
+                  >
+                    Survey Responses
+                  </NavItem>
+                  <div id="tour-sidebar-view-survey">
+                    <NavItem href={`${basePath}/view-survey`} icon={Folder}>View Survey</NavItem>
+                  </div>
+                  <NavItem
+                    href={`${basePath}/respondents`}
+                    icon={Users2}
+                    isLocked={isRespondentsLocked}
+                  >
+                    Respondents
+                  </NavItem>
+                  <NavItem
+                    href={`${basePath}/dimensions`}
+                    icon={SquareRoundCorner}
+                    isLocked={isDimensionsLocked}
+                  >
+                    Dimensions
+                  </NavItem>
+                </NavGroup>
+
                 {isAdmin && (
                   <NavItem href={`${basePath}/organizations`} icon={Building2}>Manage Organizations</NavItem>
                 )}
-                <NavItem
-                  href={`${basePath}/respondents`}
-                  icon={Users2}
-                  isLocked={isRespondentsLocked}
-                >
-                  Respondents
-                </NavItem>
-                <NavItem
-                  href={`${basePath}/dimensions`}
-                  icon={SquareRoundCorner}
-                  isLocked={isDimensionsLocked}
-                >
-                  Dimensions
+
+                <NavItem href={`${basePath}/tasks`} icon={ClipboardCheck}>
+                  Tasks
                 </NavItem>
               </div>
             </div>

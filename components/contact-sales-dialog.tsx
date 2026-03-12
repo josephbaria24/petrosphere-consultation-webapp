@@ -31,7 +31,9 @@ export function ContactSalesDialog({ open, onOpenChange }: ContactSalesDialogPro
                         </div>
                         <div>
                             <p className="text-sm font-bold text-zinc-900 uppercase tracking-wider mb-1">Office</p>
-                            <p className="text-zinc-600 font-medium">Petrosphere Public Relations Office</p>
+                            <p className="text-zinc-600 font-medium">3rd Floor Trigold Business Park, Brgy San Pedro, Puerto Princesa City
+
+                            </p>
                         </div>
                     </div>
 

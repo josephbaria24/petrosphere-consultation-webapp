@@ -376,9 +376,14 @@ export default function ViewSurveysPage() {
                                   ? `${baseUrl}/survey/${survey.slug}`
                                   : `${baseUrl}/survey/${survey.id}`
 
+                                const now = new Date();
+                                const periodStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
                                 // Append org_id for multi-tenancy tracking if available
                                 if (orgId) {
-                                  link += `?org=${orgId}`
+                                  link += `?org=${orgId}&period=${periodStr}`
+                                } else {
+                                  link += `?period=${periodStr}`
                                 }
 
                                 try {

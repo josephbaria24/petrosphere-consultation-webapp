@@ -34,7 +34,7 @@ export function SurveySelector({
             ref={containerRef}
             className="inline-flex gap-1.5 md:gap-2 dark:bg-card bg-zinc-800 p-0.5 md:p-1 pl-2 rounded-2xl shadow-xl transition-all"
         >
-            <div className="flex items-center text-[9px] md:text-[11px] text-white font-bold uppercase tracking-wider">
+            <div className="flex px-2 items-center text-[9px] md:text-[11px] text-white font-medium uppercase tracking-wider">
                 <h1 className="whitespace-nowrap">Select survey</h1>
             </div>
             <Select

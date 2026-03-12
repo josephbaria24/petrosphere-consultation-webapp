@@ -13,7 +13,7 @@
  */
 
 import { useState } from 'react';
-import { Award, BarChart3, Building2, GaugeCircle, Pencil, Check, X, Star, TrendingDown, TrendingUp, Users2, Sparkles, Lock, Loader2 } from "lucide-react";
+import { Award, BarChart3, Building2, GaugeCircle, Pencil, Check, X, Star, TrendingDown, TrendingUp, Users2, Sparkles, Lock, Loader2, AlertTriangle, Clock, CalendarDays } from "lucide-react";
 import { useApp } from "./app/AppProvider";
 import { toast } from "sonner";
 
@@ -71,6 +71,10 @@ interface ProfessionalSurveySummaryCardProps {
   isGeneratingAI?: boolean;
   isDemo?: boolean;
   onUpgradeClick?: () => void;
+  overdueActionsPct?: number;
+  avgClosureTimeDays?: number | null;
+  totalResponsesThisMonth?: number;
+  isLoadingKPIs?: boolean;
 }
 
 // Main Professional Survey Summary Card Component
@@ -85,7 +89,11 @@ export const ProfessionalSurveySummaryCard = ({
   aiInsights,
   isGeneratingAI,
   isDemo,
-  onUpgradeClick
+  onUpgradeClick,
+  overdueActionsPct = 0,
+  avgClosureTimeDays = null,
+  totalResponsesThisMonth = 0,
+  isLoadingKPIs = false,
 }: ProfessionalSurveySummaryCardProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [tempName, setTempName] = useState(orgName || "");
@@ -230,7 +238,7 @@ export const ProfessionalSurveySummaryCard = ({
 
 
           {/* Details Section */}
-          <div className="col-span-1 md:col-span-9 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="col-span-1 md:col-span-9 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div className="flex items-center gap-3 p-3 bg-card rounded-lg border border-gray-100 dark:border-zinc-800 relative group h-full">
               <div className="p-2 bg-blue-50 dark:bg-zinc-700/50 rounded-lg">
                 <Building2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
@@ -296,9 +304,60 @@ export const ProfessionalSurveySummaryCard = ({
 
               <div className="flex items-center gap-2">
                 <span className={`text-base font-bold ${trend >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                  {trend > 0 ? "+" : ""}{toPercentage(trend + avgScore).toFixed(0)}%
+                  {trend > 0 ? "+" : ""}{trend.toFixed(1)}%
                 </span>
-                <span className="text-[10px] text-gray-400 dark:text-zinc-500">vs last period</span>
+                <span className="text-[10px] text-gray-400 dark:text-zinc-500">vs last month</span>
+              </div>
+            </div>
+
+            {/* Overdue Actions */}
+            <div className="flex items-center gap-3 p-3 bg-card rounded-lg border border-gray-100 dark:border-zinc-800 h-full">
+              <div className={`p-2 rounded-lg ${overdueActionsPct > 20 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-amber-50 dark:bg-zinc-700/50'}`}>
+                <AlertTriangle className={`w-4 h-4 ${overdueActionsPct > 20 ? 'text-red-500' : 'text-amber-500'}`} />
+              </div>
+              <div className="flex-1">
+                <span className="text-xs text-gray-500 dark:text-zinc-400 font-medium">Overdue Actions</span>
+                {isLoadingKPIs ? (
+                  <div className="h-4 w-12 bg-muted animate-pulse rounded mt-1" />
+                ) : (
+                  <p className={`font-semibold ${overdueActionsPct > 20 ? 'text-red-600' : 'text-gray-900 dark:text-zinc-100'}`}>
+                    {overdueActionsPct.toFixed(0)}%
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Avg Closure Time */}
+            <div className="flex items-center gap-3 p-3 bg-card rounded-lg border border-gray-100 dark:border-zinc-800 h-full">
+              <div className="p-2 bg-purple-50 dark:bg-zinc-700/50 rounded-lg">
+                <Clock className="w-4 h-4 text-purple-500 dark:text-purple-400" />
+              </div>
+              <div className="flex-1">
+                <span className="text-xs text-gray-500 dark:text-zinc-400 font-medium">Avg Closure</span>
+                {isLoadingKPIs ? (
+                  <div className="h-4 w-12 bg-muted animate-pulse rounded mt-1" />
+                ) : (
+                  <p className="font-semibold text-gray-900 dark:text-zinc-100">
+                    {avgClosureTimeDays !== null ? `${avgClosureTimeDays.toFixed(0)}d` : '—'}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Responses This Month */}
+            <div className="flex items-center gap-3 p-3 bg-card rounded-lg border border-gray-100 dark:border-zinc-800 h-full">
+              <div className="p-2 bg-cyan-50 dark:bg-zinc-700/50 rounded-lg">
+                <CalendarDays className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+              </div>
+              <div className="flex-1">
+                <span className="text-xs text-gray-500 dark:text-zinc-400 font-medium">This Month</span>
+                {isLoadingKPIs ? (
+                  <div className="h-4 w-12 bg-muted animate-pulse rounded mt-1" />
+                ) : (
+                  <p className="font-semibold text-gray-900 dark:text-zinc-100">
+                    {totalResponsesThisMonth.toLocaleString()} <span className="text-[10px] font-normal text-gray-400">responses</span>
+                  </p>
+                )}
               </div>
             </div>
           </div>

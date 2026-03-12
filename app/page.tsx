@@ -129,9 +129,12 @@ export default function Home() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/demo" className="w-full relative z-10">
-                  <Button className="w-full h-12 rounded-2xl bg-[#FF7A40] hover:bg-[#ff7a40]/90 text-white font-bold border-0 shadow-lg shadow-[#FF7A40]/20">Try Pro Demo</Button>
-                </Link>
+                <Button
+                  className="w-full h-12 rounded-2xl bg-[#FF7A40] hover:bg-[#ff7a40]/90 text-white font-bold border-0 shadow-lg shadow-[#FF7A40]/20"
+                  onClick={() => setIsContactOpen(true)}
+                >
+                  Subscribe
+                </Button>
               </div>
 
               {/* Enterprise */}
@@ -159,9 +162,10 @@ export default function Home() {
                 >
                   Contact Sales
                 </Button>
-                <ContactSalesDialog open={isContactOpen} onOpenChange={setIsContactOpen} />
               </div>
             </div>
+
+            <ContactSalesDialog open={isContactOpen} onOpenChange={setIsContactOpen} />
           </div>
         </section>
 
@@ -176,7 +180,7 @@ export default function Home() {
             </h2>
             <div className="space-y-6 text-zinc-500 font-medium text-lg leading-relaxed">
               <p>
-                SafetyVitals is a comprehensive safety culture assessment platform developed by <span className="text-zinc-900 font-bold underline decoration-[#FF7A40]/30">Petrosphere Incorporated</span>.
+                SafetyVitals is a comprehensive safety culture assessment platform developed by <span className="text-zinc-900 font-bold underline decoration-[#FF7A40]/30">PetroCoreX</span>.
                 We specialize in transforming qualitative safety sentiments into quantitative, actionable data.
               </p>
               <p>

@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useState, useEffect } from "react";
 import { RadioGroup } from "../../@/components/ui/radio-group";
 import { Label } from "../../@/components/ui/label";
 import { Textarea } from "../ui/textarea";
@@ -21,19 +21,25 @@ type QuestionProps = {
 };
 
 const Question = memo(function Question({ q, value, onChange, useFilipino }: QuestionProps) {
+  const [localValue, setLocalValue] = useState(value);
+
+  // Sync when parent value changes (e.g. from initial load or clearing answers)
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
   const labelText = useFilipino
     ? q.translated_question || q.question_text
     : q.question_text;
 
   const options =
     useFilipino &&
-    q.translated_options &&
-    q.translated_options.length === q.options?.length
+      q.translated_options &&
+      q.translated_options.length === q.options?.length
       ? q.translated_options
       : q.options;
 
   return (
-    <div>
+    <div id={`question-${q.id}`}>
       {/* Bolded question label */}
       <Label className="block mb-2 text-base font-bold text-gray-900 dark:text-gray-100">
         {labelText}
@@ -72,8 +78,9 @@ const Question = memo(function Question({ q, value, onChange, useFilipino }: Que
       {q.question_type === "text" && (
         <Textarea
           placeholder="Your answer..."
-          value={value}
-          onChange={(e) => onChange(q.id, e.target.value)}
+          value={localValue}
+          onChange={(e) => setLocalValue(e.target.value)}
+          onBlur={() => onChange(q.id, localValue)}
         />
       )}
     </div>

@@ -9,7 +9,7 @@ import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useApp } from "./app/AppProvider";
 import { useTheme } from "next-themes";
-import { Activity, BarChart3, PieChart, Target, CircleAlert } from "lucide-react";
+import { Activity, BarChart3, PieChart, Target, CircleAlert, RotateCw, FolderDown, Bell } from "lucide-react";
 import { toast } from "sonner";
 import ProfessionalSurveySummaryCard from "./summary-card";
 import { DashboardNavigation } from "./dashboard/dashboard-navigation";
@@ -29,6 +29,19 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { sanitizeDomForPdf } from "../lib/export-utils";
 import { Lock } from "lucide-react";
+import { useOrgKPIs } from "../lib/hooks/use-org-kpis";
+import { DepartmentChart } from "./dashboard/department-chart";
+import { OwnerPerformance } from "./dashboard/owner-performance";
+import { ComplianceReportButton } from "./dashboard/compliance-report-button";
+import { DashboardSelector } from "./dashboard/dashboard-selector";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "./ui/sheet";
 
 export default function Dashboard() {
   const [surveys, setSurveys] = useState<any[]>([]);
@@ -56,7 +69,7 @@ export default function Dashboard() {
   const [organizations, setOrganizations] = useState<{ id: string, name: string }[]>([]);
   const [selectedOrgId, setSelectedOrgId] = useState<string>("all");
 
-  const { user, membership, subscription, org, limits, resetTour } = useApp();
+  const { user, membership, subscription, org, limits, resetTour, refresh } = useApp();
   const { theme } = useTheme();
   const [isAdminCookie, setIsAdminCookie] = useState(false);
   const [adminChecked, setAdminChecked] = useState(false);
@@ -86,6 +99,15 @@ export default function Dashboard() {
   const isDemo = subscription?.plan === "demo";
   const isChatRestricted = !isPlatformAdmin && !limits?.allow_chat_ai;
   const isAIInsightsRestricted = !isPlatformAdmin && !limits?.allow_ai_insights;
+
+  // Org KPIs from analytics views
+  const { kpis: orgKPIs, isLoading: isLoadingKPIs } = useOrgKPIs(org?.id);
+
+  // Owner filter for action plan
+  const [ownerFilter, setOwnerFilter] = useState<string | null>(null);
+  const filteredActions = ownerFilter
+    ? actions.filter(a => (a.assigned_to || 'Unassigned') === ownerFilter)
+    : actions;
 
   const selectorRef = useRef<HTMLDivElement | null>(null);
   const chartsRef = useRef<HTMLDivElement | null>(null);
@@ -122,6 +144,21 @@ export default function Dashboard() {
       setSelectedSurvey(filteredSurveys[0]);
     }
   }, [filteredSurveys, selectedSurvey]);
+
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  const handleManualRefresh = async () => {
+    if (!selectedSurvey) return;
+    const cacheKey = `${selectedSurvey.id}_${selectedOrgId}`;
+    delete dashboardCache.current[cacheKey];
+    delete dashboardCache.current[selectedSurvey.id]; // also clear survey-wide if needed
+    setRefreshTick(prev => prev + 1);
+    toast.promise(refresh(), {
+      loading: 'Refreshing dashboard data...',
+      success: 'Data updated successfully',
+      error: 'Failed to refresh data',
+    });
+  };
 
   const fetchActions = useCallback(async (surveyId: string, skipCache = false) => {
     if (!surveyId) return;
@@ -237,8 +274,18 @@ export default function Dashboard() {
       const q = questions.find(qu => qu.id === r.question_id);
       if (!q) return;
       const template = q.template_id ? templateMap[q.template_id] : null;
-      let score = template ? template.scores[template.options.findIndex((opt: string) => opt.trim().toLowerCase() === r.answer.trim().toLowerCase())] : parseFloat(r.answer);
-      if (isNaN(score)) return;
+      let score = 0;
+      if (template) {
+        const optionIndex = template.options.findIndex((opt: string) => opt?.trim().toLowerCase() === r.answer?.trim().toLowerCase());
+        score = optionIndex !== -1 ? template.scores[optionIndex] : parseFloat(r.answer);
+      } else {
+        score = parseFloat(r.answer);
+      }
+
+      if (isNaN(score)) {
+        console.warn(`[Dashboard] Non-numeric answer for question ${r.question_id}: "${r.answer}"`);
+        return;
+      }
       if (q.scoring_type === "likert" && q.reverse_score) score = (q.max_score ?? 5) + 1 - score;
       if (!dimensionScores[q.dimension]) dimensionScores[q.dimension] = [];
       dimensionScores[q.dimension].push(score);
@@ -268,7 +315,52 @@ export default function Dashboard() {
     const currentAvg = Math.min(normalizedScores.length ? (normalizedScores.reduce((a, b) => a + b, 0) / normalizedScores.length) * 4 + 1 : 0, 5);
     setAvgScore(currentAvg); setTotalAvg(currentAvg);
 
-    const finalStats = { minAcceptableScore: calculatedMinScore, respondentCount: uniqueRespondents.size, reliability: normalizedScores.length ? Math.round((normalizedScores.reduce((a, b) => a + b, 0) / normalizedScores.length) * 100) : 0, belowMin, atRisk, strong, barData: sortedBar, radarData: sortedBar.map(b => ({ subject: b.name, you: b.score })), avgScore: currentAvg, totalAvg: currentAvg, trend: 0, lowestDimensionPercent: lowest, roleData: [] };
+    // Build roleData by joining responses with users.role
+    let computedRoleData: any[] = [];
+    try {
+      const userIds = Array.from(uniqueRespondents).filter(Boolean);
+      if (userIds.length > 0) {
+        const { data: usersWithRoles } = await supabase
+          .from("users")
+          .select("id, role")
+          .in("id", userIds as string[]);
+
+        if (usersWithRoles?.length) {
+          const userRoleMap: Record<string, string> = {};
+          usersWithRoles.forEach(u => {
+            if (u.role) userRoleMap[u.id] = u.role;
+          });
+
+          // Group scores by (dimension, role)
+          const dimRoleScores: Record<string, Record<string, number[]>> = {};
+          responses.forEach(r => {
+            const q = questions.find(qu => qu.id === r.question_id);
+            if (!q) return;
+            const role = userRoleMap[r.user_id];
+            if (!role) return;
+            const template = q.template_id ? templateMap[q.template_id] : null;
+            let score = template ? template.scores[template.options.findIndex((opt: string) => opt.trim().toLowerCase() === r.answer.trim().toLowerCase())] : parseFloat(r.answer);
+            if (isNaN(score)) return;
+            if (q.scoring_type === "likert" && q.reverse_score) score = (q.max_score ?? 5) + 1 - score;
+            if (!dimRoleScores[q.dimension]) dimRoleScores[q.dimension] = {};
+            if (!dimRoleScores[q.dimension][role]) dimRoleScores[q.dimension][role] = [];
+            dimRoleScores[q.dimension][role].push(score);
+          });
+
+          // Shape into [{ dimension, Manager: 3.8, Staff: 3.4 }]
+          computedRoleData = Object.entries(dimRoleScores).map(([dim, roles]) => {
+            const row: any = { dimension: dim };
+            Object.entries(roles).forEach(([role, scores]) => {
+              row[role] = Math.min(scores.reduce((a, b) => a + b, 0) / scores.length, 5);
+            });
+            return row;
+          }).sort((a, b) => extractNumberLocal(a.dimension) - extractNumberLocal(b.dimension));
+        }
+      }
+    } catch (err) { console.error("Role data error:", err); }
+    setRoleData(computedRoleData);
+
+    const finalStats = { minAcceptableScore: calculatedMinScore, respondentCount: uniqueRespondents.size, reliability: normalizedScores.length ? Math.round((normalizedScores.reduce((a, b) => a + b, 0) / normalizedScores.length) * 100) : 0, belowMin, atRisk, strong, barData: sortedBar, radarData: sortedBar.map(b => ({ subject: b.name, you: b.score })), avgScore: currentAvg, totalAvg: currentAvg, trend: 0, lowestDimensionPercent: lowest, roleData: computedRoleData };
     if (!dashboardCache.current[cacheKey]) dashboardCache.current[cacheKey] = { stats: null, questions: [], templateCache: [], comparisonData: [], actions: [] };
     dashboardCache.current[cacheKey].stats = finalStats;
     fetchAIInsights(surveyId, { avgScore: currentAvg, respondentCount: uniqueRespondents.size, strongDimensions: strong, belowMinimumDimensions: belowMin, atRiskDimensions: atRisk });
@@ -319,6 +411,7 @@ export default function Dashboard() {
     try {
       const { error } = await supabase.from('organizations').update({ name: newName }).eq('id', org.id);
       if (error) throw error;
+      await refresh();
       setOrganizations(prev => prev.map(o => o.id === org.id ? { ...o, name: newName } : o));
       toast.success("Organization name updated successfully");
     } catch (err) { toast.error("Failed to update organization name"); }
@@ -393,7 +486,7 @@ export default function Dashboard() {
       setIsLoadingStats(false); setIsLoadingComparison(false);
     };
     setIsLoadingStats(true); setIsLoadingComparison(true); fetchAllData();
-  }, [selectedSurvey, selectedOrgId, fetchActions, fetchComparisonData, fetchSurveyStats]);
+  }, [selectedSurvey, selectedOrgId, fetchActions, fetchComparisonData, fetchSurveyStats, refreshTick]);
 
   useEffect(() => {
     if (!adminChecked) return;
@@ -413,6 +506,7 @@ export default function Dashboard() {
     };
     fetchSurveys();
   }, [isPlatformAdmin, adminChecked, org?.id, isRestrictedToAuthored, user?.id]);
+
 
   useEffect(() => {
     if (!isPlatformAdmin || !adminChecked) return;
@@ -480,6 +574,12 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col min-h-screen bg-transparent">
       <div className="flex-1 space-y-8 p-4 md:p-8 pt-6 max-w-[1600px] mx-auto w-full">
+        <DashboardSelector
+          onScrollTo={(sectionId) => {
+            const item = itemsWithRefs.find(i => i.id === sectionId);
+            if (item) scrollToSection(item.ref, sectionId);
+          }}
+        />
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h2 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">Executive Insights</h2>
@@ -487,12 +587,40 @@ export default function Dashboard() {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             {isPlatformAdmin && <OrganizationSelector organizations={organizations} selectedOrgId={selectedOrgId} onOrgChange={handleOrgChange} />}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleManualRefresh}
+              className="h-9 w-9"
+              title="Refresh Dashboard Data"
+            >
+              <RotateCw className={`h-4 w-4 ${isLoadingStats ? 'animate-spin' : ''}`} />
+            </Button>
             <SurveySelector surveys={filteredSurveys} selectedSurvey={selectedSurvey} setSelectedSurvey={setSelectedSurvey} containerRef={selectorRef} />
-            <ExportDialog
-              type="dashboard"
-              title={selectedSurvey.title}
-              onExport={handleExportDashboard}
-            />
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" className="h-9 gap-2">
+                  <FolderDown className="h-4 w-4" />
+                  Exports
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right">
+                <SheetHeader className="mb-6">
+                  <SheetTitle>Export Options</SheetTitle>
+                  <SheetDescription>
+                    Download reports and analytics for this survey.
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="flex flex-col gap-4 px-10">
+                  <ExportDialog
+                    type="dashboard"
+                    title={selectedSurvey.title}
+                    onExport={handleExportDashboard}
+                  />
+                  <ComplianceReportButton orgId={org?.id} orgName={org?.name} />
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
 
@@ -501,7 +629,7 @@ export default function Dashboard() {
             selectedSurvey={selectedSurvey}
             respondentCount={respondentCount}
             avgScore={avgScore}
-            trend={trend}
+            trend={orgKPIs.trendPct}
             orgName={org?.name}
             onUpdateOrgName={handleUpdateOrgName}
             isPlatformAdmin={isPlatformAdmin}
@@ -509,6 +637,10 @@ export default function Dashboard() {
             isGeneratingAI={isGeneratingAI}
             isDemo={isAIInsightsRestricted}
             onUpgradeClick={() => setShowUpgradeModal(true)}
+            overdueActionsPct={orgKPIs.overdueActionsPct}
+            avgClosureTimeDays={orgKPIs.avgClosureTimeDays}
+            totalResponsesThisMonth={orgKPIs.totalResponsesThisMonth}
+            isLoadingKPIs={isLoadingKPIs}
           />
         </div>
 
@@ -537,6 +669,20 @@ export default function Dashboard() {
             containerRef={chartsRef}
             radarData={radarData}
             isLoadingStats={isLoadingStats}
+          />
+        </div>
+
+        {/* Department Breakdown */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <DepartmentChart
+            orgId={org?.id}
+            surveyId={selectedSurvey?.id}
+            isPlatformAdmin={isPlatformAdmin}
+          />
+          <OwnerPerformance
+            orgId={org?.id}
+            onOwnerFilter={setOwnerFilter}
+            activeOwnerFilter={ownerFilter}
           />
         </div>
 
@@ -570,7 +716,7 @@ export default function Dashboard() {
                 belowMinimumDimensions={belowMinimumDimensions}
                 atRiskDimensions={atRiskDimensions}
                 strongDimensions={strongDimensions}
-                actions={actions}
+                actions={filteredActions}
                 onAddAction={handleCreateActionForDimension}
                 onDeleteAction={deleteAction}
                 onToggleAction={toggleActionCompletion}
@@ -578,7 +724,7 @@ export default function Dashboard() {
             </div>
             <div className="h-full">
               <ActionPlan
-                actions={actions}
+                actions={filteredActions}
                 onDeleteAction={deleteAction}
                 onUpdateAction={handleUpdateAction}
                 onViewDetails={(a) => { setSelectedActionForDetail(a); setIsDetailDialogOpen(true); }}

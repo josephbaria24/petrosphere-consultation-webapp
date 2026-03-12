@@ -5,13 +5,13 @@ import { NextResponse } from 'next/server'
 export async function POST(request) {
   try {
     const { adminId } = await request.json()
-    
+
     if (!adminId) {
       return NextResponse.json({ error: 'Admin ID is required' }, { status: 400 })
     }
 
     const cookieStore = await cookies()
-    
+
     // Set the cookie with proper options for server-side recognition
     cookieStore.set('admin_id', adminId, {
       httpOnly: false, // Allow client-side access

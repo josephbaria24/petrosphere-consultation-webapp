@@ -55,6 +55,7 @@ import {
     SelectValue
 } from "../../../../components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../../../components/ui/tooltip";
+import { useApp } from "../../../../components/app/AppProvider";
 
 const formatDate = (dateString: string) => {
     return new Intl.DateTimeFormat("en-US", {
@@ -77,6 +78,7 @@ interface OrgStats {
 }
 
 export default function OrganizationsClient() {
+    const { refresh } = useApp();
     const [organizations, setOrganizations] = useState<OrgStats[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
@@ -228,6 +230,7 @@ export default function OrganizationsClient() {
             }
             toast.success("Organization updated successfully");
             setIsEditDialogOpen(false);
+            await refresh();
             fetchStats();
         } catch (error: any) {
             console.error("Save error:", error);

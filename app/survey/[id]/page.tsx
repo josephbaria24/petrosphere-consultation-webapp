@@ -37,6 +37,7 @@ import {
 import { Check } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '../../../@/components/ui/popover'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../../../@/components/ui/command'
+import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../../../@/components/ui/alert-dialog'
 
 type SurveyQuestion = {
   id: string
@@ -94,6 +95,54 @@ export default function PublicSurveyPage() {
   ];
 
   const [useFilipino, setUseFilipino] = useState(false)
+  const [showResubmitModal, setShowResubmitModal] = useState(false)
+  const [isResubmitting, setIsResubmitting] = useState(false)
+
+  const handleNextStep = async () => {
+    if (!validateMetadata()) return;
+    if (!survey) return;
+
+    try {
+      // 1. Check if user exists
+      const { data: user } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', metadata.email)
+        .maybeSingle();
+
+      if (!user) {
+        setStep(2);
+        return;
+      }
+
+      // 2. Check for responses matching period
+      const currentPeriod = searchParams.get('period');
+      let query = supabase
+        .from('responses')
+        .select('id')
+        .eq('user_id', user.id)
+        .in('question_id', survey.survey_questions.map(q => q.id))
+        .limit(1);
+
+      if (currentPeriod) {
+        const [year, month] = currentPeriod.split('-');
+        const startDate = new Date(Number(year), Number(month) - 1, 1).toISOString();
+        const endDate = new Date(Number(year), Number(month), 1).toISOString();
+        query = query.gte('created_at', startDate).lt('created_at', endDate);
+      }
+
+      const { data: responses } = await query;
+
+      if (responses && responses.length > 0) {
+        setShowResubmitModal(true);
+      } else {
+        setStep(2);
+      }
+    } catch (err) {
+      console.error('Error checking existing response:', err);
+      setStep(2);
+    }
+  };
 
   // Memoize groupedQuestions so it only recalculates if survey changes
   const groupedQuestions = useMemo(() => {
@@ -182,6 +231,11 @@ export default function PublicSurveyPage() {
     const unanswered = allQuestions.filter((q) => !answers[q.id]?.trim());
     if (unanswered.length > 0) {
       toast.error("Please answer all required questions.");
+      const firstUnansweredId = unanswered[0].id;
+      const el = document.getElementById(`question-${firstUnansweredId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       return;
     }
     try {
@@ -216,7 +270,6 @@ export default function PublicSurveyPage() {
         userId = newUser.id
       }
 
-      // 2. Build valid responses for your schema
       const responsePayload = survey.survey_questions.map((q) => ({
         user_id: userId,
         question_id: q.id, // ✅ link to survey_questions
@@ -227,6 +280,22 @@ export default function PublicSurveyPage() {
         org_id: targetOrgId || survey.org_id
       }))
 
+      if (isResubmitting && userId) {
+        const currentPeriod = searchParams.get('period');
+        let deleteQuery = supabase
+          .from('responses')
+          .delete()
+          .eq('user_id', userId)
+          .in('question_id', survey.survey_questions.map(q => q.id));
+
+        if (currentPeriod) {
+          const [year, month] = currentPeriod.split('-');
+          const startDate = new Date(Number(year), Number(month) - 1, 1).toISOString();
+          const endDate = new Date(Number(year), Number(month), 1).toISOString();
+          deleteQuery = deleteQuery.gte('created_at', startDate).lt('created_at', endDate);
+        }
+        await deleteQuery;
+      }
 
       const { error: responseError } = await supabase
         .from('responses')
@@ -487,9 +556,7 @@ export default function PublicSurveyPage() {
 
               <Button
                 className="mt-4 w-full"
-                onClick={() => {
-                  if (validateMetadata()) setStep(2)
-                }}
+                onClick={handleNextStep}
                 type="button"
               >
                 Next
@@ -558,6 +625,28 @@ export default function PublicSurveyPage() {
         </div>
 
       </Card>
+
+      <AlertDialog open={showResubmitModal} onOpenChange={setShowResubmitModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Already Submitted</AlertDialogTitle>
+            <AlertDialogDescription>
+              This email has already been used to respond to this survey {searchParams.get('period') ? `for this period (${searchParams.get('period')})` : ''}.
+              Would you like to resubmit your answers? This will replace your previous submission.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowResubmitModal(false)}>Cancel</AlertDialogCancel>
+            <Button onClick={() => {
+              setIsResubmitting(true);
+              setShowResubmitModal(false);
+              setStep(2);
+            }}>
+              Resubmit
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -377,9 +377,13 @@ export default function ViewSurveysPage() {
                               className="h-9 gap-2 flex-1 md:flex-none border-dashed"
                               onClick={async () => {
                                 const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
-                                const link = survey.slug
+                                let link = survey.slug
                                   ? `${baseUrl}/survey/${survey.slug}`
                                   : `${baseUrl}/survey/${survey.id}`
+
+                                const now = new Date();
+                                const periodStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                                link += `?period=${periodStr}`
 
                                 try {
                                   await navigator.clipboard.writeText(link)

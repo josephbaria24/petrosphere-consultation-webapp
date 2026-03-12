@@ -30,7 +30,9 @@ import {
     Calendar,
     FileText,
     Send,
-    ExternalLink
+    ExternalLink,
+    Plus,
+    ShieldAlert
 } from "lucide-react";
 import { Action, ActionComment } from "./types";
 import { formatDistanceToNow } from "date-fns";
@@ -55,6 +57,7 @@ export function ActionDetailDialog({
     const [newComment, setNewComment] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [editForm, setEditForm] = useState<Partial<Action>>({});
+    const [newEvidenceUrl, setNewEvidenceUrl] = useState("");
 
     if (!action) return null;
 
@@ -134,7 +137,21 @@ export function ActionDetailDialog({
                                 <Label className="text-xs text-muted-foreground uppercase tracking-wider">Status</Label>
                                 <Select
                                     value={action.workflow_stage || (action.is_completed ? 'done' : 'todo')}
-                                    onValueChange={(val) => onUpdate(action.id, { workflow_stage: val as any, is_completed: val === 'done' })}
+                                    onValueChange={(val) => {
+                                        if (val === 'done') {
+                                            const hasEvidence = (action.evidence_urls?.length || 0) > 0;
+                                            const hasComments = (action.comments?.length || 0) > 0;
+                                            if (!hasEvidence) {
+                                                toast.error("Cannot mark as Done: please attach at least one evidence link first.", { icon: <ShieldAlert className="w-4 h-4" /> });
+                                                return;
+                                            }
+                                            if (!hasComments) {
+                                                toast.error("Cannot mark as Done: please add a completion comment first.", { icon: <ShieldAlert className="w-4 h-4" /> });
+                                                return;
+                                            }
+                                        }
+                                        onUpdate(action.id, { workflow_stage: val as any, is_completed: val === 'done' });
+                                    }}
                                 >
                                     <SelectTrigger className={`h-8 w-[140px] text-xs font-medium ${statusColors[action.workflow_stage || (action.is_completed ? 'done' : 'todo')]}`}>
                                         <SelectValue />
@@ -246,11 +263,47 @@ export function ActionDetailDialog({
                                 <Paperclip className="w-4 h-4" />
                                 Evidence & Attachments ({action.evidence_urls?.length || 0})
                             </h4>
-                            <Button variant="outline" size="sm" onClick={() => toast.info("Upload not implemented")}>
+                            <Button variant="outline" size="sm" onClick={() => {
+                                if (!newEvidenceUrl.trim()) {
+                                    toast.info("Enter an evidence URL below first");
+                                    return;
+                                }
+                                const updated = [...(action.evidence_urls || []), newEvidenceUrl.trim()];
+                                onUpdate(action.id, { evidence_urls: updated });
+                                setNewEvidenceUrl("");
+                                toast.success("Evidence added");
+                            }}>
                                 <Plus className="w-4 h-4 mr-2" />
-                                Upload
+                                Add Link
                             </Button>
                         </div>
+
+                        <div className="flex gap-2">
+                            <Input
+                                placeholder="Paste evidence URL (e.g., drive link, report URL)..."
+                                value={newEvidenceUrl}
+                                onChange={(e) => setNewEvidenceUrl(e.target.value)}
+                                className="flex-1 text-xs"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && newEvidenceUrl.trim()) {
+                                        const updated = [...(action.evidence_urls || []), newEvidenceUrl.trim()];
+                                        onUpdate(action.id, { evidence_urls: updated });
+                                        setNewEvidenceUrl("");
+                                        toast.success("Evidence added");
+                                    }
+                                }}
+                            />
+                        </div>
+
+                        {/* Warning if no evidence */}
+                        {(!action.evidence_urls || action.evidence_urls.length === 0) && (
+                            <div className="flex items-center gap-2 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                                <ShieldAlert className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                                <p className="text-xs text-amber-700 dark:text-amber-400">
+                                    Evidence is required before this action can be marked as completed.
+                                </p>
+                            </div>
+                        )}
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {action.evidence_urls && action.evidence_urls.length > 0 ? (
@@ -281,4 +334,3 @@ export function ActionDetailDialog({
     );
 }
 
-import { Plus } from "lucide-react";
