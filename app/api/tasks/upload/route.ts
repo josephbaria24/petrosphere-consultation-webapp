@@ -17,13 +17,14 @@ export async function POST(req: Request) {
     const fileBuffer = Buffer.from(await file.arrayBuffer());
 
     const client = new Client();
+    client.ftp.ipFamily = 4; // Force IPv4 to avoid socket hangup issues
     // client.ftp.verbose = true;
 
     await client.access({
       host: process.env.HOSTINGER_SFTP_HOST,
       user: process.env.HOSTINGER_SFTP_USER,
       password: process.env.HOSTINGER_SFTP_PASS,
-      secure: false, // Standard FTP access (or adjust if Hostinger requires FTPS)
+      secure: false, // Standard FTP access
     });
 
     const readableStream = new Readable();

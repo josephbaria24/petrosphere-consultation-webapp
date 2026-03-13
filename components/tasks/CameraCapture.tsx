@@ -14,6 +14,7 @@ export default function CameraCapture({ onCapture, onCancel }: CameraCaptureProp
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isFrontCamera, setIsFrontCamera] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -23,6 +24,7 @@ export default function CameraCapture({ onCapture, onCancel }: CameraCaptureProp
   }, [isFrontCamera]);
 
   const startCamera = async () => {
+    setIsLoading(true);
     try {
       if (stream) {
         stopCamera();
@@ -30,20 +32,33 @@ export default function CameraCapture({ onCapture, onCancel }: CameraCaptureProp
       const constraints = {
         video: {
           facingMode: isFrontCamera ? "user" : "environment",
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
         },
       };
+      
       const newStream = await navigator.mediaDevices.getUserMedia(constraints);
       setStream(newStream);
+      
       if (videoRef.current) {
         videoRef.current.srcObject = newStream;
+        // Optimization for mobile: ensure play() is called explicitly
+        try {
+          await videoRef.current.play();
+        } catch (playErr) {
+          console.error("Video play error:", playErr);
+        }
       }
+      setIsLoading(false);
     } catch (err: any) {
-      if (err.name === "NotAllowedError" || err.message?.includes("Permission dismissed")) {
-        toast.error("Camera access was denied. Please enable it in your browser settings to take photos.");
-      } else {
-        console.error("Camera error:", err);
-        toast.error("Could not access camera. Please check your device settings.");
-      }
+      setIsLoading(false);
+      console.error("Camera error:", err);
+      
+      const errorMessage = err.name === "NotAllowedError" || err.message?.includes("Permission") 
+        ? "Camera access was denied. Please enable it in browser settings."
+        : "Could not access camera (" + (err.name || "Error") + "). Check device settings.";
+      
+      toast.error(errorMessage);
       onCancel();
     }
   };
@@ -85,6 +100,7 @@ export default function CameraCapture({ onCapture, onCancel }: CameraCaptureProp
     const blob = new Blob([ab], { type: mimeString });
     const file = new File([blob], `capture_${Date.now()}.jpg`, { type: "image/jpeg" });
 
+    stopCamera();
     onCapture(file);
   };
 
@@ -97,14 +113,23 @@ export default function CameraCapture({ onCapture, onCancel }: CameraCaptureProp
               ref={videoRef}
               autoPlay
               playsInline
-              className="w-full h-full object-cover"
+              muted
+              className={`w-full h-full object-cover transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
             />
+            {isLoading && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <RefreshCw className="w-8 h-8 text-white animate-spin" />
+              </div>
+            )}
             <div className="absolute bottom-6 left-0 right-0 flex justify-center items-center gap-8">
               <Button
                 variant="outline"
                 size="icon"
                 className="rounded-full bg-black/40 border-white/20 text-white hover:bg-black/60 w-12 h-12"
-                onClick={onCancel}
+                onClick={() => {
+                  stopCamera();
+                  onCancel();
+                }}
               >
                 <X className="w-6 h-6" />
               </Button>
