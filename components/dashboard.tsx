@@ -573,7 +573,7 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col min-h-screen bg-transparent">
-      <div className="flex-1 space-y-8 p-4 md:p-8 pt-6 max-w-[1600px] mx-auto w-full">
+      <div className="flex-1 space-y-4 md:space-y-8 p-1 md:p-8 pt-6 max-w-[1600px] mx-auto w-full overflow-x-hidden">
         <DashboardSelector
           onScrollTo={(sectionId) => {
             const item = itemsWithRefs.find(i => i.id === sectionId);
@@ -582,8 +582,8 @@ export default function Dashboard() {
         />
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">Executive Insights</h2>
-            <p className="text-muted-foreground mt-1">Strategic overview of safety culture performance and organizational health.</p>
+            <h2 className="text-xl md:text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 leading-tight">Executive Insights</h2>
+            <p className="text-xs md:text-sm text-muted-foreground mt-1">Strategic overview of safety culture performance.</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             {isPlatformAdmin && <OrganizationSelector organizations={organizations} selectedOrgId={selectedOrgId} onOrgChange={handleOrgChange} />}

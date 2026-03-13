@@ -88,18 +88,18 @@ export function DashboardSelector({ onScrollTo }: DashboardSelectorProps) {
               key={card.id}
               onClick={() => handleClick(card)}
               className={`
-                group flex-shrink-0 flex flex-col items-center gap-3 p-4 rounded-xl
+                group flex-shrink-0 flex flex-col items-center gap-2 p-3 md:p-4 rounded-xl
                 bg-gradient-to-br ${card.gradient}
                 border border-border/50 hover:border-border
                 hover:shadow-lg hover:scale-[1.03]
                 transition-all duration-200 ease-out
-                cursor-pointer min-w-[140px] w-[140px]
+                cursor-pointer min-w-[110px] md:min-w-[140px] w-[110px] md:w-[140px]
               `}
             >
-              <div className={`w-11 h-11 rounded-lg flex items-center justify-center ${card.iconBg} transition-transform group-hover:scale-110`}>
-                <Icon className="w-5 h-5" />
+              <div className={`w-9 h-9 md:w-11 md:h-11 rounded-lg flex items-center justify-center ${card.iconBg} transition-transform group-hover:scale-110`}>
+                <Icon className="w-4 h-4 md:w-5 md:h-5" />
               </div>
-              <span className="text-xs font-semibold text-foreground/80 group-hover:text-foreground transition-colors text-center leading-tight">
+              <span className="text-[10px] md:text-xs font-semibold text-foreground/80 group-hover:text-foreground transition-colors text-center leading-tight">
                 {card.title}
               </span>
             </button>

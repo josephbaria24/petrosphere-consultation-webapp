@@ -93,27 +93,27 @@ export default function GaugeChart({
           minValue={20}
           maxValue={100}
           type="radial"
-          marginInPercent={{ top: 0.12, bottom: 0.05, left: 0.16, right: 0.16 }}
+          marginInPercent={{ top: 0.1, bottom: 0.05, left: 0.1, right: 0.1 }}
           style={{ width: "100%", overflow: "visible" }}
           labels={{
             tickLabels: {
               type: "outer",
               ticks: [
                 { value: 20, valueConfig: { formatTextValue: () => "1.0" } },
-                { value: 28, valueConfig: { formatTextValue: () => "Level 1", style: { fontSize: "11px", fontWeight: "bold" } } },
+                { value: 28, valueConfig: { formatTextValue: () => "L1", style: { fontSize: "9px", fontWeight: "bold" } } },
                 { value: 40, valueConfig: { formatTextValue: () => "2.0" } },
-                { value: 44, valueConfig: { formatTextValue: () => "Level 2", style: { fontSize: "11px", fontWeight: "bold" } } },
-                { value: 60, valueConfig: { formatTextValue: () => "Level 3", style: { fontSize: "11px", fontWeight: "bold" } } },
-                { value: 76, valueConfig: { formatTextValue: () => "Level 4", style: { fontSize: "11px", fontWeight: "bold" } } },
+                { value: 44, valueConfig: { formatTextValue: () => "L2", style: { fontSize: "9px", fontWeight: "bold" } } },
+                { value: 60, valueConfig: { formatTextValue: () => "L3", style: { fontSize: "9px", fontWeight: "bold" } } },
+                { value: 76, valueConfig: { formatTextValue: () => "L4", style: { fontSize: "9px", fontWeight: "bold" } } },
                 { value: 80, valueConfig: { formatTextValue: () => "4.0" } },
-                { value: 92, valueConfig: { formatTextValue: () => "Level 5", style: { fontSize: "11px", fontWeight: "bold" } } },
+                { value: 92, valueConfig: { formatTextValue: () => "L5", style: { fontSize: "9px", fontWeight: "bold" } } },
                 { value: 100, valueConfig: { formatTextValue: () => "5.0" } },
               ],
-              defaultTickValueConfig: { style: { fontSize: "9px" } }
+              defaultTickValueConfig: { style: { fontSize: "8px" } }
             },
             valueLabel: {
               formatTextValue: () => `${toPercentage(score).toFixed(0)}%`,
-              style: { fontSize: "24px", fontWeight: "bold" },
+              style: { fontSize: "20px", fontWeight: "bold" },
             },
           }}
           arc={{
@@ -144,18 +144,18 @@ export default function GaugeChart({
         </div>
       </div>
 
-      <div className="w-full mt-4 p-4 border border-gray dark:border-zinc-800 rounded-lg bg-card text-start">
-        <div className="text-gray-600 dark:text-zinc-400 text-sm font-medium mb-1">
+      <div className="w-full mt-2 p-3 md:p-4 border border-gray dark:border-zinc-800 rounded-lg bg-card text-start">
+        <div className="text-gray-600 dark:text-zinc-400 text-[10px] md:text-sm font-medium mb-1 uppercase tracking-wider">
           Your Company Score
         </div>
 
-        <Badge className={`${levelInfo.badgeColor} text-sm px-3 py-1 rounded-full`}>
+        <Badge className={`${levelInfo.badgeColor} text-[10px] md:text-sm px-2 md:px-3 py-0.5 md:py-1 rounded-full whitespace-normal text-center leading-tight`}>
           {levelInfo.label}
         </Badge>
 
-        <div className="text-2xl font-extrabold mt-2">
+        <div className="text-xl md:text-2xl font-extrabold mt-1 md:mt-2">
           {toPercentage(score).toFixed(0)}%
-          <span className="text-sm text-gray-500 font-normal ml-2">
+          <span className="text-xs md:text-sm text-gray-500 font-normal ml-2">
             ({score.toFixed(2)} / 5.0)
           </span>
         </div>

@@ -170,10 +170,10 @@ export default function SafetyAIChat({ stats, isDemo, onUpgradeClick }: SafetyAI
     ];
 
     return (
-        <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+        <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 flex flex-col items-end">
             {/* Chat Window */}
             {isOpen && (
-                <Card className="mb-4 w-[350px] md:w-[450px] h-[550px] shadow-2xl border-card flex flex-col animate-in slide-in-from-bottom-10 fade-in duration-400">
+                <Card className="mb-4 w-[calc(100vw-2rem)] md:w-[450px] h-[500px] md:h-[550px] shadow-2xl border-card flex flex-col animate-in slide-in-from-bottom-10 fade-in duration-400 max-w-[450px]">
                     <CardHeader className="p-4 bg-card border-0 flex flex-row items-center justify-between">
                         <div className="flex items-center gap-2">
                             <div className="p-1.5 bg-primary/10 rounded-lg">
@@ -280,7 +280,7 @@ export default function SafetyAIChat({ stats, isDemo, onUpgradeClick }: SafetyAI
                 }}
                 size="icon"
                 className={cn(
-                    "h-14 w-14 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95 group border-2 border-primary/50 relative",
+                    "h-12 w-12 md:h-14 md:w-14 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95 group border-2 border-primary/50 relative",
                     isOpen
                         ? "bg-primary text-muted-foreground rotate-180"
                         : "bg-card text-primary hover:bg-white/90"

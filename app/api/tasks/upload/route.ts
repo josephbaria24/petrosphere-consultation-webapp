@@ -16,14 +16,26 @@ export async function POST(req: Request) {
     const fileName = `${uuidv4()}.${fileExt}`;
     const fileBuffer = Buffer.from(await file.arrayBuffer());
 
+    // Validate Environment Variables (Required for Vercel deployment)
+    const host = process.env.HOSTINGER_SFTP_HOST;
+    const user = process.env.HOSTINGER_SFTP_USER;
+    const pass = process.env.HOSTINGER_SFTP_PASS;
+
+    if (!host || !user || !pass) {
+      console.error("Missing FTP configuration environment variables");
+      return NextResponse.json({ 
+        error: "Server configuration error: Missing FTP credentials. Please ensure HOSTINGER_SFTP_HOST, HOSTINGER_SFTP_USER, and HOSTINGER_SFTP_PASS are set in Vercel environment variables." 
+      }, { status: 500 });
+    }
+
     const client = new Client();
     client.ftp.ipFamily = 4; // Force IPv4 to avoid socket hangup issues
     // client.ftp.verbose = true;
 
     await client.access({
-      host: process.env.HOSTINGER_SFTP_HOST,
-      user: process.env.HOSTINGER_SFTP_USER,
-      password: process.env.HOSTINGER_SFTP_PASS,
+      host,
+      user,
+      password: pass,
       secure: false, // Standard FTP access
     });
 

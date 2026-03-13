@@ -115,7 +115,7 @@ export function OverviewCharts({
     };
 
     return (
-        <div ref={containerRef} id="tour-overview-charts" className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+        <div ref={containerRef} id="tour-overview-charts" className="grid grid-cols-1 lg:grid-cols-2 gap-2 md:gap-4">
             {/* Gauge Chart */}
             <Card className="w-full shadow-lg border-0 relative overflow-hidden">
                 {isLoadingStats && <LoadingOverlay />}
@@ -156,7 +156,7 @@ export function OverviewCharts({
                     </Button>
                 </CardHeader>
 
-                <CardContent className={`h-[400px] md:h-[550px] p-2 md:p-4 ${(isLoadingComparison || isLoadingStats) ? "filter blur-[4px] grayscale-[0.5] transition-all duration-500 opacity-50" : "transition-all duration-500"}`}>
+                <CardContent className={`h-[350px] md:h-[550px] p-1 md:p-4 ${(isLoadingComparison || isLoadingStats) ? "filter blur-[4px] grayscale-[0.5] transition-all duration-500 opacity-50" : "transition-all duration-500"}`}>
                     <ChartContainer config={comparisonConfig} className="h-full w-full">
                         <RadarChart
                             cx="50%"
@@ -295,7 +295,7 @@ export function DetailedCharts({
         : "Improvement Area";
 
     return (
-        <div ref={containerRef} className="grid grid-cols-1 lg:grid-cols-1 gap-2">
+        <div ref={containerRef} className="grid grid-cols-1 lg:grid-cols-1 gap-2 md:gap-4">
             {/* Bar Chart */}
             <Card className="w-full border-0 shadow-lg relative overflow-hidden">
                 {isLoadingStats && <LoadingOverlay />}
@@ -317,8 +317,8 @@ export function DetailedCharts({
                         </Button>
                     </div>
                 </CardHeader>
-                <CardContent className={isLoadingStats ? "filter blur-[4px] grayscale-[0.5] transition-all duration-500 opacity-50" : "transition-all duration-500"}>
-                    <ChartContainer config={barConfig} className="h-[300px] w-full">
+                <CardContent className={`p-2 md:p-6 ${isLoadingStats ? "filter blur-[4px] grayscale-[0.5] transition-all duration-500 opacity-50" : "transition-all duration-500"}`}>
+                    <ChartContainer config={barConfig} className="h-[250px] md:h-[300px] w-full">
                         <BarChart
                             data={coloredBarData}
                             margin={{ top: 50, right: 10, left: 0, bottom: 0 }}

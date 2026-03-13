@@ -171,7 +171,11 @@ export default function TopNav({ fullName, email }: { fullName: string; email: s
                 Notifications
               </TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="end" className="w-80 p-0 overflow-hidden rounded-xl border-gray-200 dark:border-zinc-800 shadow-xl">
+            <DropdownMenuContent 
+              align="center" 
+              sideOffset={12}
+              className="w-[calc(100vw-1rem)] sm:w-80 p-0 overflow-hidden rounded-xl border-gray-200 dark:border-zinc-800 shadow-xl"
+            >
               <DropdownMenuLabel className="p-4 bg-muted/50 dark:bg-zinc-900/50">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold">Notifications</span>

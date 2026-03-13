@@ -37,6 +37,7 @@ import { useApp } from "./app/AppProvider"
 import { Lock } from "lucide-react"
 import { Badge } from "../@/components/ui/badge"
 import { UpgradeRequiredModal } from "./upgrade-required-modal"
+import { LoadingOverlay } from "./ui/loading-overlay"
 
 export default function Sidebar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -52,6 +53,7 @@ export default function Sidebar() {
 
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
   const [lockedFeatureName, setLockedFeatureName] = useState("")
+  const [isNavigating, setIsNavigating] = useState(false)
 
   function handleNavigation() {
     setIsMobileMenuOpen(false)
@@ -76,6 +78,10 @@ export default function Sidebar() {
         e.preventDefault()
         setLockedFeatureName(children as string)
         setUpgradeModalOpen(true)
+      } else if (pathname !== href) {
+        setIsNavigating(true)
+        // Reset navigation state after a reasonable timeout in case of fast transitions
+        setTimeout(() => setIsNavigating(false), 2000)
       }
     }
 
@@ -261,6 +267,14 @@ export default function Sidebar() {
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-[65] lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {isNavigating && (
+        <LoadingOverlay 
+          variant="fullscreen" 
+          message="Navigating..." 
+          subMessage="Loading your workspace"
         />
       )}
     </>
