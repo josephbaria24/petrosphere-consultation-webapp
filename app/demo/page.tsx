@@ -160,12 +160,12 @@ export default function DemoLoginPage() {
             </main>
 
             {/* Subtle floating link for actual admins */}
-            <div className="absolute bottom-6 right-6 z-20">
+            {/* <div className="absolute bottom-6 right-6 z-20">
                 <Link href="/admin-login" className="flex items-center gap-2 group text-zinc-400 hover:text-zinc-900 transition-colors font-bold text-xs bg-white/50 backdrop-blur-sm px-4 py-2 rounded-full border border-zinc-100 shadow-sm">
                     Platform Admin
                     <ArrowRight className="w-3 h-3 translate-x-0 group-hover:translate-x-1 transition-transform" />
                 </Link>
-            </div>
+            </div> */}
         </div>
     );
 }
