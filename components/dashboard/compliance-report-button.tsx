@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Button } from "../ui/button";
 import { FileDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useApp } from "../app/AppProvider";
 
 interface ComplianceReportButtonProps {
     orgId?: string;
@@ -11,6 +12,7 @@ interface ComplianceReportButtonProps {
 }
 
 export function ComplianceReportButton({ orgId, orgName }: ComplianceReportButtonProps) {
+    const { user } = useApp();
     const [isGenerating, setIsGenerating] = useState(false);
 
     const handleGenerate = async () => {
@@ -24,7 +26,10 @@ export function ComplianceReportButton({ orgId, orgName }: ComplianceReportButto
             const response = await fetch("/api/reports/compliance", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ org_id: orgId }),
+                body: JSON.stringify({ 
+                    org_id: orgId,
+                    created_by: user?.id 
+                }),
             });
 
             if (!response.ok) {

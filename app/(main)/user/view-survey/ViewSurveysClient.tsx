@@ -118,13 +118,9 @@ export default function ViewSurveysPage() {
 
       // 2. Apply Multi-Tenancy Rules
       if (!isPlatformAdmin && appData?.org?.id) {
-        if (isRestrictedToAuthored) {
-          // Rule for Demo/Members: Must be in their Org AND created by them OR Safety Vitals
-          query = query.or(`and(org_id.eq.${appData.org.id},created_by.eq.${appData.user.id}),id.eq.${DEFAULT_SURVEY_ID}`)
-        } else {
-          // Rule for Org Admins: See everything in their Org OR Safety Vitals
-          query = query.or(`org_id.eq.${appData.org.id},id.eq.${DEFAULT_SURVEY_ID}`)
-        }
+        // ALWAYS restrict to authored surveys within the Org OR Safety Vitals
+        // The user wants strict exclusivity to the creator.
+        query = query.or(`and(org_id.eq.${appData.org.id},created_by.eq.${appData.user.id}),id.eq.${DEFAULT_SURVEY_ID}`)
       } else if (!isPlatformAdmin && !appData?.org?.id) {
         // Handle case where user has no org (e.g. new user or error)
         console.warn("User has no organization, returning empty list.");

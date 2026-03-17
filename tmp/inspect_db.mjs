@@ -23,7 +23,7 @@ async function inspectSchema() {
   // or just use a standard query if we can.
   // Actually, let's try to query information_schema.table_constraints
   
-  const { data, error } = await supabase.from('information_schema_table_constraints' as any)
+  const { data, error } = await supabase.from('information_schema_table_constraints')
     .select('*')
     .eq('table_name', 'task_sessions')
   
@@ -37,7 +37,7 @@ async function inspectSchema() {
   }
 
   // Check RLS
-  const { data: rls, error: rlsErr } = await supabase.from('pg_policies' as any)
+  const { data: rls, error: rlsErr } = await supabase.from('pg_policies')
     .select('*')
     .eq('tablename', 'task_sessions')
     

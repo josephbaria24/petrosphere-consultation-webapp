@@ -4,7 +4,7 @@ import jsPDF from "jspdf";
 
 export async function POST(request: Request) {
     try {
-        const { org_id, date_from, date_to } = await request.json();
+        const { org_id, date_from, date_to, created_by } = await request.json();
         if (!org_id) {
             return NextResponse.json({ error: "org_id is required" }, { status: 400 });
         }
@@ -22,27 +22,57 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Organization not found" }, { status: 404 });
         }
 
-        // 2. Fetch surveys
-        const { data: surveys } = await supabase
+        // 2. Fetch surveys (Strict: Creator)
+        let surveyQuery = supabase
             .from("surveys")
             .select("id, title, created_at")
-            .eq("org_id", org_id)
-            .order("created_at", { ascending: false });
-
-        // 3. Fetch response totals
-        const { data: responses } = await supabase
-            .from("responses")
-            .select("id, user_id, created_at")
             .eq("org_id", org_id);
+        
+        if (created_by) {
+            surveyQuery = surveyQuery.eq("created_by", created_by);
+        }
 
+        const { data: surveys } = await surveyQuery.order("created_at", { ascending: false });
+        const surveyIds = surveys?.map(s => s.id) || [];
+
+        // 3. Fetch response totals (only for the user's surveys)
+        let responseQuery = supabase
+            .from("responses")
+            .select("id, user_id, created_at, question_id")
+            .eq("org_id", org_id);
+        
+        // Filter responses to only those linked to the user's surveys
+        if (surveyIds.length > 0) {
+            // Need to join via survey_questions to be precise, or just filter by question_id if we have them
+            // For simplicity, we'll fetch questions first or use a join if possible (responses don't have survey_id directly usually)
+            const { data: qIds } = await supabase.from("survey_questions").select("id").in("survey_id", surveyIds);
+            const validQIds = qIds?.map(q => q.id) || [];
+            if (validQIds.length > 0) {
+                responseQuery = responseQuery.in("question_id", validQIds);
+            } else {
+                // No questions found for these surveys
+                responseQuery = responseQuery.eq("id", "00000000-0000-0000-0000-000000000000"); // Force empty
+            }
+        } else if (created_by) {
+            // No surveys found for this user
+            responseQuery = responseQuery.eq("id", "00000000-0000-0000-0000-000000000000"); // Force empty
+        }
+
+        const { data: responses } = await responseQuery;
         const totalResponses = responses?.length || 0;
         const uniqueRespondents = new Set(responses?.map(r => r.user_id) || []).size;
 
-        // 4. Fetch actions
-        const { data: actions } = await supabase
+        // 4. Fetch actions (Strict: Creator)
+        let actionQuery = supabase
             .from("actions")
             .select("id, title, status, is_completed, target_date, assigned_to, workflow_stage, evidence_urls, dimension, priority")
             .eq("org_id", org_id);
+
+        if (created_by) {
+            actionQuery = actionQuery.eq("created_by", created_by);
+        }
+
+        const { data: actions } = await actionQuery;
 
         const totalActions = actions?.length || 0;
         const openActions = actions?.filter(a => !a.is_completed).length || 0;

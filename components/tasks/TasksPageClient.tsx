@@ -63,11 +63,17 @@ export default function TasksPageClient({ isAdmin: isAdminProp }: TasksPageClien
   const fetchReportCount = async () => {
     if (!org?.id) return;
     try {
-      const { count, error } = await supabase
+      let query = supabase
         .from("task_sessions")
         .select("*", { count: "exact", head: true })
         .eq("org_id", org.id)
         .eq("status", "completed");
+      
+      if (!isPlatformAdmin && user?.id) {
+        query = query.eq("user_id", user.id);
+      }
+      
+      const { count, error } = await query;
       
       if (!error) setReportCount(count || 0);
     } catch (err) {
@@ -98,10 +104,12 @@ export default function TasksPageClient({ isAdmin: isAdminProp }: TasksPageClien
     if (!deleteId) return;
     setIsDeleting(true);
     try {
+      if (!org?.id) throw new Error("No organization selected");
       const { error } = await supabase
         .from("task_templates")
         .delete()
-        .eq("id", deleteId);
+        .eq("id", deleteId)
+        .eq("org_id", org.id);
       
       if (error) throw error;
       

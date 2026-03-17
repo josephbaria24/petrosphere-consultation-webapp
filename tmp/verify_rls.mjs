@@ -1,68 +1,44 @@
+import { createClient } from '@supabase/supabase-js';
 
-import { createClient } from '@supabase/supabase-js'
-import * as dotenv from 'dotenv'
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY; 
 
-dotenv.config({ path: '.env.local' })
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error('Missing Supabase env vars')
-  process.exit(1)
+if (!supabaseUrl || !anonKey) {
+  console.error('Missing env vars.');
+  process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey)
+const supabase = createClient(supabaseUrl, anonKey);
 
-async function verifyRLS() {
-  const tables = [
-    'task_templates',
-    'checklist_templates',
-    'checklist_items',
-    'task_sessions',
-    'task_responses',
-    'task_evidence'
-  ]
-
-  console.log('Verifying RLS status for task tables...')
+async function testAccess() {
+  console.table('--- Verification: Cross-Org Exposure ---');
   
-  for (const table of tables) {
-    const { data, error } = await supabase.rpc('inspect_rls_status', { table_name_param: table })
-    
-    if (error) {
-      // If RPC fails, try a direct query to pg_tables via a service role if possible
-      // or just assume it needs checking in the dashboard.
-      console.log(`Checking ${table} via pg_tables...`)
-      const { data: pgData, error: pgErr } = await supabase
-        .from('pg_tables' as any)
-        .select('rowsecurity')
-        .eq('schemaname', 'public')
-        .eq('tablename', table)
-        .single()
-      
-      if (pgErr) {
-        console.error(`Could not verify ${table}:`, pgErr.message)
-      } else {
-        console.log(`${table} RLS Enabled: ${pgData.rowsecurity}`)
-      }
+  // 1. Fetch ALL templates anonymously
+  const { data: tpls, error: tErr } = await supabase.from('task_templates').select('id, title, org_id');
+  if (tErr) console.error('Error fetching templates:', tErr.message);
+  else {
+    console.log(`Anonymously fetched ${tpls.length} templates.`);
+    const leaked = tpls.filter(t => t.org_id !== null);
+    if (leaked.length > 0) {
+      console.warn(`⚠️ SECURITY BREACH: Found ${leaked.length} non-system templates visible anonymously!`);
+      console.table(leaked);
     } else {
-      console.log(`${table} RLS Enabled: ${data}`)
+      console.log('✅ Templates with org_id are protected from anonymous access.');
     }
   }
 
-  console.log('\nChecking policies...')
-  const { data: policies, error: polErr } = await supabase
-    .from('pg_policies' as any)
-    .select('*')
-    .in('tablename', tables)
-  
-  if (polErr) {
-    console.error('Could not fetch policies:', polErr.message)
-  } else {
-    policies.forEach(p => {
-      console.log(`- [${p.tablename}] Policy: ${p.policyname} (${p.cmd})`)
-    });
+  // 2. Fetch ALL sessions anonymously
+  const { data: sessions, error: sErr } = await supabase.from('task_sessions').select('id, org_id');
+  if (sErr) console.error('Error fetching sessions:', sErr.message);
+  else {
+      console.log(`Anonymously fetched ${sessions.length} sessions.`);
+      if (sessions.length > 0) {
+          console.warn(`⚠️ SECURITY BREACH: Found ${sessions.length} sessions visible anonymously!`);
+          console.table(sessions);
+      } else {
+          console.log('✅ Sessions are protected from anonymous access.');
+      }
   }
 }
 
-verifyRLS()
+testAccess();

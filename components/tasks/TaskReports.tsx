@@ -91,15 +91,23 @@ export default function TaskReports({ orgId, userId, isPlatformAdmin, onRefresh 
   const fetchSessions = async () => {
     setLoading(true);
     try {
+      if (!orgId) {
+        setSessions([]);
+        setLoading(false);
+        return;
+      }
+
       let query = supabase
         .from("task_sessions")
         .select("*, task_templates(title, icon), checklist_templates(title)")
         .eq("status", "completed")
-        .order("completed_at", { ascending: false });
+        .eq("org_id", orgId);
 
-      if (!isPlatformAdmin && orgId) {
-        query = query.eq("org_id", orgId);
+      if (!isPlatformAdmin && userId) {
+        query = query.eq("user_id", userId);
       }
+
+      query = query.order("completed_at", { ascending: false });
 
       const { data: sessionData, error } = await query;
       if (error) throw error;
@@ -175,7 +183,8 @@ export default function TaskReports({ orgId, userId, isPlatformAdmin, onRefresh 
       const { error } = await supabase
         .from("task_sessions")
         .delete()
-        .eq("id", reportToDelete.id);
+        .eq("id", reportToDelete.id)
+        .eq("org_id", orgId);
 
       if (error) throw error;
 

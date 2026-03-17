@@ -121,7 +121,8 @@ export default function ChecklistExecution({ session, template, onFinish, onCanc
         await supabase
           .from("task_sessions")
           .update({ status: "completed", completed_at: new Date().toISOString() })
-          .eq("id", session.id);
+          .eq("id", session.id)
+          .eq("org_id", session.org_id);
         
         onFinish();
       }

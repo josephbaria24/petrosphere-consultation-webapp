@@ -228,7 +228,8 @@ export default function TaskTemplateEditor({
       const { error } = await supabase
         .from("task_templates")
         .delete()
-        .eq("id", templateId);
+        .eq("id", templateId)
+        .eq("org_id", orgId);
       
       if (error) throw error;
       
@@ -263,10 +264,13 @@ export default function TaskTemplateEditor({
 
       if (isEditing && !isForcedNew) {
         // Update existing template
-        await supabase
+        const { error: updateErr } = await supabase
           .from("task_templates")
           .update({ title, description, icon, image_url: imageUrl })
-          .eq("id", tplId!);
+          .eq("id", tplId!)
+          .eq("org_id", orgId); // STRICT ORG CHECK
+        
+        if (updateErr) throw updateErr;
       } else {
         // Create new template (or clone)
         const { data: newTpl, error: tplErr } = await supabase

@@ -35,33 +35,83 @@ export function useOrgKPIs(orgId?: string) {
         setError(null);
 
         try {
-            // 1. Fetch overdue actions
-            const { data: overdueData } = await supabase
-                .from("v_org_action_overdue")
-                .select("*")
+            // Get current user for filtering
+            const { data: { user } } = await supabase.auth.getUser();
+            const userId = user?.id;
+
+            if (!userId) {
+                setKpis(DEFAULT_KPIS);
+                return;
+            }
+
+            // 1. Fetch actions for this user/org
+            const { data: actions } = await supabase
+                .from("actions")
+                .select("id, is_completed, target_date, created_at, updated_at")
                 .eq("org_id", targetOrgId)
-                .single();
+                .eq("created_by", userId);
 
-            // 2. Fetch average closure time
-            const { data: closureData } = await supabase
-                .from("v_org_action_closure_time")
-                .select("*")
+            const totalActions = actions?.length || 0;
+            const overdueActions = actions?.filter(a => !a.is_completed && a.target_date && new Date(a.target_date) < new Date()).length || 0;
+            const overduePct = totalActions > 0 ? (overdueActions / totalActions) * 100 : 0;
+
+            const completedActions = actions?.filter(a => a.is_completed) || [];
+            let avgClosureTime = null;
+            if (completedActions.length > 0) {
+                const totalDays = completedActions.reduce((acc, a) => {
+                    const start = new Date(a.created_at);
+                    const end = new Date(a.updated_at);
+                    return acc + (end.getTime() - start.getTime()) / (1000 * 3600 * 24);
+                }, 0);
+                avgClosureTime = totalDays / completedActions.length;
+            }
+
+            // 2. Fetch responses for this user's surveys
+            // First find surveys created by this user
+            const { data: userSurveys } = await supabase
+                .from("surveys")
+                .select("id")
                 .eq("org_id", targetOrgId)
-                .single();
+                .eq("created_by", userId);
+            
+            const userSurveyIds = userSurveys?.map(s => s.id) || [];
+            let totalResponsesThisMonth = 0;
+            let currentScore = null;
+            let lastScore = null;
 
-            // 3. Fetch monthly scores (last 2 months for trend)
-            const { data: monthlyData } = await supabase
-                .from("v_org_safety_score_monthly")
-                .select("*")
-                .eq("org_id", targetOrgId)
-                .order("month", { ascending: false })
-                .limit(2);
+            if (userSurveyIds.length > 0) {
+                const { data: qIds } = await supabase.from("survey_questions").select("id").in("survey_id", userSurveyIds);
+                const validQIds = qIds?.map(q => q.id) || [];
 
-            const currentMonth = monthlyData?.[0] || null;
-            const lastMonth = monthlyData?.[1] || null;
+                if (validQIds.length > 0) {
+                    const now = new Date();
+                    const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+                    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
 
-            const currentScore = currentMonth?.safety_score ? parseFloat(currentMonth.safety_score) : null;
-            const lastScore = lastMonth?.safety_score ? parseFloat(lastMonth.safety_score) : null;
+                    const { data: responses } = await supabase
+                        .from("responses")
+                        .select("answer, created_at")
+                        .eq("org_id", targetOrgId)
+                        .in("question_id", validQIds)
+                        .gte("created_at", startOfLastMonth);
+
+                    const thisMonthResponses = responses?.filter(r => r.created_at >= startOfThisMonth) || [];
+                    const lastMonthResponses = responses?.filter(r => r.created_at >= startOfLastMonth && r.created_at < startOfThisMonth) || [];
+
+                    totalResponsesThisMonth = thisMonthResponses.length;
+
+                    const calculateAvg = (resps: any[]) => {
+                        const scores = resps.map(r => {
+                            const val = r.answer.replace(/[^0-9.]/g, '');
+                            return val ? parseFloat(val) : null;
+                        }).filter(v => v !== null) as number[];
+                        return scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
+                    };
+
+                    currentScore = calculateAvg(thisMonthResponses);
+                    lastScore = calculateAvg(lastMonthResponses);
+                }
+            }
 
             let trendPct = 0;
             if (currentScore !== null && lastScore !== null && lastScore > 0) {
@@ -69,11 +119,11 @@ export function useOrgKPIs(orgId?: string) {
             }
 
             setKpis({
-                overdueActionsPct: overdueData?.overdue_pct ? parseFloat(overdueData.overdue_pct) : 0,
-                totalActions: overdueData?.total_actions || 0,
-                overdueActions: overdueData?.overdue_actions || 0,
-                avgClosureTimeDays: closureData?.avg_days_to_close ? parseFloat(closureData.avg_days_to_close) : null,
-                totalResponsesThisMonth: currentMonth?.total_responses || 0,
+                overdueActionsPct: Math.round(overduePct * 100) / 100,
+                totalActions,
+                overdueActions,
+                avgClosureTimeDays: avgClosureTime ? Math.round(avgClosureTime * 100) / 100 : null,
+                totalResponsesThisMonth,
                 safetyScoreThisMonth: currentScore,
                 safetyScoreLastMonth: lastScore,
                 trendPct: Math.round(trendPct * 100) / 100,

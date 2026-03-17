@@ -169,7 +169,7 @@ export default function Dashboard() {
       }
       let query = supabase.from("actions").select("*").eq("survey_id", surveyId);
       if (!isPlatformAdmin && org?.id) {
-        query = query.eq("org_id", org.id);
+        query = query.eq("org_id", org.id).eq("created_by", user?.id || "");
       }
       const { data, error } = await query.order("created_at", { ascending: false });
       if (error) throw error;
@@ -494,8 +494,9 @@ export default function Dashboard() {
       let query = supabase.from('surveys').select('id, title, created_at, target_company, org_id, organizations(name)').order('created_at', { ascending: false });
       const DEFAULT_SURVEY_ID = '67813802-0821-4013-8b96-ddc5ba288c60';
       if (org?.id) {
-        if (isRestrictedToAuthored) query = query.or(`and(org_id.eq.${org.id},created_by.eq.${user?.id || ''}),id.eq.${DEFAULT_SURVEY_ID}`);
-        else query = query.or(`org_id.eq.${org.id},id.eq.${DEFAULT_SURVEY_ID}`);
+        // ALWAYS restrict to authored surveys within the Org OR Safety Vitals
+        // The user wants strict exclusivity to the creator.
+        query = query.or(`and(org_id.eq.${org.id},created_by.eq.${user?.id || ''}),id.eq.${DEFAULT_SURVEY_ID}`);
       }
       const { data } = await query;
       if (data) {
