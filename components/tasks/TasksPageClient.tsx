@@ -12,12 +12,22 @@ import {
   CardFooter,
 } from "../ui/card";
 import { Button } from "../ui/button";
-import { ClipboardCheck, Play, Plus, Pencil, FileText, LayoutGrid, HardHat, ShieldCheck, Eye } from "lucide-react";
+import { ClipboardCheck, Play, Plus, Pencil, FileText, LayoutGrid, HardHat, ShieldCheck, Eye, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import ChecklistExecution from "./ChecklistExecution";
 import TaskTemplateEditor from "./TaskTemplateEditor";
 import TaskReports from "./TaskReports";
 import { getClientCookie } from "../../lib/cookies-client";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../../@/components/ui/alert-dialog";
 
 interface TasksPageClientProps {
   isAdmin: boolean;
@@ -35,6 +45,9 @@ export default function TasksPageClient({ isAdmin: isAdminProp }: TasksPageClien
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"templates" | "reports">("templates");
   const [view, setView] = useState<ActiveView>({ type: "list" });
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [reportCount, setReportCount] = useState(0);
 
   // Detect admin from cookie as well (consistent with rest of app)
   const isPlatformAdmin = !!getClientCookie("admin_id");
@@ -44,7 +57,23 @@ export default function TasksPageClient({ isAdmin: isAdminProp }: TasksPageClien
 
   useEffect(() => {
     fetchTemplates();
+    fetchReportCount();
   }, [org?.id]);
+
+  const fetchReportCount = async () => {
+    if (!org?.id) return;
+    try {
+      const { count, error } = await supabase
+        .from("task_sessions")
+        .select("*", { count: "exact", head: true })
+        .eq("org_id", org.id)
+        .eq("status", "completed");
+      
+      if (!error) setReportCount(count || 0);
+    } catch (err) {
+      console.error("Failed to fetch report count:", err);
+    }
+  };
 
   const fetchTemplates = async () => {
     setLoading(true);
@@ -63,6 +92,27 @@ export default function TasksPageClient({ isAdmin: isAdminProp }: TasksPageClien
       toast.error("Failed to load task templates: " + err.message);
     } finally {
       setLoading(false);
+    }
+  };
+  const handleDeleteTemplate = async () => {
+    if (!deleteId) return;
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("task_templates")
+        .delete()
+        .eq("id", deleteId);
+      
+      if (error) throw error;
+      
+      toast.success("Template deleted successfully");
+      fetchTemplates();
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to delete template: " + err.message);
+    } finally {
+      setIsDeleting(false);
+      setDeleteId(null);
     }
   };
 
@@ -177,7 +227,7 @@ export default function TasksPageClient({ isAdmin: isAdminProp }: TasksPageClien
         </button>
         <button
           onClick={() => setActiveTab("reports")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all relative ${
             activeTab === "reports"
               ? "bg-background text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground"
@@ -185,6 +235,11 @@ export default function TasksPageClient({ isAdmin: isAdminProp }: TasksPageClien
         >
           <FileText className="w-4 h-4" />
           Reports
+          {reportCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground shadow-sm animate-in zoom-in">
+              {reportCount}
+            </span>
+          )}
         </button>
       </div>
 
@@ -239,14 +294,25 @@ export default function TasksPageClient({ isAdmin: isAdminProp }: TasksPageClien
                       <Play className="w-4 h-4" /> Start
                     </Button>
                     {canManageTemplates && (
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setView({ type: "editor", templateId: t.id })}
-                        title="Edit template"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setView({ type: "editor", templateId: t.id })}
+                          title="Edit template"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="text-destructive hover:bg-destructive/10 hover:text-destructive border-transparent"
+                          onClick={() => setDeleteId(t.id)}
+                          title="Delete template"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     )}
                   </CardFooter>
                 </Card>
@@ -280,8 +346,34 @@ export default function TasksPageClient({ isAdmin: isAdminProp }: TasksPageClien
           orgId={org?.id || ""}
           userId={user?.id}
           isPlatformAdmin={isPlatformAdmin}
+          onRefresh={fetchReportCount}
         />
       )}
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the template and all its associated checklists. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteTemplate();
+              }}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete Template"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

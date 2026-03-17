@@ -5,11 +5,16 @@ const nextConfig: NextConfig = {
     dangerouslyAllowSVG: true,
     domains: [
       "ferf1mheo22r9ira.public.blob.vercel-storage.com",
+      "petrosphere.com.ph",
     ],
     remotePatterns: [
       {
         protocol: "https",
         hostname: "api.dicebear.com",
+      },
+      {
+        protocol: "https",
+        hostname: "petrosphere.com.ph",
       },
     ],
   },

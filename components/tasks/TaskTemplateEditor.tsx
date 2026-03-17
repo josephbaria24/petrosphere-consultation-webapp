@@ -21,7 +21,17 @@ import { toast } from "sonner";
 import { Switch } from "../../@/components/ui/switch";
 import { Label } from "../../@/components/ui/label";
 import { getClientCookie } from "../../lib/cookies-client";
-import { ImagePlus, X, Loader2 } from "lucide-react";
+import { ImagePlus, X, Loader2, Trash2 as TrashIcon } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../../@/components/ui/alert-dialog";
 
 const ICON_OPTIONS = [
   { id: "ClipboardCheck", label: "Clipboard", icon: ClipboardCheck },
@@ -63,6 +73,8 @@ export default function TaskTemplateEditor({
   const [imageUrl, setImageUrl] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(isEditing);
 
   const isPlatformAdmin = !!getClientCookie("admin_id");
@@ -206,6 +218,28 @@ export default function TaskTemplateEditor({
       toast.error("Upload failed: " + err.message);
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!templateId) return;
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("task_templates")
+        .delete()
+        .eq("id", templateId);
+      
+      if (error) throw error;
+      
+      toast.success("Template deleted successfully");
+      onSaved();
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Delete failed: " + err.message);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -499,14 +533,54 @@ export default function TaskTemplateEditor({
         </Card>
 
         {/* Save */}
-        <div className="flex gap-3 justify-end">
-          <Button variant="outline" onClick={onBack}>Cancel</Button>
-          <Button onClick={handleSave} disabled={isSaving} className="gap-2 min-w-[120px]">
-            <Save className="w-4 h-4" />
-            {isSaving ? "Saving..." : isForcedNew ? "Save Custom Copy" : isEditing ? "Update Template" : "Create Template"}
-          </Button>
+        <div className="flex gap-3 justify-between items-center">
+          <div>
+            {isEditing && !isForcedNew && (
+              <Button 
+                variant="outline" 
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive gap-2"
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={isSaving || isDeleting}
+              >
+                <TrashIcon className="w-4 h-4" />
+                Delete Template
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={onBack}>Cancel</Button>
+            <Button onClick={handleSave} disabled={isSaving || isDeleting} className="gap-2 min-w-[120px]">
+              <Save className="w-4 h-4" />
+              {isSaving ? "Saving..." : isForcedNew ? "Save Custom Copy" : isEditing ? "Update Template" : "Create Template"}
+            </Button>
+          </div>
         </div>
       </div>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the template and all its associated checklists. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDelete();
+              }}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete Template"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
