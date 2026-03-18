@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../../@/components/ui/badge";
 import { Button } from "../ui/button";
-import { CheckCircle, XCircle, ChevronRight, ArrowLeft, ExternalLink, Calendar as CalendarIcon, Filter, Image as ImageIcon, Maximize2, Trash2 } from "lucide-react";
+import { CheckCircle, XCircle, ChevronRight, ArrowLeft, ExternalLink, Calendar as CalendarIcon, Filter, Image as ImageIcon, Maximize2, Trash2, MoreVertical, FileDown, Edit2, MapPin } from "lucide-react";
+import { Map, MapTileLayer, MapMarker, MapPopup } from "../ui/map";
 import { format, isToday, isYesterday, isWithinInterval, subDays, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, subMonths, isAfter } from "date-fns";
 import {
   Select,
@@ -21,11 +22,21 @@ import {
 } from "../ui/chart";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Cell, Pie, PieChart } from "recharts";
 import Image from "next/image";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogTitle,
   DialogTrigger,
 } from "../ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +49,7 @@ import {
 } from "../../@/components/ui/alert-dialog";
 import { Input } from "../ui/input";
 import { toast } from "sonner";
+import { sanitizeDomForPdf } from "../../lib/export-utils";
 
 interface TaskReportsProps {
   orgId: string;
@@ -66,7 +78,7 @@ interface ResponseWithEvidence {
   answered_at: string;
   item_id: string;
   checklist_items?: { text: string; order_index: number };
-  task_evidence?: { file_url: string; file_name: string; file_type: string }[];
+  task_evidence?: { file_url: string; file_name: string; file_type: string; latitude?: number; longitude?: number }[];
   stats?: { yes: number; no: number; n_a: number; total: number };
 }
 
@@ -83,6 +95,13 @@ export default function TaskReports({ orgId, userId, isPlatformAdmin, onRefresh 
   const [reportToDelete, setReportToDelete] = useState<Session | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const reportRef = useRef<HTMLDivElement>(null);
+
+  // Note editing state
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editNoteValue, setEditNoteValue] = useState("");
+  const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSessions();
@@ -156,7 +175,7 @@ export default function TaskReports({ orgId, userId, isPlatformAdmin, onRefresh 
     try {
       const { data, error } = await supabase
         .from("task_responses")
-        .select("*, checklist_items(text, order_index), task_evidence(file_url, file_name, file_type)")
+        .select("*, checklist_items(text, order_index), task_evidence(file_url, file_name, file_type, latitude, longitude)")
         .eq("session_id", session.id)
         .order("answered_at", { ascending: true });
 
@@ -203,6 +222,62 @@ export default function TaskReports({ orgId, userId, isPlatformAdmin, onRefresh 
       setDeleteConfirmation("");
     }
   };
+  
+  const handleExportPDF = async () => {
+    if (!reportRef.current || !selectedSession) return;
+    setIsExporting(true);
+    try {
+      const canvas = await html2canvas(reportRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        onclone: (clonedDoc) => {
+          sanitizeDomForPdf(clonedDoc);
+        }
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const totalPdfHeight = (imgHeight * pdfWidth) / imgWidth;
+      
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, totalPdfHeight);
+      pdf.save(`Report-${selectedSession.task_templates?.title || "Task"}-${format(new Date(selectedSession.completed_at || ""), "yyyy-MM-dd")}.pdf`);
+      toast.success("PDF generated successfully!");
+    } catch (err) {
+      console.error("PDF Export Error:", err);
+      toast.error("Failed to generate PDF");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleSaveNote = async (responseId: string) => {
+    setSavingNoteId(responseId);
+    try {
+      const { error } = await supabase
+        .from("task_responses")
+        .update({ notes: editNoteValue })
+        .eq("id", responseId);
+
+      if (error) throw error;
+
+      // Update local state
+      setSessionDetails(prev => prev.map(r => 
+        r.id === responseId ? { ...r, notes: editNoteValue } : r
+      ));
+      toast.success("Note updated");
+      setEditingNoteId(null);
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to update note: " + err.message);
+    } finally {
+      setSavingNoteId(null);
+    }
+  };
 
   // Detail view
   if (selectedSession) {
@@ -233,16 +308,30 @@ export default function TaskReports({ orgId, userId, isPlatformAdmin, onRefresh 
                 : "Unknown date"}
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-destructive hover:bg-destructive/10 hover:text-destructive border-border/50 h-8 gap-2"
-            onClick={() => setReportToDelete(selectedSession)}
-          >
-            <Trash2 className="w-4 h-4" />
-            Delete
-          </Button>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem onClick={handleExportPDF} disabled={isExporting} className="gap-2">
+                <FileDown className="w-4 h-4" />
+                {isExporting ? "Exporting..." : "Export as PDF"}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setReportToDelete(selectedSession)} 
+                className="gap-2 text-destructive focus:text-destructive"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
+
+        <div ref={reportRef} className="space-y-6">
 
         {/* Improved Summary Header */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -317,94 +406,161 @@ export default function TaskReports({ orgId, userId, isPlatformAdmin, onRefresh 
               <ChevronRight className="w-4 h-4 text-primary" />
               Checklist Items
             </h4>
-            <div className="grid gap-3">
-              {sessionDetails.map((r, idx) => (
-                <Card key={r.id} className="border-border/30 shadow-sm overflow-hidden">
-                  <CardContent className="p-0">
-                    <div className="flex items-stretch">
-                      <div className={`w-1.5 ${
-                        r.answer === "yes" ? "bg-green-500" : r.answer === "no" ? "bg-red-500" : "bg-slate-300"
-                      }`} />
-                      <div className="flex-1 p-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <span className="text-[10px] text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded mb-2 inline-block">
-                              ITEM #{String(idx + 1).padStart(2, '0')}
-                            </span>
-                            <p className="text-sm font-semibold text-foreground leading-snug">
-                              {r.checklist_items?.text || "Unknown question"}
-                            </p>
-                            {r.notes && (
-                              <div className="mt-3 bg-blue-50/50 dark:bg-blue-900/10 p-2 rounded-md border border-blue-100/50 dark:border-blue-900/20">
-                                <p className="text-xs italic text-blue-900/80 dark:text-blue-200">
-                                  <span className="font-semibold not-italic">Notes:</span> {r.notes}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                          <Badge
-                            className={`flex-shrink-0 text-[10px] font-black h-6 px-3 ${
-                              r.answer === "yes"
-                                ? "bg-green-100 text-green-700 hover:bg-green-100 border-green-200"
-                                : r.answer === "no"
-                                ? "bg-red-100 text-red-700 hover:bg-red-100 border-red-200"
-                                : "bg-slate-100 text-slate-600 hover:bg-slate-100 border-slate-200"
-                            }`}
-                            variant="outline"
-                          >
-                            {r.answer.toUpperCase()}
-                          </Badge>
-                        </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {sessionDetails.map((r, idx) => {
+                const hasImages = r.task_evidence && r.task_evidence.length > 0;
+                const isEditingThis = editingNoteId === r.id;
 
-                        {/* Image Previews */}
-                        {r.task_evidence && r.task_evidence.length > 0 && (
-                          <div className="mt-4 pt-4 border-t border-border/30">
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1.5 mb-2">
-                              <ImageIcon className="w-3 h-3" />
-                              Captured Evidence
-                            </p>
-                            <div className="flex flex-wrap gap-2">
+                return (
+                  <Card key={r.id} className="border-border/30 shadow-sm overflow-hidden flex flex-col group">
+                    {/* Large Image Section */}
+                    {hasImages && r.task_evidence && (
+                      <div className="relative w-full aspect-square border-b border-border/10 bg-muted/50 overflow-hidden">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <div className="w-full h-full cursor-pointer relative">
+                              <Image 
+                                src={r.task_evidence[0].file_url} 
+                                alt={r.task_evidence[0].file_name || "Evidence"} 
+                                fill 
+                                className="object-cover transition-transform duration-500 group-hover:scale-105"
+                              />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                 <Maximize2 className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 drop-shadow-md scale-75 group-hover:scale-100 transition-all duration-300" />
+                              </div>
+                              {r.task_evidence.length > 1 && (
+                                <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded-md backdrop-blur-sm font-medium border border-white/20 shadow-xl">
+                                  + {r.task_evidence.length - 1} more
+                                </div>
+                              )}
+                            </div>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-4xl p-0 overflow-hidden bg-transparent border-none shadow-none">
+                            <DialogTitle className="sr-only">Evidence Images</DialogTitle>
+                            <div className="flex flex-col gap-6 max-h-[90vh] overflow-y-auto pb-4 custom-scrollbar items-center">
                               {r.task_evidence.map((ev, ei) => (
-                                <Dialog key={ei}>
-                                  <DialogTrigger asChild>
-                                    <div className="relative group w-20 h-20 rounded-md overflow-hidden border border-border cursor-pointer hover:border-primary transition-colors">
-                                      <Image
-                                        src={ev.file_url}
-                                        alt={ev.file_name || "Evidence"}
-                                        fill
-                                        className="object-cover"
-                                      />
-                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <Maximize2 className="w-4 h-4 text-white" />
-                                      </div>
-                                    </div>
-                                  </DialogTrigger>
-                                  <DialogContent className="max-w-3xl p-0 overflow-hidden bg-transparent border-none">
-                                    <div className="relative aspect-auto max-h-[80vh] flex items-center justify-center">
-                                      <img
-                                        src={ev.file_url}
-                                        alt={ev.file_name}
-                                        className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
-                                      />
-                                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-4 text-white backdrop-blur-sm">
-                                        <p className="text-sm font-medium">{ev.file_name}</p>
-                                        <p className="text-xs text-white/70">{r.checklist_items?.text}</p>
-                                      </div>
-                                    </div>
-                                  </DialogContent>
-                                </Dialog>
+                                <div key={ei} className="relative aspect-auto bg-black/80 rounded-xl overflow-hidden flex flex-col items-center justify-center w-full max-w-3xl border border-white/10 shadow-2xl">
+                                  <img
+                                    src={ev.file_url}
+                                    alt={ev.file_name}
+                                    className="max-w-full max-h-[85vh] object-contain"
+                                  />
+                                  <div className="w-full bg-gradient-to-t from-black/90 to-transparent p-6 text-white absolute bottom-0 left-0">
+                                    <p className="text-sm font-medium drop-shadow-lg">{ev.file_name}</p>
+                                    <p className="text-xs text-white/80 drop-shadow-lg">{r.checklist_items?.text}</p>
+                                  </div>
+                                </div>
                               ))}
                             </div>
-                          </div>
-                        )}
+                          </DialogContent>
+                        </Dialog>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    )}
+
+                    <CardContent className="p-4 flex flex-col flex-1">
+                      <div className="flex items-start justify-between gap-4 mb-2">
+                        <div className="flex-1">
+                          <span className="text-[10px] text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded mb-2 inline-block">
+                            ITEM #{String(idx + 1).padStart(2, '0')}
+                          </span>
+                          <p className="text-[15px] font-semibold text-foreground leading-snug">
+                            {r.checklist_items?.text || "Unknown question"}
+                          </p>
+                        </div>
+                        <Badge
+                          className={`flex-shrink-0 text-[10px] font-black h-6 px-3 ${
+                            r.answer === "yes"
+                              ? "bg-green-100 text-green-700 border-green-200"
+                              : r.answer === "no"
+                              ? "bg-red-100 text-red-700 border-red-200"
+                              : "bg-slate-100 text-slate-600 border-slate-200"
+                          }`}
+                          variant="outline"
+                        >
+                          {r.answer.toUpperCase()}
+                        </Badge>
+                      </div>
+
+                      <div className="flex-1" />
+
+                      {/* Location Map */}
+                      {hasImages && r.task_evidence && r.task_evidence.some(ev => ev.latitude && ev.longitude) && (() => {
+                        const locatedEvidence = r.task_evidence!.find(ev => ev.latitude && ev.longitude);
+                        if (!locatedEvidence || !locatedEvidence.latitude || !locatedEvidence.longitude) return null;
+                        return (
+                          <div className="mt-3">
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1.5 mb-2">
+                              <MapPin className="w-3 h-3" /> Pinned Location
+                            </p>
+                            <div className="rounded-lg overflow-hidden border border-border/30 shadow-sm">
+                              <div className="h-[150px] w-full">
+                                <Map center={[locatedEvidence.latitude, locatedEvidence.longitude]} zoom={15} className="h-full w-full rounded-none min-h-0">
+                                  <MapTileLayer />
+                                  <MapMarker position={[locatedEvidence.latitude, locatedEvidence.longitude]}>
+                                    <MapPopup>
+                                      <p className="text-xs font-semibold">{r.checklist_items?.text}</p>
+                                      <p className="text-[10px] text-muted-foreground">{locatedEvidence.latitude.toFixed(6)}, {locatedEvidence.longitude.toFixed(6)}</p>
+                                    </MapPopup>
+                                  </MapMarker>
+                                </Map>
+                              </div>
+                              <div className="bg-muted/50 px-3 py-1.5 text-[10px] text-muted-foreground font-mono">
+                                {locatedEvidence.latitude.toFixed(6)}, {locatedEvidence.longitude.toFixed(6)}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Editable Note Section */}
+                      <div className="mt-4 pt-4 border-t border-border/40">
+                         {isEditingThis ? (
+                           <div className="space-y-3 animate-in fade-in zoom-in-95 duration-200 block">
+                             <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Edit Note</span>
+                             </div>
+                             <textarea 
+                               value={editNoteValue}
+                               onChange={(e) => setEditNoteValue(e.target.value)}
+                               className="w-full text-sm p-3 rounded-lg border-2 border-primary/20 bg-primary/5 min-h-[100px] focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 resize-y transition-all"
+                               placeholder="Add a detailed note..."
+                               autoFocus
+                             />
+                             <div className="flex items-center justify-end gap-2 pt-1">
+                                <Button variant="ghost" size="sm" onClick={() => setEditingNoteId(null)} disabled={savingNoteId === r.id} className="text-muted-foreground hover:text-foreground">
+                                  Cancel
+                                </Button>
+                                <Button size="sm" onClick={() => handleSaveNote(r.id)} disabled={savingNoteId === r.id} className="shadow-md">
+                                  {savingNoteId === r.id ? "Saving..." : "Save Note"}
+                                </Button>
+                             </div>
+                           </div>
+                         ) : (
+                           <div 
+                             className="group/note relative bg-blue-50/40 hover:bg-blue-50/80 dark:bg-blue-900/10 dark:hover:bg-blue-900/20 p-3.5 rounded-lg border border-transparent hover:border-blue-200/50 dark:hover:border-blue-800/50 transition-all cursor-text min-h-[70px]"
+                             onClick={() => {
+                               setEditingNoteId(r.id);
+                               setEditNoteValue(r.notes || "");
+                             }}
+                           >
+                              <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-[10px] font-bold text-blue-900/50 dark:text-blue-200/50 uppercase tracking-widest block">Note</span>
+                                <Edit2 className="w-3.5 h-3.5 text-blue-900/40 opacity-0 group-hover/note:opacity-100 transition-opacity drop-shadow-sm" />
+                              </div>
+                              <p className="text-sm text-blue-950/90 dark:text-blue-100 whitespace-pre-wrap leading-relaxed">
+                                {r.notes || <span className="text-blue-900/40 italic">Click to add a note...</span>}
+                              </p>
+                           </div>
+                         )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {/* Delete Confirmation Dialog (Detail View) */}

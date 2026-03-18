@@ -50,6 +50,8 @@ export default function Sidebar() {
   const isDimensionsLocked = !isAdmin && !limits?.allow_dimensions;
   const isRespondentsLocked = !isAdmin && !limits?.allow_respondents;
   const isIndividualResponsesLocked = !isAdmin && !limits?.allow_individual_responses;
+  const isCreateSurveyLocked = !isAdmin && !limits?.allow_create_survey;
+  const isTasksLocked = !isAdmin && !limits?.allow_tasks;
 
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
   const [lockedFeatureName, setLockedFeatureName] = useState("")
@@ -209,7 +211,7 @@ export default function Sidebar() {
                 </div>
 
                 <NavGroup title="Survey" icon={FileText} defaultExpanded={true}>
-                  <NavItem href={`${basePath}/create-survey`} icon={PlusCircle}>Create Survey</NavItem>
+                  <NavItem href={`${basePath}/create-survey`} icon={PlusCircle} isLocked={isCreateSurveyLocked}>Create Survey</NavItem>
                   <NavItem
                     href={`${basePath}/survey-responses`}
                     icon={FileText}
@@ -240,7 +242,7 @@ export default function Sidebar() {
                   <NavItem href={`${basePath}/organizations`} icon={Building2}>Manage Organizations</NavItem>
                 )}
 
-                <NavItem href={`${basePath}/tasks`} icon={ClipboardCheck}>
+                <NavItem href={`${basePath}/tasks`} icon={ClipboardCheck} isLocked={isTasksLocked}>
                   Tasks
                 </NavItem>
               </div>

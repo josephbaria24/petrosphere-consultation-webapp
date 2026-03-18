@@ -15,6 +15,7 @@ export interface PlanLimits {
     allow_individual_responses: boolean;
     allow_dimensions: boolean;
     allow_respondents: boolean;
+    allow_tasks: boolean;
 }
 
 export interface BootstrapData {
@@ -32,6 +33,7 @@ export interface BootstrapData {
     subscription: {
         plan: PlanTier;
         status: SubStatus;
+        trial_ends_at?: string;
     };
     limits: PlanLimits;
 }

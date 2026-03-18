@@ -111,7 +111,16 @@ export async function GET() {
 
                 orgId = newOrg.id;
                 await supabaseAdmin.from("memberships").insert({ org_id: orgId, user_id: userId, role: "demo" });
-                await supabaseAdmin.from("subscriptions").insert({ org_id: orgId, plan: "demo", status: "active" });
+                
+                // 14-day Pro trial for new demo users
+                const trialEnd = new Date();
+                trialEnd.setDate(trialEnd.getDate() + 14);
+                await supabaseAdmin.from("subscriptions").insert({
+                    org_id: orgId,
+                    plan: "demo",
+                    status: "trialing",
+                    trial_ends_at: trialEnd.toISOString(),
+                });
                 membershipData = { role: "demo" };
             } else {
                 orgId = membership.org_id;
@@ -133,11 +142,27 @@ export async function GET() {
         // 5. Get organization's subscription and limits
         const { data: subscription } = await supabaseAdmin
             .from("subscriptions")
-            .select("plan, status")
+            .select("plan, status, trial_ends_at")
             .eq("org_id", org.id)
             .single();
 
-        const activePlan = isAdmin ? 'paid' : (subscription?.plan || 'demo');
+        // Auto-expire trial if past due
+        let subStatus = subscription?.status || 'active';
+        if (subStatus === 'trialing' && subscription?.trial_ends_at) {
+            const trialEnd = new Date(subscription.trial_ends_at);
+            if (trialEnd < new Date()) {
+                // Trial has expired — update DB
+                await supabaseAdmin
+                    .from("subscriptions")
+                    .update({ status: 'canceled' })
+                    .eq("org_id", org.id);
+                subStatus = 'canceled';
+            }
+        }
+
+        // Determine active plan: trialing demo users get paid-level access
+        const isTrialing = subStatus === 'trialing';
+        const activePlan = isAdmin ? 'paid' : (isTrialing ? 'paid' : (subscription?.plan || 'demo'));
 
         const { data: planLimits } = await supabaseAdmin
             .from("plan_limits")
@@ -168,6 +193,7 @@ export async function GET() {
             allow_individual_responses: overrides?.allow_individual_responses ?? planLimits?.allow_individual_responses ?? false,
             allow_dimensions: overrides?.allow_dimensions ?? planLimits?.allow_dimensions ?? false,
             allow_respondents: overrides?.allow_respondents ?? planLimits?.allow_respondents ?? false,
+            allow_tasks: overrides?.allow_tasks ?? planLimits?.allow_tasks ?? (activePlan === 'paid'),
         };
         console.log(`[Bootstrap] Effective Limits:`, effectiveLimits);
 
@@ -185,7 +211,8 @@ export async function GET() {
             },
             subscription: {
                 plan: activePlan,
-                status: subscription?.status || 'active',
+                status: subStatus as any,
+                trial_ends_at: subscription?.trial_ends_at || undefined,
             },
             limits: effectiveLimits,
         };

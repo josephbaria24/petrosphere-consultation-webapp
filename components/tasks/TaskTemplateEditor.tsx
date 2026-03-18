@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import { useApp } from "../app/AppProvider";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
@@ -21,7 +22,7 @@ import { toast } from "sonner";
 import { Switch } from "../../@/components/ui/switch";
 import { Label } from "../../@/components/ui/label";
 import { getClientCookie } from "../../lib/cookies-client";
-import { ImagePlus, X, Loader2, Trash2 as TrashIcon } from "lucide-react";
+import { X, Loader2, Trash2 as TrashIcon } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,6 +62,7 @@ export default function TaskTemplateEditor({
   onBack,
   onSaved,
 }: TaskTemplateEditorProps) {
+  const { user } = useApp();
   const isEditing = !!templateId;
 
   const [title, setTitle] = useState("");
@@ -70,11 +72,10 @@ export default function TaskTemplateEditor({
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [checklistId, setChecklistId] = useState<string | null>(null);
   const [templateOrgId, setTemplateOrgId] = useState<string | null>(null);
-  const [imageUrl, setImageUrl] = useState("");
-  const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [createdBy, setCreatedBy] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(isEditing);
 
   const isPlatformAdmin = !!getClientCookie("admin_id");
@@ -111,8 +112,8 @@ export default function TaskTemplateEditor({
         setTitle(tpl.title);
         setDescription(tpl.description || "");
         setIcon(tpl.icon || "ClipboardCheck");
-        setImageUrl(tpl.image_url || "");
         setTemplateOrgId(tpl.org_id);
+        setCreatedBy(tpl.created_by);
       }
 
       const { data: checklists } = await supabase
@@ -190,46 +191,23 @@ export default function TaskTemplateEditor({
     );
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!isPlatformAdmin) {
-      toast.error("Only platform admins can change cover images.");
-      return;
-    }
-
-    setIsUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const resp = await fetch("/api/tasks/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!resp.ok) throw new Error("Upload failed");
-      const { url } = await resp.json();
-      setImageUrl(url);
-      toast.success("Cover image uploaded!");
-    } catch (err: any) {
-      console.error(err);
-      toast.error("Upload failed: " + err.message);
-    } finally {
-      setIsUploading(false);
-    }
-  };
 
   const handleDelete = async () => {
     if (!templateId) return;
     setIsDeleting(true);
     try {
-      const { error } = await supabase
+      let query = supabase
         .from("task_templates")
         .delete()
         .eq("id", templateId)
         .eq("org_id", orgId);
+      
+      // Also add created_by check for safety
+      if (!isPlatformAdmin && user?.id) {
+        query = query.eq("created_by", user.id);
+      }
+
+      const { error } = await query;
       
       if (error) throw error;
       
@@ -266,7 +244,7 @@ export default function TaskTemplateEditor({
         // Update existing template
         const { error: updateErr } = await supabase
           .from("task_templates")
-          .update({ title, description, icon, image_url: imageUrl })
+          .update({ title, description, icon })
           .eq("id", tplId!)
           .eq("org_id", orgId); // STRICT ORG CHECK
         
@@ -275,7 +253,13 @@ export default function TaskTemplateEditor({
         // Create new template (or clone)
         const { data: newTpl, error: tplErr } = await supabase
           .from("task_templates")
-          .insert({ title, description, icon, image_url: imageUrl, org_id: orgId })
+          .insert({ 
+            title, 
+            description, 
+            icon, 
+            org_id: orgId,
+            created_by: user?.id
+          })
           .select()
           .single();
         if (tplErr) throw tplErr;
@@ -425,57 +409,6 @@ export default function TaskTemplateEditor({
                   );
                 })}
               </div>
-            </div>
-            <div className="space-y-3">
-              <Label>Cover Image</Label>
-              {imageUrl ? (
-                <div className="relative group rounded-lg overflow-hidden border border-border aspect-video bg-muted">
-                  <img
-                    src={imageUrl}
-                    alt="Cover"
-                    className="w-full h-full object-cover"
-                  />
-                  {isPlatformAdmin && (
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                       <Button 
-                        variant="secondary" 
-                        size="sm" 
-                        onClick={() => setImageUrl("")}
-                        className="h-8 gap-2"
-                      >
-                        <X className="w-4 h-4" /> Remove
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              ) : isPlatformAdmin ? (
-                <div className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg p-8 hover:bg-muted/50 transition-colors">
-                  <input
-                    type="file"
-                    id="cover-upload"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                    disabled={isUploading}
-                  />
-                  <label
-                    htmlFor="cover-upload"
-                    className="flex flex-col items-center gap-2 cursor-pointer"
-                  >
-                    {isUploading ? (
-                      <Loader2 className="w-8 h-8 text-muted-foreground animate-spin" />
-                    ) : (
-                      <ImagePlus className="w-8 h-8 text-muted-foreground" />
-                    )}
-                    <span className="text-sm font-medium">Click to upload cover image</span>
-                    <span className="text-xs text-muted-foreground">Recommended aspect ratio 16:9</span>
-                  </label>
-                </div>
-              ) : (
-                <div className="py-4 text-center text-xs text-muted-foreground border rounded-lg bg-muted/20">
-                  No cover image set for this template.
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>

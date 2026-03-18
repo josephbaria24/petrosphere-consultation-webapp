@@ -3,6 +3,7 @@ import { requireAuth } from "../../../lib/auth";
 import { AppProvider } from "../../../components/app/AppProvider";
 import Sidebar from "../../../components/sidebar";
 import TopNav from "../../../components/top-nav";
+import { TrialBanner } from "../../../components/trial-banner";
 
 interface LayoutProps {
   children: ReactNode;
@@ -20,7 +21,8 @@ export default async function Layout({ children }: LayoutProps) {
           <header className="h-16 border-0 ">
             <TopNav fullName={user.fullName || user.email} email={user.email} />
           </header>
-          <main className="flex-1 overflow-auto p-6 bg-gray-100 dark:bg-[#0F0F12]">
+          <TrialBanner />
+          <main className="flex-1 overflow-auto p-6 bg-transparent">
             {children}
           </main>
         </div>

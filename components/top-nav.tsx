@@ -10,7 +10,7 @@ import ProfileDropdown from "./kokonutui/profile-dropdown"
 import { useRouter } from "next/navigation"
 import { supabase } from "../lib/supabaseClient"
 import { useApp } from "./app/AppProvider"
-import { getClientCookie } from "../lib/cookies-client"
+import { getClientCookie, Cookies } from "../lib/cookies-client"
 import { Button } from "./ui/button"
 import {
   Tooltip,
@@ -96,7 +96,6 @@ export default function TopNav({ fullName, email }: { fullName: string; email: s
       await fetch('/api/logout', { method: 'POST' })
 
       // 3. Client-side fallback for cookies
-      const { Cookies } = await import("../lib/cookies-client")
       Cookies.remove('admin_id', { path: '/' })
       Cookies.remove('admin_token', { path: '/' })
 

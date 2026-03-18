@@ -42,12 +42,6 @@ export default function CameraCapture({ onCapture, onCancel }: CameraCaptureProp
       
       if (videoRef.current) {
         videoRef.current.srcObject = newStream;
-        // Optimization for mobile: ensure play() is called explicitly
-        try {
-          await videoRef.current.play();
-        } catch (playErr) {
-          console.error("Video play error:", playErr);
-        }
       }
       setIsLoading(false);
     } catch (err: any) {

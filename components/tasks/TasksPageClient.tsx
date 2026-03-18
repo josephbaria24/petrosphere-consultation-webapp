@@ -12,8 +12,18 @@ import {
   CardFooter,
 } from "../ui/card";
 import { Button } from "../ui/button";
-import { ClipboardCheck, Play, Plus, Pencil, FileText, LayoutGrid, HardHat, ShieldCheck, Eye, Trash2 } from "lucide-react";
+import { 
+  ClipboardCheck, Play, Plus, Pencil, FileText, LayoutGrid, 
+  HardHat, ShieldCheck, Eye, Trash2, MoreVertical, Bookmark, 
+  MessageSquare, Paperclip, Clock, Link2
+} from "lucide-react";
 import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 import ChecklistExecution from "./ChecklistExecution";
 import TaskTemplateEditor from "./TaskTemplateEditor";
 import TaskReports from "./TaskReports";
@@ -105,11 +115,18 @@ export default function TasksPageClient({ isAdmin: isAdminProp }: TasksPageClien
     setIsDeleting(true);
     try {
       if (!org?.id) throw new Error("No organization selected");
-      const { error } = await supabase
+      let query = supabase
         .from("task_templates")
         .delete()
         .eq("id", deleteId)
         .eq("org_id", org.id);
+
+      // Extra safety: only owner or platform admin can delete
+      if (!isPlatformAdmin && user?.id) {
+        query = query.eq("created_by", user.id);
+      }
+
+      const { error } = await query;
       
       if (error) throw error;
       
@@ -170,6 +187,12 @@ export default function TasksPageClient({ isAdmin: isAdminProp }: TasksPageClien
     toast.success("Task completed successfully!");
   };
 
+  const handleGoToReports = () => {
+    setView({ type: "list" });
+    setActiveTab("reports");
+    toast.success("Task completed successfully!");
+  };
+
   // Route to ChecklistExecution
   if (view.type === "execute") {
     return (
@@ -178,6 +201,7 @@ export default function TasksPageClient({ isAdmin: isAdminProp }: TasksPageClien
         template={view.template}
         onFinish={handleFinishTask}
         onCancel={() => setView({ type: "list" })}
+        onGoToReports={handleGoToReports}
       />
     );
   }
@@ -257,74 +281,89 @@ export default function TasksPageClient({ isAdmin: isAdminProp }: TasksPageClien
           {loading ? (
             <div className="text-center py-12 text-muted-foreground">Loading templates...</div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {templates.map((t) => (
-                <Card key={t.id} className="hover:shadow-lg transition-all flex flex-col overflow-hidden border-border/50 group">
-                  {t.image_url ? (
-                    <div className="relative h-40 w-full overflow-hidden bg-muted">
-                      <Image
-                        src={t.image_url}
-                        alt={t.title}
-                        fill
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
-                        <CardTitle className="text-white drop-shadow-sm">{t.title}</CardTitle>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full">
+              {templates.map((t, index) => {
+                const bgColors = [
+                  "bg-[#FCE68E]", // light yellow
+                  "bg-[#FAD074]", // peach/yellow
+                  "bg-[#FFE9A6]", // paler yellow
+                  "bg-[#FAD074]",
+                ];
+                const edgeColors = [
+                  "bg-emerald-500",
+                  "bg-violet-500",
+                  "bg-orange-500",
+                  "bg-blue-500",
+                ];
+                const bgColor = bgColors[index % bgColors.length];
+                const edgeColor = edgeColors[index % edgeColors.length];
+                const ownerName = t.created_by ? 'custom' : 'system';
+
+                return (
+                  <Card 
+                    key={t.id} 
+                    className={`${bgColor} relative overflow-hidden flex flex-col justify-between p-4 sm:p-5 rounded-[32px] border-none shadow-sm transition-all hover:shadow-md w-full group`}
+                  >
+                    {/* Left Edge Accent */}
+                    <div className={`absolute left-0 top-6 bottom-6 w-1.5 rounded-r-full ${edgeColor}`}></div>
+                    
+                    <div className="pl-4 sm:pl-5 flex flex-col h-full">
+                      {/* Top Row */}
+                      <div className="flex justify-between items-start w-full mb-2">
+                         <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold bg-black/5 px-2 py-0.5 rounded-full text-black/70 cursor-default uppercase tracking-wider">
+                              {ownerName === "system" ? "Global" : "Custom"}
+                            </span>
+                         </div>
+                         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                              {canManageTemplates ? (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-black/10 bg-transparent text-black">
+                                      <MoreVertical className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-40 z-50">
+                                    <DropdownMenuItem onClick={() => setView({ type: "editor", templateId: t.id })} className="cursor-pointer">
+                                      <Pencil className="w-4 h-4 mr-2" /> Edit
+                                    </DropdownMenuItem>
+                                    {t.created_by && (t.created_by === user?.id || isPlatformAdmin) && (
+                                      <DropdownMenuItem onClick={() => setDeleteId(t.id)} className="cursor-pointer text-destructive focus:text-destructive">
+                                        <Trash2 className="w-4 h-4 mr-2" /> Delete
+                                      </DropdownMenuItem>
+                                    )}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              ) : (
+                                <div className="h-6 w-6"></div>
+                              )}
+                         </div>
+                      </div>
+
+                      {/* Title */}
+                      <div className="mb-4 pr-12">
+                         <h3 className="text-lg sm:text-[19px] font-bold leading-snug mb-0.5 text-black tracking-tight">{t.title}</h3>
+                         <p className="text-[13px] font-medium text-black/60 line-clamp-1">{t.description || "General template"}</p>
+                      </div>
+
+                      {/* Bottom Row */}
+                      <div className="flex w-full mt-auto justify-end">
+                         <div className="flex flex-col items-end gap-2">
+                           <Button 
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               handleStartTask(t);
+                             }}
+                             className="rounded-full px-5 py-1.5 h-auto text-xs font-bold shadow-md bg-black text-white hover:bg-black/80 flex items-center justify-center shrink-0 transition-transform hover:scale-105 active:scale-95"
+                           >
+                             Start
+                           </Button>
+                         </div>
                       </div>
                     </div>
-                  ) : (
-                    <CardHeader className="pb-3">
-                      <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center mb-4 text-blue-600 dark:text-blue-400">
-                        {t.icon === "HardHat" ? (
-                          <HardHat className="w-6 h-6" />
-                        ) : t.icon === "ShieldCheck" ? (
-                          <ShieldCheck className="w-6 h-6" />
-                        ) : t.icon === "Eye" ? (
-                          <Eye className="w-6 h-6" />
-                        ) : (
-                          <ClipboardCheck className="w-6 h-6" />
-                        )}
-                      </div>
-                      <CardTitle>{t.title}</CardTitle>
-                    </CardHeader>
-                  )}
-                  <CardHeader className={`${t.image_url ? "pt-4" : "pt-0"} pb-3 flex-1`}>
-                    {!t.image_url && <div className="hidden"><CardTitle>{t.title}</CardTitle></div>}
-                    <CardDescription className="line-clamp-2 min-h-[40px]">
-                      {t.description || "Perform a standard inspection safety check."}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardFooter className="flex gap-2 p-6 pt-0 mt-auto">
-                    <Button
-                      onClick={() => handleStartTask(t)}
-                      className="flex-1 gap-2"
-                    >
-                      <Play className="w-4 h-4" /> Start
-                    </Button>
-                    {canManageTemplates && (
-                      <div className="flex gap-1">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => setView({ type: "editor", templateId: t.id })}
-                          title="Edit template"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="text-destructive hover:bg-destructive/10 hover:text-destructive border-transparent"
-                          onClick={() => setDeleteId(t.id)}
-                          title="Delete template"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </CardFooter>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
               {templates.length === 0 && (
                 <div className="col-span-full text-center py-16 text-muted-foreground">
                   <ClipboardCheck className="w-10 h-10 mx-auto mb-3 opacity-30" />
