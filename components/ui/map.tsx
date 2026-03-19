@@ -103,7 +103,7 @@ function createLazyComponent<T extends ComponentType<any>>(
 ) {
     const LazyComponent = lazy(factory)
 
-    return (props: React.ComponentProps<T>) => {
+    return function LazyLeafletComponent(props: React.ComponentProps<T>) {
         const [isMounted, setIsMounted] = useState(false)
 
         useEffect(() => {
@@ -814,7 +814,7 @@ function MapFullscreenControl({
     useEffect(() => {
         if (!L) return
 
-        const fullscreenControl = new L.Control.FullScreen()
+        const fullscreenControl = new (L.Control as any).FullScreen()
         fullscreenControl.addTo(map)
 
         const container = fullscreenControl.getContainer()
@@ -841,7 +841,7 @@ function MapFullscreenControl({
                 type="button"
                 size="icon-sm"
                 variant="secondary"
-                onClick={() => map.toggleFullscreen()}
+                onClick={() => (map as any).toggleFullscreen()}
                 aria-label={
                     isFullscreen ? "Exit fullscreen" : "Enter fullscreen"
                 }
@@ -1464,8 +1464,8 @@ function useLeaflet() {
             const leafletDraw = await import("leaflet-draw")
 
             const L_object = leaflet.default
-            if (L_object.Control && !L_object.Control.FullScreen) {
-                L_object.Control.FullScreen =
+            if (L_object.Control && !(L_object.Control as any).FullScreen) {
+                ;(L_object.Control as any).FullScreen =
                     leafletFullscreen.default || leafletFullscreen
             }
 
