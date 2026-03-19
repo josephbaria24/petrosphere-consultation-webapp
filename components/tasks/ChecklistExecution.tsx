@@ -42,6 +42,7 @@ export default function ChecklistExecution({ session, template, onFinish, onCanc
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
+  const [locationPermission, setLocationPermission] = useState<PermissionState | "unknown">("unknown");
 
   // Storage for all accumulated answers before final submit
   const [accumulatedResponses, setAccumulatedResponses] = useState<Record<string, { answer: "yes" | "no" | "n_a", notes: string, evidenceFile: File | null, location: { lat: number; lng: number } | null }>>({});
@@ -216,15 +217,45 @@ export default function ChecklistExecution({ session, template, onFinish, onCanc
       (position) => {
         setLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
         setIsLocating(false);
+        setLocationPermission("granted");
         toast.success("Location captured!");
       },
       (err) => {
         setIsLocating(false);
-        toast.error("Could not get location: " + err.message);
+        if (err.code === err.PERMISSION_DENIED) {
+           setLocationPermission("denied");
+           toast.error("Location access denied. Please allow location access in your browser settings to pin evidence.");
+        } else if (err.code === err.POSITION_UNAVAILABLE) {
+           toast.error("Location information is unavailable. Try moving to an area with better GPS signal.");
+        } else if (err.code === err.TIMEOUT) {
+           toast.error("Location request timed out. Please try again.");
+        } else {
+           toast.error(`Could not get location: ${err.message}`);
+        }
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 15000 }
     );
   };
+
+  // Check permission status via Permissions API
+  const updatePermissionStatus = async () => {
+    if (!navigator.permissions || !navigator.permissions.query) return;
+    try {
+      const result = await navigator.permissions.query({ name: "geolocation" as any });
+      setLocationPermission(result.state);
+      result.onchange = () => {
+        setLocationPermission(result.state);
+      };
+    } catch (e) {
+      console.warn("Permissions API not supported for geolocation query", e);
+    }
+  };
+
+  useEffect(() => {
+    if (answer === "no" && locationPermission === "unknown") {
+      updatePermissionStatus();
+    }
+  }, [answer]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -540,7 +571,7 @@ export default function ChecklistExecution({ session, template, onFinish, onCanc
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="h-6 text-xs text-green-700 hover:text-green-800 hover:bg-green-100 px-2 gap-1"
+                          className="h-6 text-xs text-green-700 dark:text-green-400 hover:text-green-800 hover:bg-green-100 dark:hover:bg-green-900/60 px-2 gap-1"
                           onClick={handleGetLocation}
                           disabled={isLocating}
                         >
@@ -548,19 +579,37 @@ export default function ChecklistExecution({ session, template, onFinish, onCanc
                           Re-locate
                         </Button>
                       </div>
+                    ) : locationPermission === "denied" ? (
+                      <div className="bg-red-50 dark:bg-red-950/40 px-3 py-2 flex flex-col gap-1 text-red-700 dark:text-red-400 border-t border-red-100 dark:border-red-800">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <X className="w-3.5 h-3.5" />
+                            <span className="text-xs font-bold">Location Access Denied</span>
+                          </div>
+                          <Button 
+                            type="button"
+                            variant="link" 
+                            className="h-auto p-0 text-[10px] text-red-600 underline"
+                            onClick={handleGetLocation}
+                          >
+                            Try Again
+                          </Button>
+                        </div>
+                        <p className="text-[10px] opacity-80 leading-tight">Please enable location access in your browser settings and refresh the page to use GPS pinning.</p>
+                      </div>
                     ) : (
                       <div className="bg-muted px-3 py-2 flex items-center justify-between text-muted-foreground border-t border-border">
-                        <span className="text-xs">Tap the map or use GPS</span>
+                        <span className="text-xs">{locationPermission === "prompt" ? "GPS permission required" : "Tap the map or use GPS"}</span>
                         <Button
                           type="button"
-                          variant="ghost"
+                          variant={locationPermission === "prompt" ? "secondary" : "ghost"}
                           size="sm"
-                          className="h-6 text-xs gap-1 px-2 hover:bg-accent"
+                          className={`h-6 text-xs gap-1 px-2 ${locationPermission === "prompt" ? "bg-primary text-white hover:bg-primary/90" : "hover:bg-accent"}`}
                           onClick={handleGetLocation}
                           disabled={isLocating}
                         >
                           {isLocating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Navigation className="w-3 h-3" />}
-                          {isLocating ? "Locating..." : "Use GPS"}
+                          {isLocating ? "Locating..." : locationPermission === "prompt" ? "Allow Location" : "Use GPS"}
                         </Button>
                       </div>
                     )}
