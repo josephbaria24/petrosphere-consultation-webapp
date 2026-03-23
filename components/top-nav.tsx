@@ -41,9 +41,14 @@ interface BreadcrumbItem {
   href?: string
 }
 
-export default function TopNav({ fullName, email }: { fullName: string; email: string }) {
+export default function TopNav({ fullName: propFullName, email: propEmail }: { fullName: string; email: string }) {
   const router = useRouter()
-  const { subscription, resetTour, org } = useApp()
+  const { subscription, resetTour, org, user } = useApp()
+  
+  // Use bootstrap data if available, otherwise fall back to props
+  const displayName = user?.full_name || propFullName;
+  const displayEmail = user?.email || propEmail;
+
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
 
@@ -238,9 +243,9 @@ export default function TopNav({ fullName, email }: { fullName: string; email: s
         <div className="ml-2">
           <ProfileDropdown
             data={{
-              name: fullName,
-              email: email,
-              avatar: `https://api.dicebear.com/9.x/glass/svg?seed=${fullName}`,
+              name: displayName,
+              email: displayEmail,
+              avatar: user?.avatar_url || `https://api.dicebear.com/9.x/glass/svg?seed=${displayName}`,
               subscription: subscription?.plan === "demo" ? "DEMO" : "PRO",
               model: "Safety Insights 2.0"
             }}

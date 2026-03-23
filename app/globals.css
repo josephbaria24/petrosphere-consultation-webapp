@@ -76,6 +76,7 @@
   --sidebar-accent-foreground: #333333;
   --sidebar-border: #eaeaf5;
   --sidebar-ring: #ac9ccf;
+  --dots-color: #e5e7eb;
 }
 
 .dark {
@@ -110,6 +111,7 @@
   --sidebar-accent-foreground: #fcfcfc;
   --sidebar-border: rgba(255, 255, 255, 0.1);
   --sidebar-ring: #8887a1;
+  --dots-color: rgba(255, 255, 255, 0.05);
 }
 
 @layer base {
@@ -124,7 +126,7 @@
   body {
     @apply text-foreground min-h-screen relative font-sans;
     background-color: var(--background);
-    background-image: radial-gradient(circle, #e5e7eb 1.5px, transparent 1.5px);
+    background-image: radial-gradient(circle, var(--dots-color) 1.5px, transparent 1.5px);
     background-size: 24px 24px;
     background-attachment: fixed;
   }
@@ -231,6 +233,6 @@ screen {
 }
 
 .dotted-bg {
-  background-image: radial-gradient(circle, #d1d5db 1px, transparent 1px);
+  background-image: radial-gradient(circle, var(--dots-color) 1px, transparent 1px);
   background-size: 24px 24px;
 }

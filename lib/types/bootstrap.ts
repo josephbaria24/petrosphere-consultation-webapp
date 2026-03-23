@@ -1,5 +1,5 @@
 export type AppRole = 'admin' | 'member' | 'demo';
-export type PlanTier = 'demo' | 'paid';
+export type PlanTier = 'basic' | 'professional' | 'demo' | 'paid';
 export type SubStatus = 'active' | 'trialing' | 'canceled' | 'past_due';
 
 export interface PlanLimits {
@@ -22,6 +22,10 @@ export interface BootstrapData {
     user: {
         id: string;
         email: string;
+        full_name?: string;
+        avatar_url?: string;
+        is_onboarded: boolean;
+        onboarding_step?: number;
     };
     org: {
         id: string;

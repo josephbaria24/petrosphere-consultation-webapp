@@ -19,41 +19,17 @@ const DASHBOARD_CARDS: DashboardCard[] = [
     id: "safety-vitals",
     title: "Safety Vitals",
     icon: Activity,
-    gradient: "from-blue-500/10 to-indigo-500/10 dark:from-blue-500/20 dark:to-indigo-500/20",
-    iconBg: "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400",
+    gradient: "from-blue-600/10 to-indigo-600/10 dark:from-blue-600/20 dark:to-indigo-600/20",
+    iconBg: "bg-blue-600 dark:bg-blue-500 text-white",
     href: "/dashboard",
   },
   {
-    id: "inspections",
-    title: "Inspections",
+    id: "investigations",
+    title: "Investigations",
     icon: ClipboardCheck,
-    gradient: "from-emerald-500/10 to-teal-500/10 dark:from-emerald-500/20 dark:to-teal-500/20",
-    iconBg: "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400",
-    href: "__TASKS__",
-  },
-  {
-    id: "actions",
-    title: "Actions",
-    icon: Target,
-    gradient: "from-orange-500/10 to-amber-500/10 dark:from-orange-500/20 dark:to-amber-500/20",
-    iconBg: "bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400",
-    scrollTo: "summary",
-  },
-  {
-    id: "analytics",
-    title: "Analytics",
-    icon: BarChart3,
-    gradient: "from-purple-500/10 to-fuchsia-500/10 dark:from-purple-500/20 dark:to-fuchsia-500/20",
-    iconBg: "bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400",
-    scrollTo: "charts",
-  },
-  {
-    id: "flagged",
-    title: "Flagged Items",
-    icon: AlertTriangle,
-    gradient: "from-red-500/10 to-rose-500/10 dark:from-red-500/20 dark:to-rose-500/20",
-    iconBg: "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400",
-    scrollTo: "summary",
+    gradient: "from-emerald-600/10 to-teal-600/10 dark:from-emerald-600/20 dark:to-teal-600/20",
+    iconBg: "bg-emerald-600 dark:bg-emerald-500 text-white",
+    href: "__TASKS_REPORTS__",
   },
 ];
 
@@ -68,7 +44,12 @@ export function DashboardSelector({ onScrollTo }: DashboardSelectorProps) {
 
   const handleClick = (card: DashboardCard) => {
     if (card.href) {
-      const href = card.href === "__TASKS__" ? `${basePath}/tasks` : card.href;
+      let href = card.href;
+      if (href === "__TASKS__") {
+        href = `${basePath}/tasks`;
+      } else if (href === "__TASKS_REPORTS__") {
+        href = `${basePath}/investigations`;
+      }
       router.push(href);
     } else if (card.scrollTo && onScrollTo) {
       onScrollTo(card.scrollTo);
@@ -76,32 +57,41 @@ export function DashboardSelector({ onScrollTo }: DashboardSelectorProps) {
   };
 
   return (
-    <div className="mb-6">
-      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">
+    <div className="mb-8">
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4 px-1">
         Dashboards
       </h3>
-      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {DASHBOARD_CARDS.map((card) => {
           const Icon = card.icon;
+          const isVitals = card.id === "safety-vitals";
           return (
             <button
               key={card.id}
               onClick={() => handleClick(card)}
               className={`
-                group flex-shrink-0 flex flex-col items-center gap-2 p-3 md:p-4 rounded-xl
+                group relative overflow-hidden flex flex-col items-center justify-center gap-4 p-8 rounded-3xl
                 bg-gradient-to-br ${card.gradient}
-                border border-border/50 hover:border-border
-                hover:shadow-lg hover:scale-[1.03]
-                transition-all duration-200 ease-out
-                cursor-pointer min-w-[110px] md:min-w-[140px] w-[110px] md:w-[140px]
+                border border-border/50 hover:border-primary/20
+                hover:shadow-2xl hover:shadow-primary/5 hover:-translate-y-1
+                transition-all duration-300 ease-out
+                cursor-pointer w-full text-center
               `}
             >
-              <div className={`w-9 h-9 md:w-11 md:h-11 rounded-lg flex items-center justify-center ${card.iconBg} transition-transform group-hover:scale-110`}>
-                <Icon className="w-4 h-4 md:w-5 md:h-5" />
+              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${card.iconBg} shadow-lg transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3`}>
+                <Icon className="w-8 h-8" />
               </div>
-              <span className="text-[10px] md:text-xs font-semibold text-foreground/80 group-hover:text-foreground transition-colors text-center leading-tight">
-                {card.title}
-              </span>
+              <div className="flex flex-col gap-1">
+                <span className="text-xl font-bold text-foreground transition-colors">
+                  {card.title}
+                </span>
+                <span className="text-sm text-muted-foreground font-medium opacity-80 group-hover:opacity-100 transition-opacity">
+                  {isVitals ? "Survey Analytics & Culture Insights" : "Task Compliance & Incident Reports"}
+                </span>
+              </div>
+              
+              {/* Subtle background pattern/glow */}
+              <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-white/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors" />
             </button>
           );
         })}

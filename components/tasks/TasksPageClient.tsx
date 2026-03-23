@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { useApp } from "../app/AppProvider";
 import { supabase } from "../../lib/supabaseClient";
+import { GatedFeature } from "../gated-feature";
 import {
   Card,
   CardDescription,
@@ -15,7 +17,7 @@ import { Button } from "../ui/button";
 import { 
   ClipboardCheck, Play, Plus, Pencil, FileText, LayoutGrid, 
   HardHat, ShieldCheck, Eye, Trash2, MoreVertical, Bookmark, 
-  MessageSquare, Paperclip, Clock, Link2
+  MessageSquare, Paperclip, Clock, Link2, Lock, Sparkles, Zap
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -49,8 +51,10 @@ type ActiveView =
   | { type: "editor"; templateId: string | null }
   | { type: "reports" };
 
-export default function TasksPageClient({ isAdmin: isAdminProp }: TasksPageClientProps) {
-  const { org, user, membership } = useApp();
+function TasksPageContent({ isAdmin: isAdminProp }: TasksPageClientProps) {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const { org, user, membership, limits, subscription } = useApp();
   const [templates, setTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"templates" | "reports">("templates");
@@ -64,6 +68,12 @@ export default function TasksPageClient({ isAdmin: isAdminProp }: TasksPageClien
   const isOrgAdmin = membership?.role === "admin";
   const isDemoRole = membership?.role === "demo";
   const canManageTemplates = isPlatformAdmin || isOrgAdmin || isDemoRole || isAdminProp;
+
+  useEffect(() => {
+    if (tabParam === "reports") {
+      setActiveTab("reports");
+    }
+  }, [tabParam]);
 
   useEffect(() => {
     fetchTemplates();
@@ -223,7 +233,11 @@ export default function TasksPageClient({ isAdmin: isAdminProp }: TasksPageClien
 
   // Main page
   return (
-    <div className="flex flex-col min-h-screen bg-transparent p-4 md:p-8 pt-6 max-w-[1600px] mx-auto w-full">
+    <GatedFeature
+      isRestricted={!limits?.allow_tasks && !isPlatformAdmin}
+      featureName="Work Tasks"
+    >
+      <div className="flex flex-col min-h-screen bg-transparent p-4 md:p-8 pt-6 max-w-[1600px] mx-auto w-full">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
@@ -422,5 +436,14 @@ export default function TasksPageClient({ isAdmin: isAdminProp }: TasksPageClien
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </GatedFeature>
+  );
+}
+
+export default function TasksPageClient(props: TasksPageClientProps) {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading tasks dashboard...</div>}>
+      <TasksPageContent {...props} />
+    </Suspense>
   );
 }

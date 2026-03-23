@@ -49,6 +49,13 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(url);
     }
 
+    // Redirect logged-in users away from auth pages
+    const authPages = ["/", "/sign-in", "/admin-login"];
+    if (authPages.includes(url.pathname) && (user || adminId)) {
+        url.pathname = "/dashboard";
+        return NextResponse.redirect(url);
+    }
+
     return response;
 }
 

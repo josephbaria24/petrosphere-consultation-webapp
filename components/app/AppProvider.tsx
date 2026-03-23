@@ -4,6 +4,7 @@ import React, { createContext, useContext, ReactNode, useState, useEffect } from
 import { useBootstrap } from "../../lib/hooks/useBootstrap";
 import type { BootstrapData } from "../../lib/types/bootstrap";
 import { getClientCookie, setClientCookie } from "../../lib/cookies-client";
+import { useRouter, usePathname } from "next/navigation";
 
 interface AppContextType extends BootstrapData {
     refresh: () => Promise<void>;
@@ -20,6 +21,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { data, loading, error, refresh } = useBootstrap();
     const [hasCompletedTour, setHasCompletedTour] = useState<boolean>(true); // Default to true until checked
     const [currentStep, setCurrentStepState] = useState<number>(0);
+    const router = useRouter();
+    const pathname = usePathname();
+
+    useEffect(() => {
+        if (!loading && data && !data.user.is_onboarded && pathname !== '/onboarding') {
+            router.push('/onboarding');
+        }
+    }, [data, loading, pathname, router]);
 
     useEffect(() => {
         // Initialize from Cookies (Safe on client)

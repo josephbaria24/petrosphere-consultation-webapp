@@ -10,14 +10,13 @@ export async function GET(request: Request) {
 
         try {
             const { error } = await supabase.auth.exchangeCodeForSession(code);
-
             if (error) {
                 console.error("Error exchanging code for session:", error);
-                return NextResponse.redirect(`${requestUrl.origin}/demo?error=auth_error`);
+                return NextResponse.redirect(`${requestUrl.origin}/sign-in?error=auth_error`);
             }
         } catch (error) {
             console.error("Error in auth callback:", error);
-            return NextResponse.redirect(`${requestUrl.origin}/demo?error=auth_error`);
+            return NextResponse.redirect(`${requestUrl.origin}/sign-in?error=auth_error`);
         }
     }
 

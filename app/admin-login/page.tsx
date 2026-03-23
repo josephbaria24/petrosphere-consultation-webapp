@@ -1,14 +1,3 @@
-/**
- * File: app/admin-login/page.tsx
- * Description: Specialized login page for Platform Administrators.
- * Authenticates users via a secure passcode and sets the admin_id cookie for platform-wide access.
- * Functions:
- * - AdminLoginPage(): Component for the administrative authentication interface.
- * - handleLogin(): Validates the password against environment variables and manages secure cookies.
- * Connections:
- * - Sets the administrative context required for /api/admin/* routes.
- * - Redirects to the /dashboard upon successful authentication.
- */
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -17,7 +6,6 @@ import Image from 'next/image'
 import { toast } from 'sonner'
 import { supabase } from '../../lib/supabaseClient'
 import bcrypt from 'bcryptjs'
-import { Label } from '../../@/components/ui/label'
 import { Input } from '../../components/ui/input'
 import { Button } from '../../components/ui/button'
 import { Cookies } from '../../lib/cookies-client'
@@ -69,7 +57,7 @@ export default function AdminLoginPage() {
     setForgotLoading(false)
   }
 
-  const setCookieServerSide = async (adminId) => {
+  const setCookieServerSide = async (adminId: string) => {
     try {
       const response = await fetch('/api/set-admin-cookie', {
         method: 'POST',
@@ -146,7 +134,7 @@ export default function AdminLoginPage() {
           <div className="w-full md:w-1/2 p-10 flex flex-col justify-center">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to Safety Vitals</h1>
             <p className="text-gray-600 mb-8">
-              Sign in to access Petrosphere's safety monitoring dashboard and keep our operations incident-free.
+              Sign in to access Petrosphere&apos;s safety monitoring dashboard and keep our operations incident-free.
             </p>
 
             <div className="mb-4">
@@ -243,7 +231,7 @@ export default function AdminLoginPage() {
             </div>
 
             <p className="text-gray-600 mb-4 text-sm">
-              Enter your email address and we'll send you a link to reset your password.
+              Enter your email address and we&apos;ll send you a link to reset your password.
             </p>
 
             <div className="mb-4">

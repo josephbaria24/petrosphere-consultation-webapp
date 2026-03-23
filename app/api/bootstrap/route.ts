@@ -65,21 +65,55 @@ export async function GET() {
         // 1. Ensure profile exists (Only for regular auth users)
         // Platform Admins from admin_users table do not have an auth.users record,
         // so we skip updating the profiles table for them to avoid FK violations.
+        let userProfileData: any = null;
+
         if (!isAdmin) {
-            const { error: profileError } = await supabaseAdmin
+            // Check if profile exists
+            const { data: existingProfile, error: fetchError } = await supabaseAdmin
                 .from("profiles")
-                .upsert(
-                    {
+                .select("*")
+                .eq("user_id", userId)
+                .single();
+
+            if (fetchError || !existingProfile) {
+                // Initialize default profile if it doesn't exist
+                const { data: newProfile, error: createError } = await supabaseAdmin
+                    .from("profiles")
+                    .insert({
                         user_id: userId,
                         email: userEmail,
-                        full_name: adminDetails?.full_name || null
-                    },
-                    { onConflict: "user_id" }
-                );
+                        full_name: adminDetails?.full_name || null,
+                        is_onboarded: false,
+                        onboarding_step: 0
+                    })
+                    .select("*")
+                    .single();
 
-            if (profileError) {
-                console.error("Failed to create/update profile:", profileError);
+                if (createError) {
+                    console.error("Failed to create initial profile:", createError);
+                } else {
+                    userProfileData = newProfile;
+                }
+            } else {
+                // Use existing profile data – DO NOT overwrite anything here
+                userProfileData = existingProfile;
+                
+                // Optional: sync email if it changed (e.g. user changed it in SSO)
+                if (existingProfile.email !== userEmail) {
+                    await supabaseAdmin
+                        .from("profiles")
+                        .update({ email: userEmail })
+                        .eq("user_id", userId);
+                }
             }
+        } else {
+            // Admins are always onboarded
+            userProfileData = {
+                user_id: userId,
+                email: userEmail,
+                full_name: adminDetails?.full_name || "Admin",
+                is_onboarded: true
+            };
         }
 
         // 3. Handle Organization and Membership
@@ -110,18 +144,15 @@ export async function GET() {
                 if (orgErr || !newOrg) return NextResponse.json({ error: "Provision failed" }, { status: 500 });
 
                 orgId = newOrg.id;
-                await supabaseAdmin.from("memberships").insert({ org_id: orgId, user_id: userId, role: "demo" });
+                await supabaseAdmin.from("memberships").insert({ org_id: orgId, user_id: userId, role: "member" });
                 
-                // 14-day Pro trial for new demo users
-                const trialEnd = new Date();
-                trialEnd.setDate(trialEnd.getDate() + 14);
+                // New users start on the basic plan (free)
                 await supabaseAdmin.from("subscriptions").insert({
                     org_id: orgId,
-                    plan: "demo",
-                    status: "trialing",
-                    trial_ends_at: trialEnd.toISOString(),
+                    plan: "basic",
+                    status: "active",
                 });
-                membershipData = { role: "demo" };
+                membershipData = { role: "member" };
             } else {
                 orgId = membership.org_id;
                 membershipData = { role: membership.role };
@@ -160,9 +191,9 @@ export async function GET() {
             }
         }
 
-        // Determine active plan: trialing demo users get paid-level access
+        // Determine active plan: trialing users get professional-level access
         const isTrialing = subStatus === 'trialing';
-        const activePlan = isAdmin ? 'paid' : (isTrialing ? 'paid' : (subscription?.plan || 'demo'));
+        const activePlan = isAdmin ? 'paid' : (isTrialing ? 'professional' : (subscription?.plan || 'basic'));
 
         const { data: planLimits } = await supabaseAdmin
             .from("plan_limits")
@@ -193,7 +224,7 @@ export async function GET() {
             allow_individual_responses: overrides?.allow_individual_responses ?? planLimits?.allow_individual_responses ?? false,
             allow_dimensions: overrides?.allow_dimensions ?? planLimits?.allow_dimensions ?? false,
             allow_respondents: overrides?.allow_respondents ?? planLimits?.allow_respondents ?? false,
-            allow_tasks: overrides?.allow_tasks ?? planLimits?.allow_tasks ?? (activePlan === 'paid'),
+            allow_tasks: overrides?.allow_tasks ?? planLimits?.allow_tasks ?? (activePlan === 'paid' || activePlan === 'professional'),
         };
         console.log(`[Bootstrap] Effective Limits:`, effectiveLimits);
 
@@ -201,6 +232,10 @@ export async function GET() {
             user: {
                 id: userId,
                 email: userEmail,
+                full_name: userProfileData?.full_name || adminDetails?.full_name,
+                avatar_url: userProfileData?.avatar_url || null,
+                is_onboarded: userProfileData?.is_onboarded ?? false,
+                onboarding_step: userProfileData?.onboarding_step ?? 0
             },
             org: {
                 id: org.id,

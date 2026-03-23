@@ -58,7 +58,7 @@ export function HeroSection() {
                 <h1
                     className={cn(
                         "fade-in slide-in-from-bottom-10 animate-in text-balance fill-mode-backwards text-center text-4xl tracking-tight delay-100 duration-500 ease-out md:text-5xl lg:text-3xl",
-                        "font-extrabold text-[#231f20]"
+                        "font-extrabold text-foreground"
                     )}
                 >
                     Empower Your Safety Culture with <br /> <span className="text-[#FF7A40]">Real-Time Data</span>
@@ -79,9 +79,9 @@ export function HeroSection() {
                         Contact Sales
                     </Button>
                     <ContactSalesDialog open={isContactOpen} onOpenChange={setIsContactOpen} />
-                    <Link href="/demo">
+                    <Link href="/sign-in">
                         <Button className="rounded-full shadow-lg shadow-[#FF7A40]/20" size="lg">
-                            Try Demo{" "}
+                            Sign In{" "}
                             <ArrowRightIcon
                                 className="size-4 ms-2" data-icon="inline-end" />
                         </Button>

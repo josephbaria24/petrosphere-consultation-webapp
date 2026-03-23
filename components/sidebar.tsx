@@ -26,9 +26,13 @@ import {
   Building2,
   ClipboardCheck,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen
 } from "lucide-react"
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { cn } from "../lib/utils"
@@ -56,6 +60,19 @@ export default function Sidebar() {
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
   const [lockedFeatureName, setLockedFeatureName] = useState("")
   const [isNavigating, setIsNavigating] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(false)
+
+  // Persist collapse state
+  useEffect(() => {
+    const saved = localStorage.getItem("sidebar-collapsed")
+    if (saved) setIsCollapsed(saved === "true")
+  }, [])
+
+  const toggleCollapse = () => {
+    const newState = !isCollapsed
+    setIsCollapsed(newState)
+    localStorage.setItem("sidebar-collapsed", String(newState))
+  }
 
   function handleNavigation() {
     setIsMobileMenuOpen(false)
@@ -92,25 +109,31 @@ export default function Sidebar() {
         href={isLocked ? "#" : href}
         onClick={handleClick}
         className={cn(
-          "flex items-center px-3 py-2 text-sm rounded-md transition-colors w-full group",
+          "flex items-center px-3 py-2 text-sm rounded-md transition-all duration-200 w-full group relative",
           isActive
             ? "bg-gray-100 text-orange-500 font-semibold dark:bg-[#1F1F23] dark:text-orange-500"
             : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-[#1F1F23]",
-          isLocked && "cursor-pointer"
+          isLocked && "cursor-pointer",
+          isCollapsed ? "justify-center px-2" : "px-3"
         )}
       >
-        <div className="flex items-center flex-1">
-          <Icon className="h-4 w-4 mr-3 flex-shrink-0" />
-          <div className="flex items-center justify-between w-full">
-            <span>{children}</span>
-            {isLocked && (
-              <div className="flex items-center gap-1 ml-auto">
-                <Lock className="h-3 w-3 text-muted-foreground mr-1" />
-                <Badge variant="outline" className="text-[10px] px-1 h-4 bg-orange-500/10 text-orange-600 border-orange-500/20">Paid</Badge>
-              </div>
-            )}
-          </div>
+        <div className={cn("flex items-center transition-all duration-300", isCollapsed ? "justify-center w-full" : "flex-1")}>
+          <Icon className={cn("flex-shrink-0 transition-all duration-300", isCollapsed ? "h-6 w-6 m-0" : "h-4 w-4 mr-3")} />
+          {!isCollapsed && (
+            <div className="flex items-center justify-between w-full animate-in fade-in slide-in-from-left-2 duration-300">
+              <span className="truncate">{children}</span>
+              {isLocked && (
+                <div className="flex items-center gap-1 ml-auto flex-shrink-0 pl-2">
+                  <Lock className="h-3 w-3 text-muted-foreground mr-1" />
+                  <Badge variant="outline" className="text-[10px] px-1 h-4 bg-orange-500/10 text-orange-600 border-orange-500/20">Paid</Badge>
+                </div>
+              )}
+            </div>
+          )}
         </div>
+        {isCollapsed && isActive && (
+          <div className="absolute left-0 w-1 h-6 bg-orange-500 rounded-r-full" />
+        )}
       </Link>
     )
   }
@@ -127,6 +150,14 @@ export default function Sidebar() {
     defaultExpanded?: boolean
   }) {
     const [isExpanded, setIsExpanded] = useState(defaultExpanded)
+
+    if (isCollapsed) {
+      return (
+        <div className="flex flex-col items-center gap-1">
+          {children}
+        </div>
+      )
+    }
 
     return (
       <div className="space-y-1">
@@ -168,40 +199,36 @@ export default function Sidebar() {
 
       <nav
         className={cn(
-          "fixed inset-y-0 left-0 z-[70] w-64 bg-white dark:bg-[#0F0F12] transform transition-transform duration-200 ease-in-out",
-          "lg:translate-x-0 lg:static lg:w-55 border-0 shadow-2xl ",
-          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+          "fixed inset-y-0 left-0 z-[70] bg-white dark:bg-[#0F0F12] transition-all duration-300 ease-in-out border-r border-border/50",
+          isCollapsed ? "lg:w-20" : "lg:w-72",
+          "lg:translate-x-0 lg:static border-0 shadow-2xl overflow-hidden",
+          isMobileMenuOpen ? "translate-x-0 w-64" : "-translate-x-full"
         )}
       >
-        <div className="h-full flex flex-col">
+        <div className="h-full flex flex-col relative overflow-visible">
           <Link
             href="#"
-            className="h-16 px-6 flex items-center border-0"
+            className={cn("h-16 flex items-center border-0 transition-all px-6", isCollapsed ? "justify-center px-0" : "px-6")}
           >
-            <div className="flex flex-col pt-2 items-start gap-1">
-              <Image
-                src="/icons/logo.png"
-                alt="Petrosphere Logo"
-                width={60}
-                height={60}
-                className="hidden dark:block"
-              />
-              <Image
-                src="/icons/logo.png"
-                alt="Petrosphere Logo"
-                width={60}
-                height={60}
-                className="block dark:hidden"
-              />
-              <div className="flex flex-col">
-                <img src="/logo_trans.png" alt="logo" />
-
-              </div>
+            <div className={cn("flex flex-col pt-10 items-start gap-1 transition-all", isCollapsed ? "items-center" : "items-start")}>
+              {isCollapsed ? (
+                <Image
+                  src="/icons/logo_trans.png"
+                  alt="Petrosphere Logo"
+                  width={42}
+                  height={42}
+                  className="transition-all hover:scale-110 duration-300"
+                />
+              ) : (
+                <div className="flex flex-col">
+                  <img src="/logo_trans.png" alt="logo" className="h-auto w-auto" />
+                </div>
+              )}
             </div>
           </Link>
 
-          <div className="flex-1 overflow-y-auto py-15 px-4 space-y-6">
-            <div className="border-0 rounded-2xl p-2 bg-zinc-100 dark:bg-zinc-900">
+          <div className={cn("flex-1 overflow-y-auto py-15 px-4 space-y-6 scrollbar-hide", isCollapsed ? "px-2" : "px-4")}>
+            <div className={cn("border-0 rounded-2xl p-2 bg-zinc-100 dark:bg-zinc-900 transition-all", isCollapsed ? "p-1 rounded-xl" : "p-2")}>
               {/* <div className="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 Overview
               </div> */}
@@ -258,9 +285,28 @@ export default function Sidebar() {
             </div>
           </div>
 
-          <div className="px-4 py-4 border-0 space-y-1">
+          <div className={cn("px-4 py-4 border-t border-border/10 space-y-1", isCollapsed ? "px-2" : "px-4")}>
             <NavItem href={`${basePath}/settings`} icon={Settings}>Settings</NavItem>
-            {/* <NavItem href={`${basePath}/help`} icon={HelpCircle}>Help</NavItem> */}
+
+            <button
+              onClick={toggleCollapse}
+              className={cn(
+                "flex items-center px-3 py-2 text-sm rounded-md transition-all duration-200 w-full group relative text-gray-600 dark:text-gray-300 hover:text-orange-500 dark:hover:text-orange-500 hover:bg-gray-50 dark:hover:bg-[#1F1F23]",
+                isCollapsed ? "justify-center px-2" : "px-3"
+              )}
+              title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            >
+              <div className={cn("flex items-center transition-all duration-300", isCollapsed ? "justify-center w-full" : "flex-1")}>
+                {isCollapsed ? (
+                  <ChevronRight className="h-6 w-6 flex-shrink-0" />
+                ) : (
+                  <>
+                    <ChevronLeft className="h-4 w-4 mr-3 flex-shrink-0" />
+                    <span className="truncate font-medium animate-in fade-in slide-in-from-left-2 duration-300">Collapse Sidebar</span>
+                  </>
+                )}
+              </div>
+            </button>
           </div>
         </div>
       </nav>
@@ -273,9 +319,9 @@ export default function Sidebar() {
       )}
 
       {isNavigating && (
-        <LoadingOverlay 
-          variant="fullscreen" 
-          message="Navigating..." 
+        <LoadingOverlay
+          variant="fullscreen"
+          message="Navigating..."
           subMessage="Loading your workspace"
         />
       )}

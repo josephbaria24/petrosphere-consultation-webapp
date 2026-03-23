@@ -40,7 +40,7 @@ export function Header() {
     return (
         <header
             className={cn('sticky top-0 z-50 w-full transition-all duration-300 border-b border-transparent', {
-                'bg-white/70 backdrop-blur-xl border-slate-200/50 shadow-sm':
+                'bg-background/70 backdrop-blur-xl border-border/50 shadow-sm':
                     scrolled,
             })}
         >
@@ -84,13 +84,13 @@ export function Header() {
                     ))}
                 </div>
                 <div className="flex flex-col gap-2">
-                    <Link href="/login" className="w-full">
+                    <Link href="/sign-in" className="w-full">
                         <Button variant="outline" className="w-full bg-transparent">
                             Login
                         </Button>
                     </Link>
-                    <Link href="/demo" className="w-full">
-                        <Button className="w-full">Try Demo</Button>
+                    <Link href="/sign-in" className="w-full">
+                        <Button className="w-full">Sign In</Button>
                     </Link>
                 </div>
             </MobileMenu>
@@ -134,7 +134,7 @@ function MobileMenu({ open, children, className, ...props }: MobileMenuProps) {
 export const WordmarkIcon = (props: React.ComponentProps<"span">) => (
     <span
         {...props}
-        className={cn("font-black tracking-tighter text-zinc-900", props.className)}
+        className={cn("font-black tracking-tighter text-foreground leading-none", props.className)}
     >
         SafetyVitals
     </span>
