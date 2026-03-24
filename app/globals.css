@@ -236,3 +236,16 @@ screen {
   background-image: radial-gradient(circle, var(--dots-color) 1px, transparent 1px);
   background-size: 24px 24px;
 }
+
+@keyframes infinite-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-infinite-scroll {
+  animation: infinite-scroll 40s linear infinite;
+}

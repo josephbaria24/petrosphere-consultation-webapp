@@ -22,22 +22,22 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
                 className
             )}
         >
-            <InfiniteSlider gap={48} reverse duration={80} durationOnHover={25}>
-                {logos.map((logo) => (
+            <div className="flex animate-infinite-scroll gap-8 group-hover:[animation-play-state:paused] w-max">
+                {logos.concat(logos).map((logo, index) => (
                     <img
+                        key={`${logo.alt}-${index}`}
                         alt={logo.alt}
                         className={cn(
                             "pointer-events-none select-none dark:brightness-0 dark:invert",
                             logo.className || "h-8 md:h-10"
                         )}
                         height={logo.height || "auto"}
-                        key={`logo-${logo.alt}`}
                         loading="lazy"
                         src={logo.src}
                         width={logo.width || "auto"}
                     />
                 ))}
-            </InfiniteSlider>
+            </div>
         </div>
     );
 }

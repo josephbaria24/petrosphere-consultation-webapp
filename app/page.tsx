@@ -115,12 +115,22 @@ export default function Home() {
                   <div className="bg-[#FF7A40] text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full w-fit mb-4">Most Popular</div>
                   <h3 className="text-lg font-bold text-white mb-2">Professional</h3>
                   <div className="flex items-baseline gap-1 text-white">
-                    <span className="text-4xl font-black">$49</span>
+                    <span className="text-4xl font-black">$29</span>
                     <span className="text-zinc-500 font-semibold text-sm">/month</span>
                   </div>
                 </div>
                 <ul className="space-y-4 mb-10 flex-1 relative z-10">
-                  {['Up to 10 Organizations', 'Unlimited Responses', 'Advanced AI Insights', 'Export (PDF/Excel)', 'Priority Support'].map((item) => (
+                  {[
+                    'Up to 10 Organizations',
+                    'Unlimited Survey Responses',
+                    'Survey Creation & Templates',
+                    'Individual Result Tracking',
+                    'Advanced AI Culture Insights',
+                    'Respondents & Dimensions',
+                    'Task & Investigation Dashboard',
+                    'Export (PDF/Excel/CSV)',
+                    'Priority 24/7 Support'
+                  ].map((item) => (
                     <li key={item} className="flex items-center gap-3 text-sm font-medium text-zinc-300">
                       <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
                         <Check className="w-3 h-3 text-[#FF7A40]" />
@@ -129,12 +139,21 @@ export default function Home() {
                     </li>
                   ))}
                 </ul>
-                <Button
-                  className="w-full h-12 rounded-2xl bg-[#FF7A40] hover:bg-[#ff7a40]/90 text-white font-bold border-0 shadow-lg shadow-[#FF7A40]/20"
-                  onClick={() => setIsContactOpen(true)}
-                >
-                  Subscribe
-                </Button>
+                <div className="flex flex-col gap-3 relative z-10">
+                  <Link href="/sign-in?trial=true" className="w-full">
+                    <Button
+                      className="w-full h-12 rounded-2xl bg-white text-[#231f20] hover:bg-zinc-200 font-bold border-0 shadow-lg"
+                    >
+                      Start 14-day Free Trial
+                    </Button>
+                  </Link>
+                  <Button
+                    className="w-full h-12 rounded-2xl bg-[#FF7A40] hover:bg-[#ff7a40]/90 text-white font-bold border-0 shadow-lg shadow-[#FF7A40]/20"
+                    onClick={() => setIsContactOpen(true)}
+                  >
+                    Subscribe
+                  </Button>
+                </div>
               </div>
 
               {/* Enterprise */}
