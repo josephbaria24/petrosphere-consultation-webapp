@@ -51,7 +51,7 @@ const Question = memo(function Question({ q, value, onChange, useFilipino }: Que
             <div key={i} className="flex items-center space-x-2">
               <StyledRadioItem value={opt} id={`${q.id}-${i}`} />
               <Label htmlFor={`${q.id}-${i}`}>
-                <em>{opt}</em>
+                {opt}
               </Label>
             </div>
           ))}
@@ -68,7 +68,7 @@ const Question = memo(function Question({ q, value, onChange, useFilipino }: Que
             <div key={i} className="flex items-center gap-2">
               <StyledRadioItem value={opt} id={`${q.id}-likert-${i}`} />
               <Label htmlFor={`${q.id}-likert-${i}`}>
-                <em>{opt}</em>
+                {opt}
               </Label>
             </div>
           ))}
