@@ -13,7 +13,7 @@
  */
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { supabase } from '../../../lib/supabaseClient'
@@ -63,7 +63,7 @@ type Survey = {
 
 
 
-export default function PublicSurveyPage() {
+function SurveyContent() {
 
   const params = useParams<{ id: string }>()
   const searchParams = useSearchParams()
@@ -648,5 +648,13 @@ export default function PublicSurveyPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  )
+}
+
+export default function PublicSurveyPage() {
+  return (
+    <Suspense fallback={<p>Loading survey form...</p>}>
+      <SurveyContent />
+    </Suspense>
   )
 }

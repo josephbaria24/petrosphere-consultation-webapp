@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -11,7 +11,7 @@ import { Eye, EyeOff, X, Mail, Loader2, UserPlus, LogIn, ArrowLeft } from 'lucid
 import { useRouter, useSearchParams } from 'next/navigation'
 import { signUpWithCustomEmail } from './actions'
 
-export default function SignInPage() {
+function SignInContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [mode, setMode] = useState<'login' | 'register'>('login')
@@ -397,5 +397,17 @@ export default function SignInPage() {
         </div>
       )}
     </>
+  )
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="w-8 h-8 animate-spin text-orange-600" />
+      </div>
+    }>
+      <SignInContent />
+    </Suspense>
   )
 }
