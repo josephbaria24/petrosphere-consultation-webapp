@@ -15,6 +15,7 @@ import {
 } from "../ui/chart"
 import { supabase } from "../../lib/supabaseClient";
 import { Building } from "lucide-react";
+import { EmptyState } from "./empty-state";
 
 interface DepartmentChartProps {
     orgId?: string;
@@ -110,8 +111,11 @@ export function DepartmentChart({ orgId, surveyId, isPlatformAdmin }: Department
                         <Building className="w-4 h-4" /> Scores by Department
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="h-[300px] flex items-center justify-center">
-                    <p className="text-sm text-muted-foreground">No department data available</p>
+                <CardContent className="flex items-center justify-center p-0">
+                    <EmptyState 
+                        title="No department data" 
+                        message="Responses need to be linked to departments to show insights here."
+                    />
                 </CardContent>
             </Card>
         );

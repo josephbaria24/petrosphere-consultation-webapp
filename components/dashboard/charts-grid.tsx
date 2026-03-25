@@ -35,6 +35,7 @@ import {
     ChartTooltipContent,
     type ChartConfig,
 } from "../../@/components/ui/chart";
+import { EmptyState } from "./empty-state";
 
 // Types
 type ChartType = "bar" | "radar" | "gauge" | "role" | "comparison" | null;
@@ -125,19 +126,23 @@ export function OverviewCharts({
                         variant="ghost"
                         size="icon"
                         onClick={() => setOpenChart("gauge")}
-                        disabled={isLoadingStats}
+                        disabled={isLoadingStats || avgScore === 0}
                     >
                         <Maximize2 className="w-4 h-4" />
                     </Button>
                 </CardHeader>
                 <CardContent className={isLoadingStats ? "filter blur-[4px] grayscale-[0.5] transition-all duration-500 opacity-50" : "transition-all duration-500"}>
-                    <GaugeChart
-                        score={avgScore}
-                        aiInsights={aiInsights}
-                        isGeneratingAI={isGeneratingAI}
-                        isDemo={isDemo}
-                        onUpgradeClick={onUpgradeClick}
-                    />
+                    {avgScore === 0 && !isLoadingStats ? (
+                        <EmptyState />
+                    ) : (
+                        <GaugeChart
+                            score={avgScore}
+                            aiInsights={aiInsights}
+                            isGeneratingAI={isGeneratingAI}
+                            isDemo={isDemo}
+                            onUpgradeClick={onUpgradeClick}
+                        />
+                    )}
                 </CardContent>
             </Card>
 
@@ -150,64 +155,68 @@ export function OverviewCharts({
                         variant="ghost"
                         size="icon"
                         onClick={() => setOpenChart("comparison")}
-                        disabled={isLoadingComparison || isLoadingStats}
+                        disabled={isLoadingComparison || isLoadingStats || comparisonRadarData.length === 0}
                     >
                         <Maximize2 className="w-4 h-4" />
                     </Button>
                 </CardHeader>
 
                 <CardContent className={`h-[350px] md:h-[550px] p-1 md:p-4 ${(isLoadingComparison || isLoadingStats) ? "filter blur-[4px] grayscale-[0.5] transition-all duration-500 opacity-50" : "transition-all duration-500"}`}>
-                    <ChartContainer config={comparisonConfig} className="h-full w-full">
-                        <RadarChart
-                            cx="50%"
-                            cy="50%"
-                            outerRadius="80%"
-                            data={comparisonRadarData}
-                        >
-                            <PolarGrid stroke="#e4e4e7" strokeWidth={1} gridType="polygon" />
-                            <PolarAngleAxis
-                                dataKey="subject"
-                                fontSize={window.innerWidth < 768 ? 8 : 10}
-                                fontWeight={700}
-                                tick={{ fill: theme === "dark" ? "#a1a1aa" : "#71717a" }}
-                                dy={4}
-                            />
-                            <PolarRadiusAxis
-                                domain={[0, 100]}
-                                tick={false}
-                                axisLine={false}
-                            />
+                    {comparisonRadarData.length === 0 && !isLoadingComparison && !isLoadingStats ? (
+                        <EmptyState message="No comparison data available yet." />
+                    ) : (
+                        <ChartContainer config={comparisonConfig} className="h-full w-full">
+                            <RadarChart
+                                cx="50%"
+                                cy="50%"
+                                outerRadius="80%"
+                                data={comparisonRadarData}
+                            >
+                                <PolarGrid stroke="#e4e4e7" strokeWidth={1} gridType="polygon" />
+                                <PolarAngleAxis
+                                    dataKey="subject"
+                                    fontSize={typeof window !== 'undefined' && window.innerWidth < 768 ? 8 : 10}
+                                    fontWeight={700}
+                                    tick={{ fill: theme === "dark" ? "#a1a1aa" : "#71717a" }}
+                                    dy={4}
+                                />
+                                <PolarRadiusAxis
+                                    domain={[0, 100]}
+                                    tick={false}
+                                    axisLine={false}
+                                />
 
-                            <Radar
-                                name="Your Score"
-                                dataKey="current"
-                                stroke="#14b8a6"
-                                fill="#14b8a6"
-                                fillOpacity={0.6}
-                                strokeWidth={3}
-                            />
-                            <Radar
-                                name="Industry Average"
-                                dataKey="average"
-                                stroke="#f59e0b"
-                                fill="#f59e0b"
-                                fillOpacity={0.4}
-                                strokeWidth={2}
-                            />
-                            <ChartTooltip content={<ChartTooltipContent />} />
-                            <Legend
-                                verticalAlign="bottom"
-                                height={36}
-                                iconType="rect"
-                                wrapperStyle={{
-                                    paddingTop: "20px",
-                                    fontSize: "10px",
-                                    fontWeight: "bold",
-                                    color: theme === "dark" ? "#fff" : "#000",
-                                }}
-                            />
-                        </RadarChart>
-                    </ChartContainer>
+                                <Radar
+                                    name="Your Score"
+                                    dataKey="current"
+                                    stroke="#14b8a6"
+                                    fill="#14b8a6"
+                                    fillOpacity={0.6}
+                                    strokeWidth={3}
+                                />
+                                <Radar
+                                    name="Industry Average"
+                                    dataKey="average"
+                                    stroke="#f59e0b"
+                                    fill="#f59e0b"
+                                    fillOpacity={0.4}
+                                    strokeWidth={2}
+                                />
+                                <ChartTooltip content={<ChartTooltipContent />} />
+                                <Legend
+                                    verticalAlign="bottom"
+                                    height={36}
+                                    iconType="rect"
+                                    wrapperStyle={{
+                                        paddingTop: "20px",
+                                        fontSize: "10px",
+                                        fontWeight: "bold",
+                                        color: theme === "dark" ? "#fff" : "#000",
+                                    }}
+                                />
+                            </RadarChart>
+                        </ChartContainer>
+                    )}
                 </CardContent>
             </Card>
 
@@ -311,52 +320,56 @@ export function DetailedCharts({
                             variant="ghost"
                             size="icon"
                             onClick={() => setOpenChart("bar")}
-                            disabled={isLoadingStats}
+                            disabled={isLoadingStats || barData.length === 0}
                         >
                             <Maximize2 className="w-4 h-4" />
                         </Button>
                     </div>
                 </CardHeader>
                 <CardContent className={`p-2 md:p-6 ${isLoadingStats ? "filter blur-[4px] grayscale-[0.5] transition-all duration-500 opacity-50" : "transition-all duration-500"}`}>
-                    <ChartContainer config={barConfig} className="h-[250px] md:h-[300px] w-full">
-                        <BarChart
-                            data={coloredBarData}
-                            margin={{ top: 50, right: 10, left: 0, bottom: 0 }}
-                        >
-                            <XAxis
-                                dataKey="name"
-                                angle={-20}
-                                textAnchor="end"
-                                fontSize={12}
-                                interval={0}
-                                height={100}
-                            />
-                            <YAxis domain={[0, 100]} tickFormatter={(val) => `${val}%`} />
+                    {barData.length === 0 && !isLoadingStats ? (
+                        <EmptyState message="No dimension data available yet." />
+                    ) : (
+                        <ChartContainer config={barConfig} className="h-[250px] md:h-[300px] w-full">
+                            <BarChart
+                                data={coloredBarData}
+                                margin={{ top: 50, right: 10, left: 0, bottom: 0 }}
+                            >
+                                <XAxis
+                                    dataKey="name"
+                                    angle={-20}
+                                    textAnchor="end"
+                                    fontSize={12}
+                                    interval={0}
+                                    height={100}
+                                />
+                                <YAxis domain={[0, 100]} tickFormatter={(val) => `${val}%`} />
 
-                            <ChartTooltip content={<ChartTooltipContent />} />
-                            <Bar dataKey="scorePercent" radius={[4, 4, 0, 0]}>
-                                {coloredBarData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                                ))}
-                            </Bar>
+                                <ChartTooltip content={<ChartTooltipContent />} />
+                                <Bar dataKey="scorePercent" radius={[4, 4, 0, 0]}>
+                                    {coloredBarData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                                    ))}
+                                </Bar>
 
-                            <ReferenceLine
-                                y={lowestDimensionPercent ?? 0}
-                                stroke="red"
-                                strokeDasharray="6 6"
-                                strokeWidth={2}
-                                ifOverflow="visible"
-                                label={{
-                                    position: "insideTopRight",
-                                    value: `${improvementLabel} (${(lowestDimensionPercent ?? 0).toFixed(1)}%)`,
-                                    fill: "red",
-                                    fontSize: 12,
-                                    fontWeight: "bold",
-                                    dy: -10
-                                }}
-                            />
-                        </BarChart>
-                    </ChartContainer>
+                                <ReferenceLine
+                                    y={lowestDimensionPercent ?? 0}
+                                    stroke="red"
+                                    strokeDasharray="6 6"
+                                    strokeWidth={2}
+                                    ifOverflow="visible"
+                                    label={{
+                                        position: "insideTopRight",
+                                        value: `${improvementLabel} (${(lowestDimensionPercent ?? 0).toFixed(1)}%)`,
+                                        fill: "red",
+                                        fontSize: 12,
+                                        fontWeight: "bold",
+                                        dy: -10
+                                    }}
+                                />
+                            </BarChart>
+                        </ChartContainer>
+                    )}
                 </CardContent>
             </Card>
 
@@ -369,13 +382,17 @@ export function DetailedCharts({
                         variant="ghost"
                         size="icon"
                         onClick={() => setOpenChart("role")}
-                        disabled={isLoadingStats}
+                        disabled={isLoadingStats || roleData.length === 0}
                     >
                         <Maximize2 className="w-4 h-4" />
                     </Button>
                 </CardHeader>
                 <CardContent className={isLoadingStats ? "filter blur-[4px] grayscale-[0.5] transition-all duration-500 opacity-50" : "transition-all duration-500"}>
-                    <RoleAreaChart data={roleData} />
+                    {roleData.length === 0 && !isLoadingStats ? (
+                        <EmptyState message="No role-based data available yet." />
+                    ) : (
+                        <RoleAreaChart data={roleData} />
+                    )}
                 </CardContent>
             </Card>
 

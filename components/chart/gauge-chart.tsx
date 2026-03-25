@@ -3,40 +3,7 @@
 import GaugeComponent from "react-gauge-component";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../../@/components/ui/badge";
-
-const toPercentage = (score: number) => (score / 5) * 100;
-
-const getLevelLabel = (score: number) => {
-  if (score >= 4.2)
-    return {
-      level: 5,
-      label: "Level 5 – Excellence (Resilient & Learning Culture)",
-      badgeColor: "bg-green-500 text-white",
-    };
-  if (score >= 3.4)
-    return {
-      level: 4,
-      label: "Level 4 – Integrated (Cooperative Culture)",
-      badgeColor: "bg-yellow-400 text-black",
-    };
-  if (score >= 2.6)
-    return {
-      level: 3,
-      label: "Level 3 – Interdependent (At risk: over-reliance on systems)",
-      badgeColor: "bg-red-500 text-white",
-    };
-  if (score >= 1.8)
-    return {
-      level: 2,
-      label: "Level 2 – Independent (Needs Intervention)",
-      badgeColor: "bg-red-700 text-white",
-    };
-  return {
-    level: 1,
-    label: "Level 1 – Dependent (Rules-driven; safety not priority)",
-    badgeColor: "bg-red-900 text-white",
-  };
-};
+import { getLevelLabel, toPercentage } from "../../lib/survey-utils";
 
 interface GaugeChartProps {
   score: number; // 0 to 5 scale

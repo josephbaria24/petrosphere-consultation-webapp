@@ -18,6 +18,8 @@ import {
     User,
 } from "lucide-react";
 import { Action } from "./types";
+import { getLevelLabel, toPercentage } from "../../lib/survey-utils";
+import { Badge } from "../../@/components/ui/badge";
 
 interface ResponseSummaryProps {
     respondentCount: number;
@@ -44,9 +46,6 @@ export function ResponseSummary({
     onDeleteAction,
     onToggleAction,
 }: ResponseSummaryProps) {
-    const toPercentage = (score: number): number => {
-        return (score / 5) * 100;
-    };
 
     const renderDimensionItem = (
         dimension: string,

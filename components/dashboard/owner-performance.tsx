@@ -6,6 +6,7 @@ import {
 } from "../ui/card";
 import { supabase } from "../../lib/supabaseClient";
 import { Users, AlertTriangle } from "lucide-react";
+import { EmptyState } from "./empty-state";
 
 interface OwnerPerformanceProps {
     orgId?: string;
@@ -85,8 +86,11 @@ export function OwnerPerformance({ orgId, onOwnerFilter, activeOwnerFilter }: Ow
                         <Users className="w-4 h-4" /> Owner Performance
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="flex items-center justify-center py-8">
-                    <p className="text-sm text-muted-foreground">No action data available</p>
+                <CardContent className="flex items-center justify-center p-0">
+                    <EmptyState 
+                        title="No performance data" 
+                        message="Action plans and assignees are required to show performance tracking."
+                    />
                 </CardContent>
             </Card>
         );
