@@ -246,7 +246,8 @@ export default function TopNav({ fullName: propFullName, email: propEmail }: { f
               name: displayName,
               email: displayEmail,
               avatar: user?.avatar_url || `https://api.dicebear.com/9.x/glass/svg?seed=${displayName}`,
-              subscription: subscription?.plan === "demo" ? "DEMO" : "PRO",
+              subscription: subscription?.plan === "professional" ? "PRO" : 
+                            subscription?.plan === "demo" ? "DEMO" : "BASIC",
               model: "Safety Insights 2.0"
             }}
             onLogout={handleLogout}

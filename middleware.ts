@@ -45,7 +45,7 @@ export async function middleware(request: NextRequest) {
 
     // Protect dashboard and other admin pages if no auth found (neither Supabase user nor Admin cookie)
     if (url.pathname.startsWith("/dashboard") && !user && !adminId) {
-        url.pathname = "/admin-login";
+        url.pathname = "/sign-in";
         return NextResponse.redirect(url);
     }
 

@@ -20,6 +20,6 @@ export async function GET(request: Request) {
         }
     }
 
-    // Redirect to dashboard after successful auth
-    return NextResponse.redirect(`${requestUrl.origin}/dashboard`);
+    // Redirect to sign-in after successful auth with a confirmation flag
+    return NextResponse.redirect(`${requestUrl.origin}/sign-in?confirmed=true`);
 }

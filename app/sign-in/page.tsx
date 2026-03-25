@@ -8,13 +8,19 @@ import { supabase } from '../../lib/supabaseClient'
 import { Input } from '../../components/ui/input'
 import { Button } from '../../components/ui/button'
 import { Eye, EyeOff, X, Mail, Loader2, UserPlus, LogIn, ArrowLeft } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { signUpWithCustomEmail } from './actions'
 
 export default function SignInPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [mode, setMode] = useState<'login' | 'register'>('login')
 
   useEffect(() => {
+    if (searchParams.get('confirmed') === 'true') {
+      toast.success('Email confirmed! You can now sign in.')
+    }
+
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
@@ -74,25 +80,20 @@ export default function SignInPage() {
     }
     setLoading(true)
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const result = await signUpWithCustomEmail({
         email,
         password,
-        options: {
-          data: { full_name: fullName || undefined },
-          emailRedirectTo: `${getBaseUrl()}/auth/callback`,
-        },
+        fullName: fullName || undefined,
+        redirectTo: `${getBaseUrl()}/auth/callback`,
       })
-      if (error) {
-        toast.error(error.message)
-      } else if (data.user && !data.session) {
+
+      if (result.error) {
+        toast.error(result.error)
+      } else {
         toast.success('Account created! Please check your email for a confirmation link.')
-      } else if (data.session) {
-        toast.success('Account created! Redirecting...')
-        setTimeout(() => {
-          window.location.href = '/dashboard'
-        }, 500)
       }
     } catch (err) {
+      console.error(err)
       toast.error('An error occurred during registration')
     } finally {
       setLoading(false)
