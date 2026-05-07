@@ -160,14 +160,48 @@ export async function GET() {
         }
 
         // 4. Get organization details
-        const { data: org, error: orgError } = await supabaseAdmin
+        // Platform admins use a fixed org id; if it isn't provisioned yet, bootstrap should create it
+        // (otherwise the frontend fails with "Failed to fetch bootstrap data").
+        const { data: orgData, error: orgError } = await supabaseAdmin
             .from("organizations")
             .select("id, name")
             .eq("id", orgId)
             .single();
 
-        if (orgError || !org) {
+        let org = orgData;
+        if (isAdmin && (orgError || !org)) {
+            const { data: createdOrg, error: createOrgError } = await supabaseAdmin
+                .from("organizations")
+                .insert({
+                    id: orgId,
+                    name: "Safety Vitals Global Org",
+                })
+                .select("id, name")
+                .single();
+
+            if (createOrgError || !createdOrg) {
+                return NextResponse.json(
+                    { error: "Admin organization provisioning failed" },
+                    { status: 500 }
+                );
+            }
+
+            org = createdOrg;
+        }
+
+        if (!isAdmin && (orgError || !org)) {
             return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+        }
+
+        // Best-effort: ensure an admin subscription exists so downstream code can rely on it.
+        if (isAdmin) {
+            await supabaseAdmin
+                .from("subscriptions")
+                .upsert({
+                    org_id: org!.id,
+                    plan: "paid",
+                    status: "active",
+                });
         }
 
         // 5. Get organization's subscription and limits

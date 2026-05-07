@@ -26,6 +26,7 @@ import { supabase } from '../../../../lib/supabaseClient'
 
 export default function ProfilePage() {
   const { user, org, membership, subscription, refresh } = useApp()
+  const isAdmin = membership.role === 'admin'
   const [fullName, setFullName] = useState('')
   const [updating, setUpdating] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -40,6 +41,11 @@ export default function ProfilePage() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+
+    if (isAdmin) {
+      toast.error('Admin accounts cannot update the user profile')
+      return
+    }
 
     // Basic validation
     if (!file.type.startsWith('image/')) {
@@ -76,6 +82,12 @@ export default function ProfilePage() {
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (isAdmin) {
+      toast.error('Admin accounts cannot update the user profile')
+      return
+    }
+
     setUpdating(true)
     try {
       const res = await fetch('/api/user/profile', {
@@ -114,6 +126,29 @@ export default function ProfilePage() {
   }
 
   if (!user) return null
+
+  if (isAdmin) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500 p-6">
+        <div className="rounded-2xl border border-slate-200/60 bg-white/60 shadow-sm p-8">
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            Admin account
+          </h1>
+          <p className="mt-3 text-slate-600 dark:text-slate-300">
+            This page is for user profile updates. Admin profiles are managed via the admin portal.
+          </p>
+          <div className="mt-6">
+            <Button
+              className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl px-8 py-6 font-bold shadow-lg shadow-slate-900/10"
+              onClick={() => router.push('/dashboard')}
+            >
+              Go to Dashboard
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
