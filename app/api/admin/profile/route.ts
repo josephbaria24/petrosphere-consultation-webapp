@@ -1,33 +1,9 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
-
-function getAdminClient() {
-  return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
-
-async function getAdminFromCookie() {
-  const cookieStore = await cookies();
-  const adminId = cookieStore.get("admin_id")?.value;
-  if (!adminId) return { adminId: null, admin: null };
-
-  const supabaseAdmin = getAdminClient();
-  const { data: admin, error } = await supabaseAdmin
-    .from("admin_users")
-    .select("id, email, full_name")
-    .eq("id", adminId)
-    .single();
-
-  if (error || !admin) return { adminId, admin: null };
-  return { adminId, admin };
-}
+import { createServiceRoleClient, getVerifiedAdminFromCookie } from "../../../../lib/server/admin-auth";
 
 export async function GET() {
   try {
-    const { admin } = await getAdminFromCookie();
+    const admin = await getVerifiedAdminFromCookie();
     if (!admin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -45,8 +21,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { adminId, admin } = await getAdminFromCookie();
-    if (!adminId || !admin) {
+    const admin = await getVerifiedAdminFromCookie();
+    if (!admin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -57,11 +33,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Full name is required" }, { status: 400 });
     }
 
-    const supabaseAdmin = getAdminClient();
+    const supabaseAdmin = createServiceRoleClient();
     const { error } = await supabaseAdmin
       .from("admin_users")
       .update({ full_name: fullName })
-      .eq("id", adminId);
+      .eq("id", admin.id);
 
     if (error) {
       console.error("[AdminProfile][POST] Update error:", error);
@@ -71,7 +47,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       admin: {
-        id: adminId,
+        id: admin.id,
         email: admin.email,
         full_name: fullName,
       },

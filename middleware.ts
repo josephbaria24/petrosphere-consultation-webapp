@@ -43,8 +43,13 @@ export async function middleware(request: NextRequest) {
     const adminId = request.cookies.get("admin_id")?.value;
     const url = request.nextUrl.clone();
 
-    // Protect dashboard and other admin pages if no auth found (neither Supabase user nor Admin cookie)
-    if (url.pathname.startsWith("/dashboard") && !user && !adminId) {
+    // Protect authenticated areas if no auth found (neither Supabase user nor Admin cookie)
+    const protectedPrefixes = ["/dashboard", "/admin", "/user"];
+    const publicAuthPages = ["/", "/sign-in", "/admin-login"];
+    const isProtectedPath =
+        !publicAuthPages.includes(url.pathname) &&
+        protectedPrefixes.some((prefix) => url.pathname.startsWith(prefix));
+    if (isProtectedPath && !user && !adminId) {
         url.pathname = "/sign-in";
         return NextResponse.redirect(url);
     }

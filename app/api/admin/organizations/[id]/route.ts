@@ -5,8 +5,8 @@
  * while ensuring system-wide resources like "Safety Vitals" are preserved.
  */
 import { createClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getVerifiedAdminFromCookie } from "../../../../../lib/server/admin-auth";
 
 const DEFAULT_SURVEY_ID = "00000000-0000-0000-0000-000000000000";
 
@@ -16,10 +16,8 @@ export async function GET(
 ) {
     try {
         const { id: orgId } = await params;
-        const cookieStore = await cookies();
-        const adminId = cookieStore.get("admin_id")?.value;
-
-        if (!adminId) {
+        const admin = await getVerifiedAdminFromCookie();
+        if (!admin) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -68,10 +66,8 @@ export async function PATCH(
 ) {
     try {
         const { id: orgId } = await params;
-        const cookieStore = await cookies();
-        const adminId = cookieStore.get("admin_id")?.value;
-
-        if (!adminId) {
+        const admin = await getVerifiedAdminFromCookie();
+        if (!admin) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -127,10 +123,8 @@ export async function DELETE(
 ) {
     try {
         const { id: orgId } = await params;
-        const cookieStore = await cookies();
-        const adminId = cookieStore.get("admin_id")?.value;
-
-        if (!adminId) {
+        const admin = await getVerifiedAdminFromCookie();
+        if (!admin) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 

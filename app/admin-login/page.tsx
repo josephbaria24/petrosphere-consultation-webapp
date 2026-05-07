@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { toast } from 'sonner'
 import { supabase } from '../../lib/supabaseClient'
-import bcrypt from 'bcryptjs'
 import { Input } from '../../components/ui/input'
 import { Button } from '../../components/ui/button'
 import { Cookies } from '../../lib/cookies-client'
@@ -57,60 +56,33 @@ export default function AdminLoginPage() {
     setForgotLoading(false)
   }
 
-  const setCookieServerSide = async (adminId: string) => {
-    try {
-      const response = await fetch('/api/set-admin-cookie', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ adminId }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to set cookie')
-      }
-    } catch (error) {
-      console.error('Error setting cookie:', error)
-      Cookies.set('admin_id', adminId, {
-        expires: 1,
-        secure: true,
-        sameSite: 'strict'
-      })
-    }
-  }
-
   const handleLogin = async () => {
     setLoading(true)
 
     try {
       await supabase.auth.signOut()
-
-      const { data: admin, error } = await supabase
-        .from('admin_users')
-        .select('id, email, password_hash')
-        .eq('email', email)
-        .single()
-
-      if (error || !admin) {
-        toast.error('User not found in Safety Vitals system')
-        return
-      }
-
-      const match = await bcrypt.compare(password, admin.password_hash)
-      if (!match) {
-        toast.error('Invalid Safety Vitals credentials')
-        return
-      }
-
       Cookies.remove('admin_id')
-      await setCookieServerSide(admin.id)
 
-      Cookies.set('admin_id', admin.id, {
-        expires: 1,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict'
+      const response = await fetch('/api/admin-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       })
+      const data = await response.json()
+
+      if (!response.ok) {
+        toast.error(data.error || 'Invalid Safety Vitals credentials')
+        return
+      }
+
+      // Keep client cookie for compatibility with existing UI controls.
+      if (data?.admin?.id) {
+        Cookies.set('admin_id', data.admin.id, {
+          expires: 1,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict'
+        })
+      }
 
       toast.success('Welcome to Safety Vitals')
 

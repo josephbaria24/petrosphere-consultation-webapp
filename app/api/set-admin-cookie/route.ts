@@ -1,13 +1,22 @@
 // app/api/set-admin-cookie/route.js
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { getVerifiedAdminFromCookie } from '../../../../lib/server/admin-auth'
 
 export async function POST(request) {
   try {
+    const admin = await getVerifiedAdminFromCookie()
+    if (!admin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { adminId } = await request.json()
 
     if (!adminId) {
       return NextResponse.json({ error: 'Admin ID is required' }, { status: 400 })
+    }
+    if (adminId !== admin.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const cookieStore = await cookies()

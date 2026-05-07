@@ -9,15 +9,13 @@
  * - Leverages supabaseAdmin (Service Role) to access the auth.users or public.users data globally.
  */
 import { createClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getVerifiedAdminFromCookie } from "../../../../lib/server/admin-auth";
 
 export async function POST(req: Request) {
     try {
-        const cookieStore = await cookies();
-        const adminId = cookieStore.get("admin_id")?.value;
-
-        if (!adminId) {
+        const admin = await getVerifiedAdminFromCookie();
+        if (!admin) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 

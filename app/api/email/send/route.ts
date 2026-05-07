@@ -1,10 +1,54 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
+import { getRequestActor } from '../../../../lib/server/request-auth';
+import { checkIpRateLimit } from '../../../../lib/server/rate-limit';
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(req: Request) {
     try {
+        const rate = checkIpRateLimit(req, "email-send", 10, 60_000);
+        if (!rate.ok) {
+            return NextResponse.json(
+                { error: "Too many email requests. Please try again later." },
+                { status: 429, headers: { "Retry-After": String(rate.retryAfterSec) } }
+            );
+        }
+
+        const actor = await getRequestActor();
+        if (!actor) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
         const body = await req.json();
-        const { to, subject, html, text, fromName, fromEmail } = body;
+        const { to, subject, html, text, fromName } = body;
+
+        const toList = Array.isArray(to) ? to : [to];
+        const cleanedTo = toList
+            .map((addr) => String(addr || "").trim().toLowerCase())
+            .filter(Boolean);
+
+        if (cleanedTo.length === 0 || cleanedTo.length > 5) {
+            return NextResponse.json({ error: "Invalid recipient list" }, { status: 400 });
+        }
+        if (!cleanedTo.every((addr) => EMAIL_REGEX.test(addr))) {
+            return NextResponse.json({ error: "Invalid recipient email format" }, { status: 400 });
+        }
+
+        const safeSubject = String(subject || "").trim();
+        const safeText = String(text || "");
+        const safeHtml = String(html || "");
+        const safeFromName = String(fromName || process.env.SMTP_FROM_NAME || "Safety Vitals").trim();
+
+        if (!safeSubject || safeSubject.length > 180) {
+            return NextResponse.json({ error: "Invalid email subject" }, { status: 400 });
+        }
+        if (!safeText && !safeHtml) {
+            return NextResponse.json({ error: "Email content is required" }, { status: 400 });
+        }
+        if (safeText.length > 10000 || safeHtml.length > 25000) {
+            return NextResponse.json({ error: "Email content too long" }, { status: 400 });
+        }
 
         // Check for required env vars (optional debug)
         if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
@@ -25,11 +69,11 @@ export async function POST(req: Request) {
 
         // Send mail
         const info = await transporter.sendMail({
-            from: `"${fromName || process.env.SMTP_FROM_NAME || 'Safety Vitals'}" <${fromEmail || 'no-reply@petrosphere.com.ph'}>`,
-            to,
-            subject,
-            text,
-            html,
+            from: `"${safeFromName}" <no-reply@petrosphere.com.ph>`,
+            to: cleanedTo.join(","),
+            subject: safeSubject,
+            text: safeText || undefined,
+            html: safeHtml || undefined,
         });
 
         console.log("Message sent: %s", info.messageId);

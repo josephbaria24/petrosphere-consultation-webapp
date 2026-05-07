@@ -1,7 +1,26 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { getVerifiedAdminFromCookie } from "../../../lib/server/admin-auth"
+import { checkIpRateLimit } from "../../../lib/server/rate-limit"
 
-export async function GET() {
+export async function GET(request: Request) {
+  const rate = checkIpRateLimit(request, "ping-supabase", 6, 60_000)
+  if (!rate.ok) {
+    return NextResponse.json(
+      { success: false, error: "Too many ping requests" },
+      { status: 429, headers: { "Retry-After": String(rate.retryAfterSec) } }
+    )
+  }
+
+  const admin = await getVerifiedAdminFromCookie()
+  const internalToken = process.env.INTERNAL_PING_TOKEN
+  const providedToken = request.headers.get("x-internal-token")
+  const hasValidInternalToken = !!internalToken && providedToken === internalToken
+
+  if (!admin && !hasValidInternalToken) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
+  }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
 
