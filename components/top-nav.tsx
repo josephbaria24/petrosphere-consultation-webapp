@@ -250,6 +250,7 @@ export default function TopNav({ fullName: propFullName, email: propEmail }: { f
                             subscription?.plan === "demo" ? "DEMO" : "BASIC",
               model: "Safety Insights 2.0"
             }}
+            profileHref={isAdminId ? "/admin/profile" : "/user/profile"}
             onLogout={handleLogout}
           />
         </div>

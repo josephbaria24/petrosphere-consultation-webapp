@@ -34,21 +34,29 @@ interface ProfileDropdownProps extends React.HTMLAttributes<HTMLDivElement> {
     data: Profile;
     onLogout: () => Promise<void>;
     showTopbar?: boolean;
+    hideProfile?: boolean;
+    profileHref?: string;
 }
 
 export default function ProfileDropdown({
     data,
     onLogout,
+    hideProfile,
+    profileHref,
     className,
     ...props
 }: ProfileDropdownProps) {
     const [isOpen, setIsOpen] = React.useState(false);
     const menuItems: MenuItem[] = [
-        {
-            label: "Profile",
-            href: "/user/profile",
-            icon: <User className="w-4 h-4" />,
-        },
+        ...(!hideProfile
+            ? [
+                  {
+                      label: "Profile",
+                      href: profileHref || "/user/profile",
+                      icon: <User className="w-4 h-4" />,
+                  } satisfies MenuItem,
+              ]
+            : []),
         // {
         //     label: "Model",
         //     value: data.model,
