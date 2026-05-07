@@ -1,7 +1,7 @@
 // app/api/set-admin-cookie/route.js
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { getVerifiedAdminFromCookie } from '../../../../lib/server/admin-auth'
+import { getVerifiedAdminFromCookie } from '../../../lib/server/admin-auth'
 
 export async function POST(request) {
   try {
