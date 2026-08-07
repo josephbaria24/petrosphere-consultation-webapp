@@ -217,7 +217,7 @@ export function SurveyImportDialog({
         scoring_type: q.scoring_type || null,
         max_score: q.max_score,
         min_score: q.min_score,
-        reverse_score: q.reverse_score,
+        reverse_score: (q.scoring_type || "").toLowerCase() === "negative",
         translated_options: q.translated_options.length
           ? q.translated_options
           : null,
@@ -269,8 +269,9 @@ export function SurveyImportDialog({
                 <div>
                   <p className="font-medium text-sm">1. Download the template</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Excel file with dropdowns for TRUE/FALSE, scoring type, and
-                    question type, plus one sample row.
+                    Excel file with dropdowns for TRUE/FALSE, scoring type
+                    (negative = reverse scored), and question type, plus one
+                    sample row.
                   </p>
                 </div>
                 <Button
@@ -528,7 +529,10 @@ function ImportQuestionCard({
               <Select
                 value={question.scoring_type || "positive"}
                 onValueChange={(value) =>
-                  onChange(question.localId, { scoring_type: value })
+                  onChange(question.localId, {
+                    scoring_type: value,
+                    reverse_score: value === "negative",
+                  })
                 }
               >
                 <SelectTrigger>
@@ -536,7 +540,7 @@ function ImportQuestionCard({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="positive">positive</SelectItem>
-                  <SelectItem value="negative">negative</SelectItem>
+                  <SelectItem value="negative">negative (reverse scored)</SelectItem>
                   <SelectItem value="text">text</SelectItem>
                 </SelectContent>
               </Select>
@@ -611,25 +615,6 @@ function ImportQuestionCard({
                   onValueChange={(value) =>
                     onChange(question.localId, {
                       is_required: value === "TRUE",
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="TRUE">TRUE</SelectItem>
-                    <SelectItem value="FALSE">FALSE</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="w-[140px]">
-                <Label className="mb-1 block text-xs">Reverse score</Label>
-                <Select
-                  value={question.reverse_score ? "TRUE" : "FALSE"}
-                  onValueChange={(value) =>
-                    onChange(question.localId, {
-                      reverse_score: value === "TRUE",
                     })
                   }
                 >

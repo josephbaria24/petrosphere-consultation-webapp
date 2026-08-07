@@ -117,7 +117,10 @@ const QuestionAccordionItem = memo(({
   }, [question.id, onUpdate, dimensions])
 
   const handleScoringTypeChange = useCallback((value: string) => {
-    onUpdate(question.id, { scoring_type: value })
+    onUpdate(question.id, {
+      scoring_type: value,
+      reverse_score: value === 'negative',
+    })
   }, [question.id, onUpdate])
 
   const handleMaxScoreChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -126,10 +129,6 @@ const QuestionAccordionItem = memo(({
 
   const handleMinScoreChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     onUpdate(question.id, { min_score: Number(e.target.value) })
-  }, [question.id, onUpdate])
-
-  const handleReverseScoreChange = useCallback((checked: boolean) => {
-    onUpdate(question.id, { reverse_score: checked })
   }, [question.id, onUpdate])
 
   const handleTranslatedOptionsChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -305,18 +304,10 @@ const QuestionAccordionItem = memo(({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="positive">Positive</SelectItem>
-                    <SelectItem value="negative">Negative</SelectItem>
+                    <SelectItem value="negative">Negative (reverse scored)</SelectItem>
                     <SelectItem value="text">Text (No Score)</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="flex items-center space-x-2 h-[40px] mt-6">
-                <Switch
-                  id={`reverse-${question.id}`}
-                  checked={question.reverse_score ?? false}
-                  onCheckedChange={handleReverseScoreChange}
-                />
-                <Label htmlFor={`reverse-${question.id}`}>Reverse Score</Label>
               </div>
             </div>
 
@@ -486,7 +477,7 @@ export default function CreateSurveyPage() {
           scoring_type: q.scoring_type || null,
           max_score: q.max_score || null,
           min_score: q.min_score || null,
-          reverse_score: q.reverse_score ?? false,
+          reverse_score: (q.scoring_type || '').toLowerCase() === 'negative',
           translated_options: q.translated_options || null,
           template_id: q.template_id || null,
         }))

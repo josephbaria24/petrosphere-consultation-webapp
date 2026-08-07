@@ -289,7 +289,11 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
         console.warn(`[Dashboard] Non-numeric answer for question ${r.question_id}: "${r.answer}"`);
         return;
       }
-      if (q.scoring_type === "likert" && q.reverse_score) score = (q.max_score ?? 5) + 1 - score;
+      // Skip non-scored items (open text / feedback)
+      if (q.scoring_type === "text" || q.question_type === "text") return;
+      // Negative scoring type (or legacy reverse_score) flips the scale
+      if (q.reverse_score || q.scoring_type === "negative") score = (q.max_score ?? 5) + 1 - score;
+      if (!q.dimension) return;
       if (!dimensionScores[q.dimension]) dimensionScores[q.dimension] = [];
       dimensionScores[q.dimension].push(score);
       normalizedScores.push((score - (q.min_score || 1)) / ((q.max_score || 5) - (q.min_score || 1)));
@@ -344,7 +348,9 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
             const template = q.template_id ? templateMap[q.template_id] : null;
             let score = template ? template.scores[template.options.findIndex((opt: string) => opt.trim().toLowerCase() === r.answer.trim().toLowerCase())] : parseFloat(r.answer);
             if (isNaN(score)) return;
-            if (q.scoring_type === "likert" && q.reverse_score) score = (q.max_score ?? 5) + 1 - score;
+            if (q.scoring_type === "text" || q.question_type === "text") return;
+            if (q.reverse_score || q.scoring_type === "negative") score = (q.max_score ?? 5) + 1 - score;
+            if (!q.dimension) return;
             if (!dimRoleScores[q.dimension]) dimRoleScores[q.dimension] = {};
             if (!dimRoleScores[q.dimension][role]) dimRoleScores[q.dimension][role] = [];
             dimRoleScores[q.dimension][role].push(score);
@@ -390,7 +396,9 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
         const template = q.template_id ? templateMap[q.template_id] : null;
         let score = template ? template.scores[template.options.findIndex((o: string) => o.trim().toLowerCase() === r.answer.trim().toLowerCase())] : parseFloat(r.answer);
         if (isNaN(score)) return;
-        if (q.scoring_type === "likert" && q.reverse_score) score = (q.max_score ?? 5) + 1 - score;
+        if (q.scoring_type === "text" || q.question_type === "text") return;
+        if (q.reverse_score || q.scoring_type === "negative") score = (q.max_score ?? 5) + 1 - score;
+        if (!q.dimension) return;
         if (!dimensionScores[q.dimension]) dimensionScores[q.dimension] = [];
         dimensionScores[q.dimension].push(score);
       });

@@ -1,7 +1,6 @@
 'use client'
 
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@radix-ui/react-select"
-import { Switch } from "@radix-ui/react-switch"
 import { Plus, Trash2 } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "../../../../../@/components/ui/card"
@@ -188,7 +187,10 @@ function QuestionCard({
           <Select
             value={q.scoring_type || ''}
             onValueChange={(val) =>
-                onUpdateImmediate(q.id, { scoring_type: val })
+                onUpdateImmediate(q.id, {
+                  scoring_type: val,
+                  reverse_score: val === 'negative',
+                })
             }
           >
             <SelectTrigger>
@@ -196,7 +198,7 @@ function QuestionCard({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="positive">Positive</SelectItem>
-              <SelectItem value="negative">Negative</SelectItem>
+              <SelectItem value="negative">Negative (reverse scored)</SelectItem>
               <SelectItem value="text">Text</SelectItem>
             </SelectContent>
           </Select>
@@ -223,17 +225,6 @@ function QuestionCard({
               }
             />
           </div>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <Switch
-            id={`reverse-${q.id}`}
-            checked={q.reverse_score ?? false}
-            onCheckedChange={(checked) =>
-                onUpdateImmediate(q.id, { reverse_score: checked })
-            }
-          />
-          <Label htmlFor={`reverse-${q.id}`}>Reverse Score</Label>
         </div>
 
         <div>

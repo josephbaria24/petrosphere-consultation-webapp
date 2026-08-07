@@ -11,12 +11,14 @@ interface GatedFeatureProps {
     isRestricted: boolean;
     children: React.ReactNode;
     featureName?: string;
+    description?: string;
 }
 
 export function GatedFeature({
     isRestricted,
     children,
     featureName = "Premium Analytics",
+    description,
 }: GatedFeatureProps) {
     const [upgradeOpen, setUpgradeOpen] = useState(false);
     const [trialOpen, setTrialOpen] = useState(false);
@@ -51,7 +53,8 @@ export function GatedFeature({
                     <div className="space-y-2 relative z-10">
                         <h3 className="text-2xl font-black text-foreground">{featureName}</h3>
                         <p className="text-muted-foreground text-sm font-medium leading-relaxed max-w-[280px] mx-auto">
-                            Transform your workspace with {featureName} and advanced professional tools.
+                            {description ??
+                                `Transform your workspace with ${featureName} and advanced professional tools.`}
                         </p>
                     </div>
 

@@ -72,14 +72,6 @@ function applyDropdowns(ws: ExcelJS.Worksheet, rowCount = 500) {
     errorTitle: "Invalid scoring type",
     error: "Choose positive, negative, or text",
   });
-  ws.dataValidations.add(`K2:K${last}`, {
-    type: "list",
-    allowBlank: true,
-    formulae: [BOOL_LIST],
-    showErrorMessage: true,
-    errorTitle: "Invalid value",
-    error: "Choose TRUE or FALSE",
-  });
 }
 
 function styleHeaderAndWidths(ws: ExcelJS.Worksheet) {
@@ -95,8 +87,7 @@ function styleHeaderAndWidths(ws: ExcelJS.Worksheet) {
     8: 14,
     9: 12,
     10: 12,
-    11: 14,
-    12: 12,
+    11: 12,
   };
   Object.entries(widths).forEach(([col, width]) => {
     ws.getColumn(Number(col)).width = width;

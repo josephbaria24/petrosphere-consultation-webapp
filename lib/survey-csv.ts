@@ -14,9 +14,13 @@ export const SURVEY_CSV_HEADERS = [
   "scoring_type",
   "max_score",
   "min_score",
-  "reverse_score",
   "order_index",
 ] as const;
+
+/** Negative scoring type means the item is reverse-scored. */
+export function isReverseScoring(scoringType?: string | null): boolean {
+  return (scoringType ?? "").trim().toLowerCase() === "negative";
+}
 
 export type SurveyCsvHeader = (typeof SURVEY_CSV_HEADERS)[number];
 
@@ -49,6 +53,7 @@ export type SurveyQuestionExportRow = {
   scoring_type?: string | null;
   max_score?: number | null;
   min_score?: number | null;
+  /** @deprecated Derived from scoring_type === "negative"; kept for typed callers. */
   reverse_score?: boolean | null;
   order_index?: number | null;
 };
@@ -83,7 +88,6 @@ export function buildSurveyCsvTemplate(): string {
     scoring_type: "positive",
     max_score: "5",
     min_score: "1",
-    reverse_score: "FALSE",
     order_index: "1",
   };
 
@@ -119,8 +123,6 @@ export function questionsToCsv(rows: SurveyQuestionExportRow[]): string {
           return row.max_score != null ? String(row.max_score) : "";
         case "min_score":
           return row.min_score != null ? String(row.min_score) : "";
-        case "reverse_score":
-          return row.reverse_score ? "TRUE" : "FALSE";
         case "order_index":
           return String(row.order_index ?? index);
         default:
@@ -163,10 +165,20 @@ export function parseSurveyCsv(csvText: string): ImportQuestionDraft[] {
     const options = parseListField(get("options"));
     const translatedOptions = parseListField(get("translated_options"));
     const dimensionCode = get("dimension_code");
-    const scoringType = get("scoring_type") || (questionType === "text" ? "text" : "positive");
+    let scoringType =
+      get("scoring_type") || (questionType === "text" ? "text" : "positive");
+    // Legacy CSV/Excel may still include reverse_score; fold it into scoring_type.
+    const legacyReverse = parseBoolean(get("reverse_score"));
+    if (
+      legacyReverse &&
+      scoringType.toLowerCase() !== "text" &&
+      scoringType.toLowerCase() !== "negative"
+    ) {
+      scoringType = "negative";
+    }
+    const reverseScore = isReverseScoring(scoringType);
     const maxScore = parseOptionalNumber(get("max_score"));
     const minScore = parseOptionalNumber(get("min_score"));
-    const reverseScore = parseBoolean(get("reverse_score"));
     const isRequired = parseBoolean(get("is_required"));
     const orderIndex = parseOptionalNumber(get("order_index")) ?? i - 1;
 
