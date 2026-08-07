@@ -46,9 +46,17 @@ function sampleRowValues(): string[] {
   return parseCsvLine(lines[1] || "");
 }
 
+/** ExcelJS exposes this at runtime; typings comment it out on Worksheet. */
+type WorksheetWithValidations = ExcelJS.Worksheet & {
+  dataValidations: {
+    add(range: string, validation: ExcelJS.DataValidation): void;
+  };
+};
+
 function applyDropdowns(ws: ExcelJS.Worksheet, rowCount = 500) {
+  const sheet = ws as WorksheetWithValidations;
   const last = Math.max(rowCount, 50);
-  ws.dataValidations.add(`C2:C${last}`, {
+  sheet.dataValidations.add(`C2:C${last}`, {
     type: "list",
     allowBlank: true,
     formulae: [TYPE_LIST],
@@ -56,7 +64,7 @@ function applyDropdowns(ws: ExcelJS.Worksheet, rowCount = 500) {
     errorTitle: "Invalid type",
     error: "Choose radio, likert, multiple-choice, or text",
   });
-  ws.dataValidations.add(`F2:F${last}`, {
+  sheet.dataValidations.add(`F2:F${last}`, {
     type: "list",
     allowBlank: true,
     formulae: [BOOL_LIST],
@@ -64,7 +72,7 @@ function applyDropdowns(ws: ExcelJS.Worksheet, rowCount = 500) {
     errorTitle: "Invalid value",
     error: "Choose TRUE or FALSE",
   });
-  ws.dataValidations.add(`H2:H${last}`, {
+  sheet.dataValidations.add(`H2:H${last}`, {
     type: "list",
     allowBlank: true,
     formulae: [SCORING_LIST],

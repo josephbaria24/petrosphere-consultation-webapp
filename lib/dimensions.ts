@@ -12,6 +12,15 @@ export type DimensionWithSet = {
   } | null;
 };
 
+type DimensionSetJoin = { id: string; name: string } | { id: string; name: string }[] | null;
+
+function normalizeDimensionSet(
+  join: DimensionSetJoin
+): DimensionWithSet["dimension_sets"] {
+  if (!join) return null;
+  return Array.isArray(join) ? join[0] ?? null : join;
+}
+
 /** Load dimensions with their set for survey dropdowns. Falls back if sets aren't migrated yet. */
 export async function fetchDimensionsForSurveys(): Promise<DimensionWithSet[]> {
   const withSets = await supabase
@@ -20,7 +29,16 @@ export async function fetchDimensionsForSurveys(): Promise<DimensionWithSet[]> {
     .order("code", { ascending: true });
 
   if (!withSets.error && withSets.data) {
-    return withSets.data as DimensionWithSet[];
+    return withSets.data.map((row) => ({
+      id: row.id,
+      code: row.code,
+      dimension_name: row.dimension_name,
+      description: row.description,
+      set_id: row.set_id,
+      dimension_sets: normalizeDimensionSet(
+        row.dimension_sets as DimensionSetJoin
+      ),
+    }));
   }
 
   // Fallback for DBs that haven't run the dimension_sets migration yet
@@ -34,7 +52,12 @@ export async function fetchDimensionsForSurveys(): Promise<DimensionWithSet[]> {
     return [];
   }
 
-  return (fallback.data || []) as DimensionWithSet[];
+  return (fallback.data || []).map((row) => ({
+    code: row.code,
+    dimension_name: row.dimension_name,
+    description: row.description,
+    dimension_sets: null,
+  }));
 }
 
 export function dimensionSelectLabel(d: DimensionWithSet): string {
