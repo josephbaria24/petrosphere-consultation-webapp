@@ -33,6 +33,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../../@/components/ui/alert-dialog";
+import type { FieldWorkflowKind } from "../../lib/field-workflows";
 
 const ICON_OPTIONS = [
   { id: "ClipboardCheck", label: "Clipboard", icon: ClipboardCheck },
@@ -52,6 +53,7 @@ interface ChecklistItem {
 interface TaskTemplateEditorProps {
   orgId: string;
   templateId?: string | null; // null = create new
+  workflowKind: FieldWorkflowKind;
   onBack: () => void;
   onSaved: () => void;
 }
@@ -59,6 +61,7 @@ interface TaskTemplateEditorProps {
 export default function TaskTemplateEditor({
   orgId,
   templateId,
+  workflowKind,
   onBack,
   onSaved,
 }: TaskTemplateEditorProps) {
@@ -258,7 +261,8 @@ export default function TaskTemplateEditor({
             description, 
             icon, 
             org_id: orgId,
-            created_by: user?.id
+            created_by: user?.id,
+            template_kind: workflowKind,
           })
           .select()
           .single();

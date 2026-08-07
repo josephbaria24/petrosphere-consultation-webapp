@@ -23,6 +23,7 @@ import { Separator } from '../../../../components/ui/separator'
 import { useRouter } from 'next/navigation'
 import { Cookies } from '../../../../lib/cookies-client'
 import { supabase } from '../../../../lib/supabaseClient'
+import { clearTrialExpiredBannerDismiss } from '../../../../components/trial-banner'
 
 export default function ProfilePage() {
   const { user, org, membership, subscription, refresh } = useApp()
@@ -120,6 +121,7 @@ export default function ProfilePage() {
 
   const handleLogout = async () => {
     try {
+      clearTrialExpiredBannerDismiss()
       await supabase.auth.signOut()
       await fetch('/api/logout', { method: 'POST' })
       Cookies.remove('admin_id', { path: '/' })

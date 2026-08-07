@@ -10,6 +10,7 @@ import { Input } from "../../../../../components/ui/input"
 import { useCallback, useEffect, useState } from "react"
 import { Label } from "../../../../../components/ui/label"
 import React from "react"
+import { dimensionSelectLabel } from "../../../../../lib/dimensions"
 
 
 
@@ -154,9 +155,15 @@ function QuestionCard({
         <div>
           <Label>Dimension Code</Label>
           <Select
-            value={q.dimension_code || ''}
-            onValueChange={(code) => {
-              const matched = dimensions.find((d) => d.code === code)
+            value={
+              dimensions.find((d) => d.code === q.dimension_code)?.id ||
+              q.dimension_code ||
+              ''
+            }
+            onValueChange={(value) => {
+              const matched = dimensions.find(
+                (d) => d.id === value || d.code === value
+              )
               onUpdateDebounced(q.id, {
                 dimension_code: matched?.code,
                 dimension: matched?.dimension_name || '',
@@ -168,8 +175,8 @@ function QuestionCard({
             </SelectTrigger>
             <SelectContent>
               {dimensions.map((d) => (
-                <SelectItem key={d.code} value={d.code}>
-                  {d.code} – {d.dimension_name}
+                <SelectItem key={d.id || d.code} value={d.id || d.code}>
+                  {dimensionSelectLabel(d)}
                 </SelectItem>
               ))}
             </SelectContent>

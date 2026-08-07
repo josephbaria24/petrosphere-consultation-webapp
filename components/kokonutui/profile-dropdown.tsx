@@ -92,8 +92,15 @@ export default function ProfileDropdown({
                             className="flex items-center gap-2 p-1.5 sm:p-2 rounded-xl bg-secondary dark:bg-background border border-zinc-200/60 dark:border-zinc-800/60 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 hover:shadow-sm transition-all duration-200 focus:outline-none"
                         >
                             <div className="text-left flex-1 hidden sm:block">
-                                <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight leading-tight">
-                                    {data.name}
+                                <div className="flex items-center gap-2">
+                                    <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight leading-tight">
+                                        {data.name}
+                                    </div>
+                                    {data.subscription && (
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 bg-purple-50 dark:text-purple-400 dark:bg-purple-500/10 border border-purple-500/10 rounded-md py-0.5 px-1.5">
+                                            {data.subscription}
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="text-[10px] text-zinc-500 dark:text-zinc-400 tracking-tight leading-tight">
                                     {data.email}

@@ -50,11 +50,13 @@ import {
 import { Input } from "../ui/input";
 import { toast } from "sonner";
 import { sanitizeDomForPdf } from "../../lib/export-utils";
+import type { FieldWorkflowKind } from "../../lib/field-workflows";
 
 interface TaskReportsProps {
   orgId: string;
   userId?: string;
   isPlatformAdmin: boolean;
+  workflowKind?: FieldWorkflowKind;
   onRefresh?: () => void;
 }
 
@@ -84,7 +86,13 @@ interface ResponseWithEvidence {
 
 type DateFilter = "all" | "today" | "yesterday" | "this_week" | "last_week" | "this_month" | "last_month";
 
-export default function TaskReports({ orgId, userId, isPlatformAdmin, onRefresh }: TaskReportsProps) {
+export default function TaskReports({
+  orgId,
+  userId,
+  isPlatformAdmin,
+  workflowKind,
+  onRefresh,
+}: TaskReportsProps) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
@@ -105,7 +113,7 @@ export default function TaskReports({ orgId, userId, isPlatformAdmin, onRefresh 
 
   useEffect(() => {
     fetchSessions();
-  }, [orgId]);
+  }, [orgId, workflowKind]);
 
   const fetchSessions = async () => {
     setLoading(true);
@@ -116,11 +124,31 @@ export default function TaskReports({ orgId, userId, isPlatformAdmin, onRefresh 
         return;
       }
 
+      let templateIds: string[] | null = null;
+      if (workflowKind) {
+        const { data: templates, error: tplErr } = await supabase
+          .from("task_templates")
+          .select("id")
+          .eq("template_kind", workflowKind)
+          .or(`org_id.is.null,org_id.eq.${orgId}`);
+        if (tplErr) throw tplErr;
+        templateIds = (templates || []).map((t) => t.id);
+        if (templateIds.length === 0) {
+          setSessions([]);
+          setLoading(false);
+          return;
+        }
+      }
+
       let query = supabase
         .from("task_sessions")
         .select("*, task_templates(title, icon), checklist_templates(title)")
         .eq("status", "completed")
         .eq("org_id", orgId);
+
+      if (templateIds) {
+        query = query.in("task_template_id", templateIds);
+      }
 
       if (!isPlatformAdmin && userId) {
         query = query.eq("user_id", userId);

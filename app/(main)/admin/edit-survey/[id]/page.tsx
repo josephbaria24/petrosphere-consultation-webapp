@@ -18,6 +18,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 
 import { Trash2, Plus } from 'lucide-react'
 import { Switch } from '../../../../../@/components/ui/switch'
+import {
+  dimensionSelectLabel,
+  fetchDimensionsForSurveys,
+} from '../../../../../lib/dimensions'
 
 type Question = {
   id: number | string
@@ -99,8 +103,10 @@ const QuestionCard = memo(({
     onUpdate(question.id, { dimension: e.target.value })
   }, [question.id, onUpdate])
 
-  const handleDimensionCodeChange = useCallback((code: string) => {
-    const matched = dimensions.find((d) => d.code === code)
+  const handleDimensionCodeChange = useCallback((value: string) => {
+    const matched = dimensions.find(
+      (d) => d.id === value || d.code === value
+    )
     onUpdate(question.id, {
       dimension_code: matched?.code,
       dimension: matched?.dimension_name || '',
@@ -221,21 +227,25 @@ const QuestionCard = memo(({
         {/* Dimension Code */}
         <div>
           <Label>Dimension Code</Label>
-          <Select
-            value={question.dimension_code || ''}
-            onValueChange={handleDimensionCodeChange}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select dimension code" />
-            </SelectTrigger>
-            <SelectContent>
-              {dimensions.map((d) => (
-                <SelectItem key={d.code} value={d.code}>
-                  {d.code} – {d.dimension_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select
+              value={
+                dimensions.find((d) => d.code === question.dimension_code)?.id ||
+                question.dimension_code ||
+                ''
+              }
+              onValueChange={handleDimensionCodeChange}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select dimension code" />
+              </SelectTrigger>
+              <SelectContent>
+                {dimensions.map((d) => (
+                  <SelectItem key={d.id || d.code} value={d.id || d.code}>
+                    {dimensionSelectLabel(d)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
         </div>
 
         {/* Scoring Type */}
@@ -343,8 +353,8 @@ export default function EditSurveyPage() {
 
   useEffect(() => {
     const fetchDimensions = async () => {
-      const { data, error } = await supabase.from('dimensions').select('*')
-      if (!error) setDimensions(data)
+      const data = await fetchDimensionsForSurveys()
+      setDimensions(data)
     }
     fetchDimensions()
   }, [])

@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@supabase/ssr";
 
-import Dashboard from "../../../components/dashboard";
+import DashboardHub from "../../../components/dashboard/dashboard-hub";
 import { supabase } from "../../../lib/supabaseClient";
 
 import { createClient } from "../../../lib/supabase/server";
@@ -23,7 +23,7 @@ export default async function DashboardPage() {
 
     if (data && !error) {
       // Valid admin user
-      return <Dashboard />;
+      return <DashboardHub />;
     }
   }
 
@@ -36,7 +36,7 @@ export default async function DashboardPage() {
 
   if (session) {
     // Valid Supabase session (demo user)
-    return <Dashboard />;
+    return <DashboardHub />;
   }
 
   // No valid auth found

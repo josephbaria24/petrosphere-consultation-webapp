@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { createAvatar } from '@dicebear/core';
 import { glass } from '@dicebear/collection';
 import { supabase } from "../lib/supabaseClient"
+import { clearTrialExpiredBannerDismiss } from "./trial-banner"
 
 
 interface MenuItem {
@@ -26,6 +27,7 @@ export default function Profile01Client({ name, role }: ProfileProps) {
 
   const handleLogout = async () => {
     try {
+      clearTrialExpiredBannerDismiss()
       // 1. Sign out of Supabase (for demo users)
       await supabase.auth.signOut()
 

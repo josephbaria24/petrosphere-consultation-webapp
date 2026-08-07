@@ -10,21 +10,14 @@ import {
 import { Button } from "../ui/button";
 import { Maximize2, Info } from "lucide-react";
 import {
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    Tooltip,
-    ResponsiveContainer,
     RadarChart,
     PolarGrid,
     PolarAngleAxis,
     PolarRadiusAxis,
     Radar,
     Legend,
-    ReferenceLine,
-    Cell,
 } from "recharts";
+import { DimensionBarChart } from "../chart/dimension-bar-chart";
 import GaugeChart from "../chart/gauge-chart";
 import CustomTooltip from "../chart/custom-tooltip";
 import ChartModal from "../chart-modal";
@@ -66,13 +59,6 @@ const comparisonConfig = {
     },
 } satisfies ChartConfig;
 
-const barConfig = {
-    scorePercent: {
-        label: "Score",
-        color: "hsl(var(--chart-1))",
-    },
-} satisfies ChartConfig;
-
 const radarConfig = {
     you: {
         label: "You",
@@ -88,13 +74,6 @@ const getImprovementLevel = (scorePercent: number) => {
     if (scorePercent < 75) return "Key Opportunity Area";
     if (scorePercent < 80) return "Area for Improvement";
     return "Primary Focus Area";
-};
-
-// Helper to determine bar color
-const getBarColor = (scorePercent: number) => {
-    if (scorePercent < 70) return "#ef4444"; // Red for < 70%
-    if (scorePercent < 75) return "#f97316"; // Orange for < 75%
-    return "#2563eb"; // Blue (Tailwind blue-600) for >= 75%
 };
 
 export function OverviewCharts({
@@ -293,12 +272,6 @@ export function DetailedCharts({
     isLoadingStats,
 }: DetailedChartsProps) {
 
-    // Process bar data with colors
-    const coloredBarData = barData.map(d => ({
-        ...d,
-        fill: getBarColor(d.scorePercent)
-    }));
-
     const improvementLabel = lowestDimensionPercent !== null
         ? getImprovementLevel(lowestDimensionPercent)
         : "Improvement Area";
@@ -311,10 +284,10 @@ export function DetailedCharts({
                 <CardHeader className="flex justify-between items-center">
                     <CardTitle>Bar Chart</CardTitle>
                     <div className="flex items-center gap-2">
-                        {/* Legend for color meaning */}
                         <div className="hidden md:flex items-center gap-3 text-[10px] text-muted-foreground mr-4">
                             <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[#ef4444]"></div>&lt;70% Critical</div>
                             <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[#f97316]"></div>&lt;75% Review</div>
+                            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[#FF7A40]"></div>≥75% On track</div>
                         </div>
                         <Button
                             variant="ghost"
@@ -330,45 +303,11 @@ export function DetailedCharts({
                     {barData.length === 0 && !isLoadingStats ? (
                         <EmptyState message="No dimension data available yet." />
                     ) : (
-                        <ChartContainer config={barConfig} className="h-[250px] md:h-[300px] w-full">
-                            <BarChart
-                                data={coloredBarData}
-                                margin={{ top: 50, right: 10, left: 0, bottom: 0 }}
-                            >
-                                <XAxis
-                                    dataKey="name"
-                                    angle={-20}
-                                    textAnchor="end"
-                                    fontSize={12}
-                                    interval={0}
-                                    height={100}
-                                />
-                                <YAxis domain={[0, 100]} tickFormatter={(val) => `${val}%`} />
-
-                                <ChartTooltip content={<ChartTooltipContent />} />
-                                <Bar dataKey="scorePercent" radius={[4, 4, 0, 0]}>
-                                    {coloredBarData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                                    ))}
-                                </Bar>
-
-                                <ReferenceLine
-                                    y={lowestDimensionPercent ?? 0}
-                                    stroke="red"
-                                    strokeDasharray="6 6"
-                                    strokeWidth={2}
-                                    ifOverflow="visible"
-                                    label={{
-                                        position: "insideTopRight",
-                                        value: `${improvementLabel} (${(lowestDimensionPercent ?? 0).toFixed(1)}%)`,
-                                        fill: "red",
-                                        fontSize: 12,
-                                        fontWeight: "bold",
-                                        dy: -10
-                                    }}
-                                />
-                            </BarChart>
-                        </ChartContainer>
+                        <DimensionBarChart
+                            data={barData}
+                            lowestDimensionPercent={lowestDimensionPercent}
+                            improvementLabel={improvementLabel}
+                        />
                     )}
                 </CardContent>
             </Card>
@@ -402,44 +341,12 @@ export function DetailedCharts({
                 onClose={() => setOpenChart(null)}
                 title="Bar Chart"
             >
-                <ChartContainer config={barConfig} className="h-[300px] w-full">
-                    <BarChart
-                        data={coloredBarData}
-                        margin={{ top: 50, right: 10, left: 0, bottom: 0 }}
-                    >
-                        <XAxis
-                            dataKey="name"
-                            angle={-20}
-                            textAnchor="end"
-                            fontSize={12}
-                            interval={0}
-                            height={100}
-                        />
-                        <YAxis domain={[0, 100]} tickFormatter={(val) => `${val}%`} />
-
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Bar dataKey="scorePercent" radius={[4, 4, 0, 0]}>
-                            {coloredBarData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.fill} />
-                            ))}
-                        </Bar>
-                        <ReferenceLine
-                            y={lowestDimensionPercent ?? 0}
-                            stroke="red"
-                            strokeDasharray="6 6"
-                            strokeWidth={2}
-                            ifOverflow="visible"
-                            label={{
-                                position: "insideTopRight",
-                                value: `${improvementLabel} (${(lowestDimensionPercent ?? 0).toFixed(1)}%)`,
-                                fill: "red",
-                                fontSize: 12,
-                                fontWeight: "bold",
-                                dy: -10
-                            }}
-                        />
-                    </BarChart>
-                </ChartContainer>
+                <DimensionBarChart
+                    data={barData}
+                    lowestDimensionPercent={lowestDimensionPercent}
+                    improvementLabel={improvementLabel}
+                    className="h-[300px] w-full"
+                />
             </ChartModal>
 
             <ChartModal

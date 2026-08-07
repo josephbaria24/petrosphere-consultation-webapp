@@ -25,6 +25,7 @@ import {
   SquareRoundCorner,
   Building2,
   ClipboardCheck,
+  BarChart3,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -42,6 +43,7 @@ import { Lock } from "lucide-react"
 import { Badge } from "../@/components/ui/badge"
 import { UpgradeRequiredModal } from "./upgrade-required-modal"
 import { LoadingOverlay } from "./ui/loading-overlay"
+import { FIELD_WORKFLOWS, getFieldWorkflowPath } from "../lib/field-workflows"
 
 export default function Sidebar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -56,6 +58,9 @@ export default function Sidebar() {
   const isIndividualResponsesLocked = !isAdmin && !limits?.allow_individual_responses;
   const isCreateSurveyLocked = !isAdmin && !limits?.allow_create_survey;
   const isTasksLocked = !isAdmin && !limits?.allow_tasks;
+  const isFieldWorkActive =
+    FIELD_WORKFLOWS.some((w) => pathname.includes(`/${w.pathSegment}`)) ||
+    pathname.includes("/inspection-reports");
 
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
   const [lockedFeatureName, setLockedFeatureName] = useState("")
@@ -151,6 +156,10 @@ export default function Sidebar() {
   }) {
     const [isExpanded, setIsExpanded] = useState(defaultExpanded)
 
+    useEffect(() => {
+      if (defaultExpanded) setIsExpanded(true)
+    }, [defaultExpanded])
+
     if (isCollapsed) {
       return (
         <div className="flex flex-col items-center gap-1">
@@ -207,31 +216,28 @@ export default function Sidebar() {
       >
         <div className="h-full flex flex-col relative overflow-visible">
           <Link
-            href="#"
-            className={cn("h-16 flex items-center border-0 transition-all px-6", isCollapsed ? "justify-center px-0" : "px-6")}
+            href="/dashboard"
+            onClick={handleNavigation}
+            className={cn(
+              "flex items-center border-0 transition-all shrink-0",
+              isCollapsed ? "justify-center px-2 py-4" : "px-5 py-4"
+            )}
           >
-            <div className={cn("flex flex-col pt-10 items-start gap-1 transition-all", isCollapsed ? "items-center" : "items-start")}>
-              {isCollapsed ? (
-                <Image
-                  src="/icons/logo_trans.png"
-                  alt="Petrosphere Logo"
-                  width={42}
-                  height={42}
-                  className="transition-all hover:scale-110 duration-300"
-                />
-              ) : (
-                <div className="flex flex-col">
-                  <img src="/logo_trans.png" alt="logo" className="h-auto w-auto" />
-                </div>
+            <Image
+              src={isCollapsed ? "/collapsed_logo.png" : "/new_logo.png"}
+              alt="Safety Vitals"
+              width={isCollapsed ? 40 : 168}
+              height={isCollapsed ? 40 : 32}
+              className={cn(
+                "object-contain transition-all duration-300",
+                isCollapsed ? "h-10 w-10" : "h-8 w-auto max-w-[168px]"
               )}
-            </div>
+              priority
+            />
           </Link>
 
-          <div className={cn("flex-1 overflow-y-auto py-15 px-4 space-y-6 scrollbar-hide", isCollapsed ? "px-2" : "px-4")}>
+          <div className={cn("flex-1 overflow-y-auto py-1 px-4 space-y-6 scrollbar-hide", isCollapsed ? "px-2" : "px-4")}>
             <div className={cn("border-0 rounded-2xl p-2 bg-zinc-100 dark:bg-zinc-900 transition-all", isCollapsed ? "p-1 rounded-xl" : "p-2")}>
-              {/* <div className="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                Overview
-              </div> */}
               <div className="space-y-1">
                 <div id="tour-sidebar-dashboard">
                   <NavItem href="/dashboard" icon={Home}>Dashboard</NavItem>
@@ -269,16 +275,36 @@ export default function Sidebar() {
                   <NavItem href={`${basePath}/organizations`} icon={Building2}>Manage Organizations</NavItem>
                 )}
 
-                <NavItem href={`${basePath}/tasks`} icon={ClipboardCheck} isLocked={isTasksLocked}>
-                  Tasks
-                </NavItem>
+                <NavGroup
+                  title="Field Work"
+                  icon={ClipboardCheck}
+                  defaultExpanded={isFieldWorkActive}
+                >
+                  {FIELD_WORKFLOWS.map((workflow) => {
+                    const Icon = workflow.icon;
+                    return (
+                      <NavItem
+                        key={workflow.kind}
+                        href={getFieldWorkflowPath(basePath, workflow.kind)}
+                        icon={Icon}
+                        isLocked={isTasksLocked}
+                      >
+                        {workflow.title}
+                      </NavItem>
+                    );
+                  })}
+                  <NavItem
+                    href={`${basePath}/inspection-reports`}
+                    icon={BarChart3}
+                    isLocked={isTasksLocked}
+                  >
+                    Inspection Reports
+                  </NavItem>
+                </NavGroup>
               </div>
             </div>
 
             <div>
-              {/* <div className="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                Management
-              </div> */}
               <div className="space-y-1">
 
               </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { supabase } from "../../../../lib/supabaseClient";
 import { useApp } from "../../../../components/app/AppProvider";
@@ -8,14 +8,11 @@ import { Cookies } from "../../../../lib/cookies-client";
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from '../../../../components/ui/card'
 import { Badge } from '../../../../@/components/ui/badge'
 import { useRouter } from 'next/navigation'
 import { Button } from '../../../../components/ui/button'
 import {
-  ClipboardCopy,
   Trash2,
   Edit,
   FileText,
@@ -23,6 +20,8 @@ import {
   Calendar,
   HelpCircle,
   Link,
+  Download,
+  Upload,
 } from 'lucide-react'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../../../../@/components/ui/accordion'
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../../../../@/components/ui/alert-dialog'
@@ -34,6 +33,12 @@ import {
   TooltipTrigger,
 } from '../../../../components/ui/tooltip'
 import HoldButton from '../../../../components/kokonutui/hold-button'
+import { SurveyImportDialog } from '../../../../components/survey/SurveyImportDialog'
+import {
+  buildSurveyExcelTemplateBuffer,
+  downloadExcel,
+  questionsToExcelBuffer,
+} from '../../../../lib/survey-excel'
 
 // Initialized via modular import
 
@@ -46,6 +51,14 @@ type SurveyQuestion = {
   order_index: number
   is_required: boolean
   created_at: string
+  dimension?: string | null
+  dimension_code?: string | null
+  translated_question?: string | null
+  scoring_type?: string | null
+  max_score?: number | null
+  min_score?: number | null
+  reverse_score?: boolean | null
+  translated_options?: string[] | null
 }
 
 type Survey = {
@@ -68,10 +81,13 @@ type Survey = {
 
 
 export default function ViewSurveysPage() {
+  const router = useRouter()
   const [surveys, setSurveys] = useState<Survey[]>([])
   const [loading, setLoading] = useState(true)
   const [isAdminCookie, setIsAdminCookie] = useState(false);
   const [adminChecked, setAdminChecked] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [exportingId, setExportingId] = useState<string | null>(null);
 
   useEffect(() => {
     const adminId = Cookies.get("admin_id");
@@ -85,21 +101,20 @@ export default function ViewSurveysPage() {
 
   const isRestrictedToAuthored = !isAdminCookie && (sub?.plan === 'demo' || (mem?.role !== 'admin' && (mem?.role as string) !== 'super-admin'));
 
-  useEffect(() => {
-    const fetchSurveys = async () => {
-      if (!adminChecked) return;
-      if (!org?.id && !isPlatformAdmin) {
-        console.warn("Admin has no organization, returning empty list.");
-        setSurveys([]);
-        setLoading(false);
-        return;
-      }
-      try {
-        setLoading(true)
+  const fetchSurveys = useCallback(async () => {
+    if (!adminChecked) return;
+    if (!org?.id && !isPlatformAdmin) {
+      console.warn("Admin has no organization, returning empty list.");
+      setSurveys([]);
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true)
 
-        let query = supabase
-          .from('surveys')
-          .select(`
+      let query = supabase
+        .from('surveys')
+        .select(`
             id,
             slug,
             title,
@@ -114,77 +129,128 @@ export default function ViewSurveysPage() {
               options,
               order_index,
               is_required,
-              created_at
+              created_at,
+              dimension,
+              dimension_code,
+              translated_question,
+              scoring_type,
+              max_score,
+              min_score,
+              reverse_score,
+              translated_options
             ),
             organizations (
               name
             )
           `)
 
-        // 2. Apply Multi-Tenancy Rules
-        if (!isPlatformAdmin && org?.id) {
-          if (isRestrictedToAuthored) {
-            // Rule for Demo/Members: Must be in their Org AND created by them OR Safety Vitals
-            query = query.or(`and(org_id.eq.${org.id},created_by.eq.${user?.id}),id.eq.${DEFAULT_SURVEY_ID}`)
-          } else {
-            // Rule for Org Admins: See everything in their Org OR Safety Vitals
-            query = query.or(`org_id.eq.${org.id},id.eq.${DEFAULT_SURVEY_ID}`)
+      if (!isPlatformAdmin && org?.id) {
+        if (isRestrictedToAuthored) {
+          query = query.or(`and(org_id.eq.${org.id},created_by.eq.${user?.id}),id.eq.${DEFAULT_SURVEY_ID}`)
+        } else {
+          query = query.or(`org_id.eq.${org.id},id.eq.${DEFAULT_SURVEY_ID}`)
+        }
+      }
+
+      console.log("[View Surveys Auth Check]:", {
+        isPlatformAdmin,
+        isRestrictedToAuthored,
+        orgId: org?.id,
+        userId: user?.id
+      });
+
+      const { data, error } = await query.order('created_at', { ascending: false })
+
+      if (error) {
+        toast.error('Error fetching surveys')
+        console.error(error)
+      } else if (data) {
+        const authorIds = Array.from(new Set(data.map(s => s.created_by).filter(Boolean))) as string[];
+        let profilesMap: Record<string, any> = {};
+
+        if (authorIds.length > 0) {
+          const { data: profilesData } = await supabase
+            .from('profiles')
+            .select('user_id, full_name, email')
+            .in('user_id', authorIds);
+
+          if (profilesData) {
+            profilesMap = profilesData.reduce((acc, p) => ({ ...acc, [p.user_id]: p }), {});
           }
         }
 
-        // Diagnostic
-        console.log("[View Surveys Auth Check]:", {
-          isPlatformAdmin,
-          isRestrictedToAuthored,
-          orgId: org?.id,
-          userId: user?.id
+        let normalized = data.map((survey) => ({
+          ...survey,
+          profiles: profilesMap[survey.created_by!] || null,
+        })) as unknown as Survey[]
+
+        normalized = normalized.sort((a, b) => {
+          if (a.id === DEFAULT_SURVEY_ID) return -1;
+          if (b.id === DEFAULT_SURVEY_ID) return 1;
+          return 0;
         });
 
-        const { data, error } = await query.order('created_at', { ascending: false })
-
-        if (error) {
-          toast.error('Error fetching surveys')
-          console.error(error)
-        } else if (data) {
-          // Step 2: Manually fetch profiles since join might be blocked
-          const authorIds = Array.from(new Set(data.map(s => s.created_by).filter(Boolean))) as string[];
-          let profilesMap: Record<string, any> = {};
-
-          if (authorIds.length > 0) {
-            const { data: profilesData } = await supabase
-              .from('profiles')
-              .select('user_id, full_name, email')
-              .in('user_id', authorIds);
-
-            if (profilesData) {
-              profilesMap = profilesData.reduce((acc, p) => ({ ...acc, [p.user_id]: p }), {});
-            }
-          }
-
-          let normalized = data.map((survey) => ({
-            ...survey,
-            profiles: profilesMap[survey.created_by!] || null,
-          })) as unknown as Survey[]
-
-          // Always pin Safety Vitals to the top
-          normalized = normalized.sort((a, b) => {
-            if (a.id === DEFAULT_SURVEY_ID) return -1;
-            if (b.id === DEFAULT_SURVEY_ID) return 1;
-            return 0;
-          });
-
-          setSurveys(normalized)
-        }
-      } catch (error) {
-        console.error("Failed to fetch surveys:", error);
-        toast.error("Failed to load surveys.");
-      } finally {
-        setLoading(false)
+        setSurveys(normalized)
       }
+    } catch (error) {
+      console.error("Failed to fetch surveys:", error);
+      toast.error("Failed to load surveys.");
+    } finally {
+      setLoading(false)
     }
-
-    fetchSurveys()
   }, [org?.id, adminChecked, isPlatformAdmin, isRestrictedToAuthored, user?.id])
+
+  useEffect(() => {
+    void fetchSurveys()
+  }, [fetchSurveys])
+
+  const handleExportSurvey = async (survey: Survey) => {
+    setExportingId(survey.id)
+    try {
+      let rows = survey.survey_questions || []
+      // Prefer a fresh full fetch so export always has scoring fields
+      const { data, error } = await supabase
+        .from('survey_questions')
+        .select(`
+          question_text,
+          translated_question,
+          question_type,
+          options,
+          translated_options,
+          is_required,
+          dimension_code,
+          scoring_type,
+          max_score,
+          min_score,
+          reverse_score,
+          order_index
+        `)
+        .eq('survey_id', survey.id)
+        .order('order_index', { ascending: true })
+
+      if (error) {
+        console.error(error)
+        toast.error('Failed to load questions for export')
+        return
+      }
+      if (data) rows = data as SurveyQuestion[]
+
+      if (!rows.length) {
+        toast.error('This survey has no questions to export')
+        return
+      }
+
+      const buffer = await questionsToExcelBuffer(rows)
+      const safeName = (survey.title || 'survey')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+      downloadExcel(`${safeName || 'survey'}-questions.xlsx`, buffer)
+      toast.success('Survey questions exported')
+    } finally {
+      setExportingId(null)
+    }
+  }
 
   function DeleteSurveyDialog({ surveyId, onDelete }: { surveyId: string, onDelete: (id: string) => void }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -246,8 +312,6 @@ export default function ViewSurveysPage() {
     }
   };
 
-  const router = useRouter()
-
   const handleEditSurvey = (id: string) => {
     router.push(`/admin/edit-survey/${id}`)
   }
@@ -257,15 +321,51 @@ export default function ViewSurveysPage() {
 
       {/* Header & Guidance */}
       <div className="flex flex-col gap-4">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Surveys</h1>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Surveys</h1>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-2"
+              onClick={async () => {
+                const buffer = await buildSurveyExcelTemplateBuffer()
+                downloadExcel('survey-questions-template.xlsx', buffer)
+              }}
+            >
+              <Download className="h-4 w-4" />
+              Excel template
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-2"
+              onClick={() => setImportOpen(true)}
+            >
+              <Upload className="h-4 w-4" />
+              Import CSV
+            </Button>
+            <Button onClick={() => router.push('/admin/create-survey')}>
+              Create Survey
+            </Button>
+          </div>
+        </div>
         <Alert className="bg-primary/5 border-primary/20 text-foreground">
           <HelpCircle className="h-4 w-4 text-primary" />
           <AlertTitle>Manage your surveys</AlertTitle>
           <AlertDescription className="text-muted-foreground">
-            View, edit, and manage your surveys here. Expand a row to see details, questions, and get the share link.
+            View, edit, import, and export surveys. Import creates a <span className="font-medium text-foreground">new</span> survey after you review and confirm every question.
           </AlertDescription>
         </Alert>
       </div>
+
+      <SurveyImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImported={() => {
+          void fetchSurveys()
+        }}
+      />
 
       {loading ? (
         <div className="flex flex-col items-center justify-center p-12 space-y-4">
@@ -345,6 +445,24 @@ export default function ViewSurveysPage() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 shrink-0 w-full md:w-auto">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-9 gap-2 flex-1 md:flex-none border-dashed"
+                              disabled={exportingId === survey.id}
+                              onClick={() => void handleExportSurvey(survey)}
+                            >
+                              <Download className="h-4 w-4 text-emerald-600" />
+                              {exportingId === survey.id ? 'Exporting…' : 'Export Excel'}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Export questions as Excel (with dropdowns)</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+
                       {(survey.id !== DEFAULT_SURVEY_ID || isPlatformAdmin) && (
                         <>
                           <TooltipProvider>

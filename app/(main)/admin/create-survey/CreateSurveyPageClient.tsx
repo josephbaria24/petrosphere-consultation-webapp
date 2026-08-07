@@ -25,6 +25,10 @@ import {
 } from '../../../../components/ui/tooltip'
 import { Alert, AlertDescription, AlertTitle } from '../../../../@/components/ui/alert'
 import { useApp } from '../../../../components/app/AppProvider'
+import {
+  dimensionSelectLabel,
+  fetchDimensionsForSurveys,
+} from '../../../../lib/dimensions'
 
 type Question = {
   id: number
@@ -102,8 +106,10 @@ const QuestionAccordionItem = memo(({
     onUpdate(question.id, { dimension: e.target.value })
   }, [question.id, onUpdate])
 
-  const handleDimensionCodeChange = useCallback((code: string) => {
-    const matched = dimensions.find((d) => d.code === code)
+  const handleDimensionCodeChange = useCallback((value: string) => {
+    const matched = dimensions.find(
+      (d) => d.id === value || d.code === value
+    )
     onUpdate(question.id, {
       dimension_code: matched?.code,
       dimension: matched?.dimension_name || '',
@@ -269,7 +275,11 @@ const QuestionAccordionItem = memo(({
               <div>
                 <Label className="mb-1.5 block">Dimension Code</Label>
                 <Select
-                  value={question.dimension_code || ''}
+                  value={
+                    dimensions.find((d) => d.code === question.dimension_code)?.id ||
+                    question.dimension_code ||
+                    ''
+                  }
                   onValueChange={handleDimensionCodeChange}
                 >
                   <SelectTrigger>
@@ -277,8 +287,8 @@ const QuestionAccordionItem = memo(({
                   </SelectTrigger>
                   <SelectContent>
                     {dimensions.map((d) => (
-                      <SelectItem key={d.code} value={d.code}>
-                        {d.code} – {d.dimension_name}
+                      <SelectItem key={d.id || d.code} value={d.id || d.code}>
+                        {dimensionSelectLabel(d)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -379,12 +389,11 @@ export default function CreateSurveyPage() {
 
   // Fetch Dimensions
   useEffect(() => {
-    const fetchDimensions = async () => {
-      const { data, error } = await supabase.from('dimensions').select('*')
-      if (error) console.error('Error loading dimensions', error)
-      else setDimensions(data)
+    const load = async () => {
+      const data = await fetchDimensionsForSurveys()
+      setDimensions(data)
     }
-    fetchDimensions()
+    void load()
   }, [])
 
   // Fetch Templates

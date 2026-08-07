@@ -1,8 +1,16 @@
 "use client";
 
 import { useApp } from "./app/AppProvider";
-import { Clock, Sparkles, ArrowRight, ShieldCheck, ChevronRight, Zap } from "lucide-react";
-import { useState } from "react";
+import { Clock, Sparkles, ArrowRight, ShieldCheck, ChevronRight, Zap, X } from "lucide-react";
+import { useState, useEffect } from "react";
+
+export const TRIAL_EXPIRED_BANNER_DISMISS_KEY = "petrosphere_trial_expired_banner_dismissed";
+
+export function clearTrialExpiredBannerDismiss() {
+    if (typeof window !== "undefined") {
+        sessionStorage.removeItem(TRIAL_EXPIRED_BANNER_DISMISS_KEY);
+    }
+}
 import { UpgradeRequiredModal } from "./upgrade-required-modal";
 import { TrialActivationModal } from "./TrialActivationModal";
 
@@ -10,6 +18,13 @@ export function TrialBanner() {
     const { subscription, limits } = useApp();
     const [upgradeOpen, setUpgradeOpen] = useState(false);
     const [activationOpen, setActivationOpen] = useState(false);
+    const [expiredBannerDismissed, setExpiredBannerDismissed] = useState(false);
+
+    useEffect(() => {
+        setExpiredBannerDismissed(
+            sessionStorage.getItem(TRIAL_EXPIRED_BANNER_DISMISS_KEY) === "true"
+        );
+    }, []);
 
     if (!subscription) return null;
 
@@ -108,24 +123,42 @@ export function TrialBanner() {
 
     // 3. Trial Expired Banner
     if (isExpired) {
+        const dismissExpiredBanner = () => {
+            sessionStorage.setItem(TRIAL_EXPIRED_BANNER_DISMISS_KEY, "true");
+            setExpiredBannerDismissed(true);
+        };
+
         return (
             <>
                 <UpgradeRequiredModal open={upgradeOpen} onOpenChange={setUpgradeOpen} title="Trial Ended" />
-                <div className="w-full bg-slate-900 border-b border-slate-800 text-white px-6 py-3 flex flex-col sm:flex-row items-center justify-center gap-4 text-sm font-bold shadow-lg z-40">
-                    <div className="flex items-center gap-2 text-rose-400">
-                        <Clock className="w-5 h-5" />
-                        <span>Your Pro trial has ended</span>
+                {!expiredBannerDismissed && (
+                    <div className="relative w-full bg-slate-900 border-b border-slate-800 text-white shadow-lg z-40">
+                        <div className="px-6 py-3 pr-12 flex flex-col sm:flex-row items-center justify-center gap-4 text-sm font-bold">
+                            <div className="flex items-center gap-2 text-rose-400">
+                                <Clock className="w-5 h-5" />
+                                <span>Your Pro trial has ended</span>
+                            </div>
+                            <p className="text-slate-400 text-xs font-medium max-w-md text-center sm:text-left leading-tight">
+                                Your data is still here, but Pro features are now locked. Upgrade anytime to continue using advanced tools.
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => setUpgradeOpen(true)}
+                                className="bg-primary text-white hover:bg-primary/90 px-5 py-2 rounded-xl text-xs font-black shadow-xl shadow-primary/20 transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
+                            >
+                                Upgrade to Pro <Zap className="w-3.5 h-3.5 fill-current" />
+                            </button>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={dismissExpiredBanner}
+                            aria-label="Dismiss banner"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
                     </div>
-                    <p className="text-slate-400 text-xs font-medium max-w-md text-center sm:text-left leading-tight">
-                        Your data is still here, but Pro features are now locked. Upgrade anytime to continue using advanced tools.
-                    </p>
-                    <button
-                        onClick={() => setUpgradeOpen(true)}
-                        className="bg-primary text-white hover:bg-primary/90 px-5 py-2 rounded-xl text-xs font-black shadow-xl shadow-primary/20 transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
-                    >
-                        Upgrade to Pro <Zap className="w-3.5 h-3.5 fill-current" />
-                    </button>
-                </div>
+                )}
             </>
         );
     }

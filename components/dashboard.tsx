@@ -33,7 +33,6 @@ import { useOrgKPIs } from "../lib/hooks/use-org-kpis";
 import { DepartmentChart } from "./dashboard/department-chart";
 import { OwnerPerformance } from "./dashboard/owner-performance";
 import { ComplianceReportButton } from "./dashboard/compliance-report-button";
-import { DashboardSelector } from "./dashboard/dashboard-selector";
 import {
   Sheet,
   SheetContent,
@@ -43,7 +42,11 @@ import {
   SheetTrigger,
 } from "./ui/sheet";
 
-export default function Dashboard() {
+interface DashboardProps {
+  embedded?: boolean;
+}
+
+export default function Dashboard({ embedded = false }: DashboardProps) {
   const [surveys, setSurveys] = useState<any[]>([]);
   const [, setQuestions] = useState<any[]>([]);
   const [selectedSurvey, setSelectedSurvey] = useState<any>(null);
@@ -573,14 +576,14 @@ export default function Dashboard() {
   if (!selectedSurvey) return <div className="p-8">Loading Dashboard...</div>;
 
   return (
-    <div className="flex flex-col min-h-screen bg-transparent">
-      <div className="flex-1 space-y-4 md:space-y-8 p-1 md:p-8 pt-6 max-w-[1600px] mx-auto w-full overflow-x-hidden">
-        <DashboardSelector
-          onScrollTo={(sectionId) => {
-            const item = itemsWithRefs.find(i => i.id === sectionId);
-            if (item) scrollToSection(item.ref, sectionId);
-          }}
-        />
+    <div className={embedded ? "w-full" : "flex flex-col min-h-screen bg-transparent"}>
+      <div
+        className={
+          embedded
+            ? "space-y-4 md:space-y-8 w-full overflow-x-hidden"
+            : "flex-1 space-y-4 md:space-y-8 p-1 md:p-8 pt-6 max-w-[1600px] mx-auto w-full overflow-x-hidden"
+        }
+      >
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h2 className="text-xl md:text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 leading-tight">Executive Insights</h2>
