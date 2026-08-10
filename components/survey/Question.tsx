@@ -1,10 +1,8 @@
 "use client";
 
-import { memo, useState, useEffect } from "react";
-import { RadioGroup } from "../../@/components/ui/radio-group";
+import { memo } from "react";
 import { Label } from "../../@/components/ui/label";
 import { Textarea } from "../ui/textarea";
-import { StyledRadioItem } from "../ui/StyledRadioItem";
 
 type QuestionProps = {
   q: {
@@ -13,78 +11,93 @@ type QuestionProps = {
     translated_question?: string;
     question_type: string;
     options: string[] | null;
-    translated_options?: string[] | null; // ✅ Added this
+    translated_options?: string[] | null;
   };
   value: string;
   onChange: (id: string, value: string) => void;
   useFilipino: boolean;
 };
 
-const Question = memo(function Question({ q, value, onChange, useFilipino }: QuestionProps) {
-  const [localValue, setLocalValue] = useState(value);
-
-  // Sync when parent value changes (e.g. from initial load or clearing answers)
-  useEffect(() => {
-    setLocalValue(value);
-  }, [value]);
+const Question = memo(function Question({
+  q,
+  value,
+  onChange,
+  useFilipino,
+}: QuestionProps) {
   const labelText = useFilipino
     ? q.translated_question || q.question_text
     : q.question_text;
 
   const options =
     useFilipino &&
-      q.translated_options &&
-      q.translated_options.length === q.options?.length
+    q.translated_options &&
+    q.translated_options.length === q.options?.length
       ? q.translated_options
       : q.options;
 
+  const isChoice =
+    q.question_type === "multiple-choice" ||
+    q.question_type === "radio" ||
+    q.question_type === "likert";
+
   return (
-    <div id={`question-${q.id}`}>
-      {/* Bolded question label */}
-      <Label className="block mb-2 text-base font-bold text-gray-900 dark:text-gray-100">
+    <div id={`question-${q.id}`} className="py-1">
+      <Label className="block mb-2 text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100 leading-snug">
         {labelText}
       </Label>
 
-      {(q.question_type === "multiple-choice" || q.question_type === "radio") && options && (
-        <RadioGroup value={value} onValueChange={(val) => onChange(q.id, val)}>
-          {options.map((opt, i) => (
-            <div key={i} className="flex items-center space-x-2">
-              <StyledRadioItem value={opt} id={`${q.id}-${i}`} />
-              <Label htmlFor={`${q.id}-${i}`}>
-                {opt}
-              </Label>
-            </div>
-          ))}
-        </RadioGroup>
-      )}
-
-      {q.question_type === "likert" && options && (
-        <RadioGroup
-          value={value}
-          onValueChange={(val) => onChange(q.id, val)}
-          className="flex flex-wrap gap-3"
-        >
-          {options.map((opt, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <StyledRadioItem value={opt} id={`${q.id}-likert-${i}`} />
-              <Label htmlFor={`${q.id}-likert-${i}`}>
-                {opt}
-              </Label>
-            </div>
-          ))}
-        </RadioGroup>
+      {isChoice && options && (
+        <fieldset className="space-y-1.5 border-0 p-0 m-0">
+          <legend className="sr-only">{labelText}</legend>
+          {options.map((opt, i) => {
+            const inputId = `${q.id}-opt-${i}`;
+            const checked = value === opt;
+            return (
+              <label
+                key={inputId}
+                htmlFor={inputId}
+                className={`flex items-center gap-2.5 rounded-md px-2 py-1.5 cursor-pointer transition-colors ${
+                  checked
+                    ? "bg-primary/10 text-foreground"
+                    : "hover:bg-muted/60"
+                }`}
+              >
+                <input
+                  id={inputId}
+                  type="radio"
+                  name={q.id}
+                  value={opt}
+                  checked={checked}
+                  onChange={() => onChange(q.id, opt)}
+                  className="h-4 w-4 shrink-0 accent-primary"
+                />
+                <span className="text-sm leading-snug">{opt}</span>
+              </label>
+            );
+          })}
+        </fieldset>
       )}
 
       {q.question_type === "text" && (
         <Textarea
           placeholder="Your answer..."
-          value={localValue}
-          onChange={(e) => setLocalValue(e.target.value)}
-          onBlur={() => onChange(q.id, localValue)}
+          defaultValue={value}
+          onBlur={(e) => onChange(q.id, e.target.value)}
         />
       )}
     </div>
   );
-});
+}, areEqual);
+
+function areEqual(prev: QuestionProps, next: QuestionProps) {
+  return (
+    prev.q.id === next.q.id &&
+    prev.value === next.value &&
+    prev.useFilipino === next.useFilipino &&
+    prev.onChange === next.onChange &&
+    prev.q.question_text === next.q.question_text &&
+    prev.q.translated_question === next.q.translated_question
+  );
+}
 
 export default Question;

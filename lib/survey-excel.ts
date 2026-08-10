@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import {
+  readCsvFileText,
   SURVEY_CSV_HEADERS,
   buildSurveyCsvTemplate,
   parseSurveyCsv,
@@ -142,7 +143,7 @@ export function downloadExcel(filename: string, buffer: ArrayBuffer) {
 export async function fileToSurveyCsvText(file: File): Promise<string> {
   const name = file.name.toLowerCase();
   if (name.endsWith(".csv") || file.type.includes("csv")) {
-    return file.text();
+    return readCsvFileText(file);
   }
 
   if (name.endsWith(".xlsx") || name.endsWith(".xls")) {

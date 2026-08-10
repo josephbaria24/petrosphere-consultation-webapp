@@ -291,6 +291,35 @@ export function formatListField(values: string[]): string {
   return values.join(", ");
 }
 
+/**
+ * Decode CSV bytes as UTF-8, falling back to Windows-1252.
+ * Excel on Windows often saves CSV with curly quotes/dashes in CP1252,
+ * which become "" when forced through UTF-8.
+ */
+export function decodeCsvBytes(bytes: ArrayBuffer | Uint8Array): string {
+  const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  let offset = 0;
+  if (
+    data.length >= 3 &&
+    data[0] === 0xef &&
+    data[1] === 0xbb &&
+    data[2] === 0xbf
+  ) {
+    offset = 3;
+  }
+  const view = offset ? data.subarray(offset) : data;
+
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(view);
+  } catch {
+    return new TextDecoder("windows-1252").decode(view);
+  }
+}
+
+export async function readCsvFileText(file: File): Promise<string> {
+  return decodeCsvBytes(await file.arrayBuffer());
+}
+
 function escapeCsvCell(value: string): string {
   if (/[",\n\r]/.test(value)) {
     return `"${value.replace(/"/g, '""')}"`;
@@ -302,7 +331,7 @@ function rowsToCsv(rows: string[][]): string {
   return rows.map((row) => row.map(escapeCsvCell).join(",")).join("\r\n");
 }
 
-function parseCsv(text: string): string[][] {
+export function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let cell = "";

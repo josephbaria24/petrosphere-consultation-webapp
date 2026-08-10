@@ -30,7 +30,8 @@ import {
   ChevronLeft,
   ChevronRight,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Briefcase
 } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
@@ -245,6 +246,11 @@ export default function Sidebar() {
 
                 <NavGroup title="Survey" icon={FileText} defaultExpanded={true}>
                   <NavItem href={`${basePath}/create-survey`} icon={PlusCircle} isLocked={isCreateSurveyLocked}>Create Survey</NavItem>
+                  {isAdmin && (
+                    <NavItem href={`${basePath}/consultant`} icon={Briefcase}>
+                      Consultant
+                    </NavItem>
+                  )}
                   <NavItem
                     href={`${basePath}/survey-responses`}
                     icon={FileText}
