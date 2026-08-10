@@ -9,7 +9,7 @@ import {
   PiggyBank,
   TrendingUp,
   CreditCard,
-} from "lucide-react"
+} from "@/components/icons"
 import React from "react"
 
 interface ListItem {

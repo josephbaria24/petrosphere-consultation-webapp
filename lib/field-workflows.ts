@@ -1,5 +1,5 @@
-import type { LucideIcon } from "lucide-react";
-import { ClipboardCheck, Footprints, ShieldCheck } from "lucide-react";
+import type { LucideIcon } from "@/components/icons";
+import { ClipboardCheck, Footprints, ShieldCheck } from "@/components/icons";
 
 export type FieldWorkflowKind =
   | "scheduled_inspection"

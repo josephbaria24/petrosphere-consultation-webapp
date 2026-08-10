@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
-import { Circle, Eraser, Minus, Pencil, Redo2, Undo2 } from "lucide-react";
+import { Circle, Eraser, Minus, Pencil, Redo2, Undo2 } from "@/components/icons";
 
 type DrawTool = "pen" | "circle" | "arrow";
 

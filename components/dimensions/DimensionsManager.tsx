@@ -42,7 +42,7 @@ import {
 } from "../ui/select";
 import { Checkbox } from "../../@/components/ui/checkbox";
 import { Badge } from "../../@/components/ui/badge";
-import { Layers, Pencil, Plus, Trash2 } from "lucide-react";
+import { Layers, Pencil, Plus, Trash2 } from "@/components/icons";
 import { toast } from "sonner";
 import { supabase } from "../../lib/supabaseClient";
 import { useApp } from "../app/AppProvider";

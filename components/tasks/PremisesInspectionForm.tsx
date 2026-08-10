@@ -13,7 +13,7 @@ import {
   Paperclip,
   UploadCloud,
   X,
-} from "lucide-react";
+} from "@/components/icons";
 import { toast } from "sonner";
 import CameraCapture from "./CameraCapture";
 import ImageAnnotator from "./ImageAnnotator";

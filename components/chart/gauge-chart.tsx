@@ -37,7 +37,7 @@ const getAISuggestions = (score: number) => {
   ];
 };
 
-import { Sparkles, Lock } from "lucide-react";
+import { Sparkles, Lock } from "@/components/icons";
 import { useState } from "react";
 
 export default function GaugeChart({

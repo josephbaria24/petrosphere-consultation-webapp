@@ -6,10 +6,10 @@ import { SparklineCard } from "./sparkline-card";
 import { ActionsCard } from "./actions-card";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { Activity, Users, Target } from "lucide-react";
+import { Activity, Users, Target } from "@/components/icons";
 import { useTheme } from "next-themes";
 import { Button } from "../ui/button";
-import { Maximize2 } from "lucide-react";
+import { Maximize2 } from "@/components/icons";
 
 interface BentoDashboardProps {
     // KPI Data

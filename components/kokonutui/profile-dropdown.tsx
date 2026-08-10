@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { cn } from "../../lib/utils";
-import { Settings, CreditCard, FileText, LogOut, User } from "lucide-react";
+import { Settings, CreditCard, FileText, LogOut, User } from "@/components/icons";
 import Image from "next/image";
 import Link from "next/link";
 import {

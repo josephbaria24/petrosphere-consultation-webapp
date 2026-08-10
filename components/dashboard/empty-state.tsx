@@ -4,7 +4,7 @@
  */
 import React from "react";
 import { Button } from "../ui/button";
-import { BarChart3, ArrowRight } from "lucide-react";
+import { BarChart3, ArrowRight } from "@/components/icons";
 import Link from "next/link";
 import { useApp } from "../app/AppProvider";
 

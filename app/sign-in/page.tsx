@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { supabase } from '../../lib/supabaseClient'
 import { Input } from '../../components/ui/input'
 import { Button } from '../../components/ui/button'
-import { Eye, EyeOff, X, Mail, Loader2, UserPlus, LogIn, ArrowLeft } from 'lucide-react'
+import { Eye, EyeOff, X, Mail, Loader2, UserPlus, LogIn, ArrowLeft } from "@/components/icons"
 import { useRouter, useSearchParams } from 'next/navigation'
 import { signUpWithCustomEmail } from './actions'
 

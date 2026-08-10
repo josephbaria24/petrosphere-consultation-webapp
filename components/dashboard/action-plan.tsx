@@ -12,7 +12,7 @@ import {
     Target,
     Clock,
     CheckCircle2,
-} from "lucide-react";
+} from "@/components/icons";
 import { Action } from "./types";
 import { ActionCard } from "./action-card";
 

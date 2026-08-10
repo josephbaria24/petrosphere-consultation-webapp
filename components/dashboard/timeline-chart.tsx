@@ -2,7 +2,7 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { useTheme } from "next-themes";
-import { Calendar } from "lucide-react";
+import { Calendar } from "@/components/icons";
 
 interface TimelineDataPoint {
     date: string;

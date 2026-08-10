@@ -14,7 +14,7 @@ import {
   LogOut,
   ChevronRight,
   Rocket
-} from 'lucide-react'
+} from "@/components/icons"
 import { useApp } from '../../../../components/app/AppProvider'
 import { Input } from '../../../../components/ui/input'
 import { Button } from '../../../../components/ui/button'

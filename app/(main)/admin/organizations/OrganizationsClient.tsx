@@ -17,7 +17,7 @@ import {
     Settings,
     Shield,
     BarChart
-} from "lucide-react";
+} from "@/components/icons";
 import { toast } from "sonner";
 import {
     Card,

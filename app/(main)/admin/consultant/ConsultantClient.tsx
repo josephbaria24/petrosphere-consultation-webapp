@@ -13,12 +13,15 @@ import {
   FileUp,
   FolderOpen,
   Loader2,
+  Pencil,
   Play,
+  Plus,
   RefreshCw,
   RotateCcw,
   Save,
   Trash2,
-} from "lucide-react";
+} from "@/components/icons";
+import Link from "next/link";
 import { useApp } from "../../../../components/app/AppProvider";
 import { supabase } from "../../../../lib/supabaseClient";
 import { getClientCookie } from "../../../../lib/cookies-client";
@@ -50,6 +53,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../../../components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../../../../@/components/ui/alert-dialog";
 
 const STORAGE_KEY = "safety-vitals-consultant-draft-v2";
 
@@ -59,6 +73,17 @@ type CreatedSurveyState = {
   id: string;
   slug: string | null;
 };
+
+type OrgSurveyOption = {
+  id: string;
+  slug: string | null;
+  title: string;
+  created_at: string;
+  is_published: boolean;
+  respondentCount: number;
+};
+
+type SurveyStartMode = "existing" | "new";
 
 type DimensionSetSynced = {
   setId: string;
@@ -219,6 +244,11 @@ export default function ConsultantClient() {
   const [createdSurvey, setCreatedSurvey] = useState<CreatedSurveyState | null>(
     null
   );
+  const [orgSurveys, setOrgSurveys] = useState<OrgSurveyOption[]>([]);
+  const [loadingSurveys, setLoadingSurveys] = useState(false);
+  const [surveyMode, setSurveyMode] = useState<SurveyStartMode>("existing");
+  const [selectedExistingSurveyId, setSelectedExistingSurveyId] = useState("");
+  const [deletingSurvey, setDeletingSurvey] = useState(false);
   const [dimensionSetSynced, setDimensionSetSynced] =
     useState<DimensionSetSynced | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
@@ -387,6 +417,107 @@ export default function ConsultantClient() {
     if (!hydrated) return;
     void fetchBanks(selectedOrgId || undefined);
   }, [hydrated, selectedOrgId, fetchBanks]);
+
+  const fetchOrgSurveys = useCallback(async (orgId: string) => {
+    if (!orgId) {
+      setOrgSurveys([]);
+      setSelectedExistingSurveyId("");
+      return;
+    }
+    setLoadingSurveys(true);
+    try {
+      const { data, error } = await supabase
+        .from("surveys")
+        .select("id, slug, title, created_at, is_published")
+        .eq("org_id", orgId)
+        .eq("is_published", true)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      const baseRows = (data || []) as Omit<OrgSurveyOption, "respondentCount">[];
+
+      let countsBySurvey: Record<string, number> = {};
+      if (baseRows.length > 0) {
+        const surveyIds = baseRows.map((s) => s.id);
+        const { data: questions, error: qErr } = await supabase
+          .from("survey_questions")
+          .select("id, survey_id")
+          .in("survey_id", surveyIds);
+
+        if (qErr) throw qErr;
+
+        const questionToSurvey = new Map<string, string>();
+        for (const q of questions || []) {
+          questionToSurvey.set(q.id, q.survey_id);
+        }
+
+        const questionIds = Array.from(questionToSurvey.keys());
+        if (questionIds.length > 0) {
+          // Chunk to avoid URL/query limits with large instruments
+          const chunkSize = 200;
+          const usersBySurvey = new Map<string, Set<string>>();
+
+          for (let i = 0; i < questionIds.length; i += chunkSize) {
+            const chunk = questionIds.slice(i, i + chunkSize);
+            const { data: responses, error: rErr } = await supabase
+              .from("responses")
+              .select("user_id, question_id")
+              .in("question_id", chunk);
+
+            if (rErr) throw rErr;
+
+            for (const row of responses || []) {
+              if (!row.user_id || !row.question_id) continue;
+              const surveyId = questionToSurvey.get(row.question_id);
+              if (!surveyId) continue;
+              if (!usersBySurvey.has(surveyId)) {
+                usersBySurvey.set(surveyId, new Set());
+              }
+              usersBySurvey.get(surveyId)!.add(row.user_id);
+            }
+          }
+
+          for (const [surveyId, users] of usersBySurvey) {
+            countsBySurvey[surveyId] = users.size;
+          }
+        }
+      }
+
+      const rows: OrgSurveyOption[] = baseRows.map((s) => ({
+        ...s,
+        respondentCount: countsBySurvey[s.id] || 0,
+      }));
+      setOrgSurveys(rows);
+
+      setSelectedExistingSurveyId((prev) => {
+        if (prev && rows.some((r) => r.id === prev)) return prev;
+        if (createdSurvey?.id && rows.some((r) => r.id === createdSurvey.id)) {
+          return createdSurvey.id;
+        }
+        return rows[0]?.id || "";
+      });
+      setSurveyMode(rows.length > 0 ? "existing" : "new");
+    } catch (err) {
+      console.error(err);
+      toast.error(
+        err instanceof Error ? err.message : "Failed to load org surveys"
+      );
+      setOrgSurveys([]);
+    } finally {
+      setLoadingSurveys(false);
+    }
+  }, [createdSurvey?.id]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    void fetchOrgSurveys(targetOrgId);
+  }, [hydrated, targetOrgId, fetchOrgSurveys]);
+
+  const selectedExistingSurvey = useMemo(
+    () => orgSurveys.find((s) => s.id === selectedExistingSurveyId) || null,
+    [orgSurveys, selectedExistingSurveyId]
+  );
 
   const syncDimensionSet = useCallback(
     async (drafts: ImportQuestionDraft[]) => {
@@ -715,6 +846,69 @@ export default function ConsultantClient() {
     return String(err);
   };
 
+  const handleUseExistingSurvey = () => {
+    if (!selectedExistingSurvey) {
+      toast.error("Select an existing survey first.");
+      return;
+    }
+    const next = {
+      id: selectedExistingSurvey.id,
+      slug: selectedExistingSurvey.slug,
+    };
+    setCreatedSurvey(next);
+    persistDraft(
+      {
+        ...buildDraft(),
+        createdSurvey: next,
+        savedAt: new Date().toISOString(),
+      },
+      true
+    );
+    const url = buildPublicSurveyUrl({
+      surveyId: next.id,
+      slug: next.slug,
+      period,
+      orgId: targetOrgId,
+    });
+    toast.success(
+      `Using existing survey — ${selectedExistingSurvey.title || "Untitled"}`
+    );
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const handleDeleteExistingSurvey = async () => {
+    if (!selectedExistingSurvey) {
+      toast.error("Select a survey to delete.");
+      return;
+    }
+    setDeletingSurvey(true);
+    try {
+      const surveyId = selectedExistingSurvey.id;
+      const { error } = await supabase.from("surveys").delete().eq("id", surveyId);
+      if (error) throw error;
+
+      if (createdSurvey?.id === surveyId) {
+        setCreatedSurvey(null);
+        persistDraft(
+          {
+            ...buildDraft(),
+            createdSurvey: null,
+            savedAt: new Date().toISOString(),
+          },
+          true
+        );
+      }
+
+      toast.success("Survey deleted");
+      setSelectedExistingSurveyId("");
+      await fetchOrgSurveys(targetOrgId);
+    } catch (err) {
+      toast.error(formatDbError(err) || "Failed to delete survey");
+    } finally {
+      setDeletingSurvey(false);
+    }
+  };
+
   const handleCreateAndStart = async () => {
     if (!targetOrgId) {
       toast.error(
@@ -828,6 +1022,9 @@ export default function ConsultantClient() {
       }
 
       setCreatedSurvey({ id: survey.id, slug: survey.slug });
+      setSelectedExistingSurveyId(survey.id);
+      setSurveyMode("existing");
+      await fetchOrgSurveys(targetOrgId);
       persistDraft(
         {
           ...buildDraft(),
@@ -1260,67 +1457,260 @@ export default function ConsultantClient() {
       {/* 4. Survey details + start */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">4. Create survey for org</CardTitle>
+          <CardTitle className="text-lg">4. Start survey for org</CardTitle>
           <CardDescription>
-            Publishes under the selected organization so dashboards and responses
-            belong to that org.
+            Reuse a published survey already under this organization, or create
+            a new one. Results always belong to the selected org.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="company">Site / consultation label</Label>
-              <Input
-                id="company"
-                placeholder="e.g. Acme Manufacturing — Site A"
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="period">Response period</Label>
-              <Input
-                id="period"
-                type="month"
-                value={period}
-                onChange={(e) => setPeriod(e.target.value)}
-              />
-            </div>
-          </div>
-          <div>
-            <Label htmlFor="title">Survey title</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Safety Culture Survey"
-            />
-          </div>
-          <div>
-            <Label htmlFor="description">Description (optional)</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="min-h-[80px]"
-            />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant={surveyMode === "existing" ? "default" : "outline"}
+              onClick={() => setSurveyMode("existing")}
+              disabled={!targetOrgId}
+            >
+              Use existing
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={surveyMode === "new" ? "default" : "outline"}
+              onClick={() => setSurveyMode("new")}
+              disabled={!targetOrgId}
+            >
+              Create new
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="gap-2"
+              disabled={!targetOrgId || loadingSurveys}
+              onClick={() => void fetchOrgSurveys(targetOrgId)}
+            >
+              {loadingSurveys ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+              Refresh list
+            </Button>
           </div>
 
-          <Button
-            type="button"
-            size="lg"
-            className="gap-2 w-full sm:w-auto"
-            disabled={submitting || questions.length === 0 || !targetOrgId}
-            onClick={() => void handleCreateAndStart()}
-          >
-            {submitting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Play className="h-4 w-4" />
-            )}
-            Create &amp; start survey
-            {selectedOrg ? ` for ${selectedOrg.name}` : ""}
-          </Button>
+          {surveyMode === "existing" ? (
+            <div className="space-y-3 rounded-lg border p-4 bg-muted/20">
+              <div className="flex items-end gap-2">
+                <div className="flex-1 min-w-0">
+                  <Label>Published surveys for {selectedOrg?.name || "org"}</Label>
+                  <Select
+                    value={selectedExistingSurveyId || undefined}
+                    onValueChange={setSelectedExistingSurveyId}
+                    disabled={loadingSurveys || orgSurveys.length === 0}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue
+                        placeholder={
+                          loadingSurveys
+                            ? "Loading surveys…"
+                            : orgSurveys.length
+                              ? "Select a survey"
+                              : "No published surveys yet"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {orgSurveys.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.title || "Untitled"} ·{" "}
+                          {new Date(s.created_at).toLocaleDateString()} ·{" "}
+                          {s.respondentCount} respondent
+                          {s.respondentCount === 1 ? "" : "s"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedExistingSurvey && (
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      Selected:{" "}
+                      <span className="font-medium text-foreground">
+                        {selectedExistingSurvey.respondentCount}
+                      </span>{" "}
+                      answered respondent
+                      {selectedExistingSurvey.respondentCount === 1 ? "" : "s"}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {orgSurveys.length === 0 && !loadingSurveys && (
+                <p className="text-sm text-muted-foreground">
+                  No published surveys for this org yet. Switch to{" "}
+                  <button
+                    type="button"
+                    className="underline underline-offset-2"
+                    onClick={() => setSurveyMode("new")}
+                  >
+                    Create new
+                  </button>
+                  .
+                </p>
+              )}
+              <div>
+                <Label htmlFor="period-existing">Response period (for link)</Label>
+                <Input
+                  id="period-existing"
+                  type="month"
+                  value={period}
+                  onChange={(e) => setPeriod(e.target.value)}
+                  className="max-w-xs"
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="lg"
+                  className="gap-2"
+                  disabled={!selectedExistingSurvey || !targetOrgId}
+                  onClick={handleUseExistingSurvey}
+                >
+                  <Play className="h-4 w-4" />
+                  Open selected survey
+                  {selectedOrg ? ` for ${selectedOrg.name}` : ""}
+                </Button>
+                {selectedExistingSurvey ? (
+                  <Button
+                    type="button"
+                    size="lg"
+                    variant="outline"
+                    className="gap-2"
+                    asChild
+                  >
+                    <Link href={`/admin/edit-survey/${selectedExistingSurvey.id}`}>
+                      <Pencil className="h-4 w-4" />
+                      Edit survey
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    size="lg"
+                    variant="outline"
+                    className="gap-2"
+                    disabled
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit survey
+                  </Button>
+                )}
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      type="button"
+                      size="lg"
+                      variant="outline"
+                      className="gap-2 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                      disabled={!selectedExistingSurvey || deletingSurvey}
+                    >
+                      {deletingSurvey ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                      Delete survey
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete this survey?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This permanently deletes{" "}
+                        <span className="font-medium text-foreground">
+                          {selectedExistingSurvey?.title || "the selected survey"}
+                        </span>
+                        {selectedExistingSurvey
+                          ? ` (${selectedExistingSurvey.respondentCount} respondent${
+                              selectedExistingSurvey.respondentCount === 1
+                                ? ""
+                                : "s"
+                            })`
+                          : ""}
+                        . Questions and responses tied to it may also be removed.
+                        This cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-destructive text-white hover:bg-destructive/90"
+                        onClick={() => void handleDeleteExistingSurvey()}
+                      >
+                        Delete permanently
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="company">Site / consultation label</Label>
+                  <Input
+                    id="company"
+                    placeholder="e.g. Acme Manufacturing — Site A"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="period">Response period</Label>
+                  <Input
+                    id="period"
+                    type="month"
+                    value={period}
+                    onChange={(e) => setPeriod(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="title">Survey title</Label>
+                <Input
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Safety Culture Survey"
+                />
+              </div>
+              <div>
+                <Label htmlFor="description">Description (optional)</Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="min-h-[80px]"
+                />
+              </div>
+
+              <Button
+                type="button"
+                size="lg"
+                className="gap-2 w-full sm:w-auto"
+                disabled={submitting || questions.length === 0 || !targetOrgId}
+                onClick={() => void handleCreateAndStart()}
+              >
+                {submitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                Create new survey
+                {selectedOrg ? ` for ${selectedOrg.name}` : ""}
+              </Button>
+            </div>
+          )}
 
           {createdSurvey && liveSurveyUrl && (
             <div className="rounded-lg border p-4 space-y-3 bg-muted/20">

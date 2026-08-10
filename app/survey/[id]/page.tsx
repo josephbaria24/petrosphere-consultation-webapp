@@ -20,7 +20,7 @@ import { supabase } from '../../../lib/supabaseClient'
 import { Input } from '../../../components/ui/input'
 import Question from "../../../components/survey/Question";
 import { cn } from '../../../lib/utils'
-import { ChevronsUpDown, Languages } from 'lucide-react'
+import { ChevronsUpDown, Languages } from "@/components/icons"
 import { useCallback, useMemo, useRef } from "react";
 import { useWindowVirtualizer } from '@tanstack/react-virtual'
 
@@ -30,7 +30,7 @@ import { Label } from '../../../components/ui/label'
 import {
   Card,
 } from '../../../components/ui/card'
-import { Check } from 'lucide-react'
+import { Check } from "@/components/icons"
 import { Popover, PopoverContent, PopoverTrigger } from '../../../@/components/ui/popover'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../../../@/components/ui/command'
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../../../@/components/ui/alert-dialog'

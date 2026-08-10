@@ -32,7 +32,7 @@ import {
   Clock,
   Loader2,
   ArrowRight,
-} from "lucide-react";
+} from "@/components/icons";
 import type { FieldWorkflowKind } from "../../lib/field-workflows";
 import { cn } from "../../lib/utils";
 

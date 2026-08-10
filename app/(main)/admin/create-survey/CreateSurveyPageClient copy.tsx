@@ -2,7 +2,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2 } from "@/components/icons"
 import { Card, CardContent, CardHeader, CardTitle } from '../../../../components/ui/card'
 
 import { Button } from '../../../../components/ui/button'

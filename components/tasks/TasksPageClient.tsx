@@ -11,7 +11,7 @@ import {
   Pencil,
   Play,
   BarChart3,
-} from "lucide-react";
+} from "@/components/icons";
 import { toast } from "sonner";
 import PremisesInspectionForm from "./PremisesInspectionForm";
 import TaskTemplateEditor from "./TaskTemplateEditor";

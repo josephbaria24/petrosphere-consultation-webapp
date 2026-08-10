@@ -28,7 +28,7 @@ import {
 } from '../../../../components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '../../../../@/components/ui/alert'
 import { Button } from '../../../../components/ui/button'
-import { Calendar, Filter, User as UserIcon, Building, FileText, Download, HelpCircle } from 'lucide-react'
+import { Calendar, Filter, User as UserIcon, Building, FileText, Download, HelpCircle } from "@/components/icons"
 import { Separator } from '../../../../@/components/ui/separator'
 import { GatedFeature } from '../../../../components/gated-feature'
 

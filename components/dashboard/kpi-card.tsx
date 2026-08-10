@@ -1,6 +1,6 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { ArrowUp, ArrowDown, Minus, LucideIcon } from "lucide-react";
+import { ArrowUp, ArrowDown, Minus, LucideIcon } from "@/components/icons";
 import { cn } from "../../lib/utils";
 
 interface KPICardProps {

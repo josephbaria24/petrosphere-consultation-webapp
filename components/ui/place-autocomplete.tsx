@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/input-group"
 import { Spinner } from "@/components/ui/spinner"
 import type { BBox, Feature, FeatureCollection, Point } from "geojson"
-import { MapPinIcon, SearchIcon } from "lucide-react"
+import { MapPinIcon, SearchIcon } from "@/components/icons"
 import * as React from "react"
 
 interface PlaceFeatureProperties {

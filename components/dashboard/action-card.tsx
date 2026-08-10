@@ -12,7 +12,7 @@ import {
     FileText,
     Send,
     ExternalLink
-} from "lucide-react";
+} from "@/components/icons";
 import { Button } from "../ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";

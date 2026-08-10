@@ -1,7 +1,7 @@
 "use client";
 
 import { useApp } from "./app/AppProvider";
-import { Clock, Sparkles, ArrowRight, ShieldCheck, ChevronRight, Zap, X } from "lucide-react";
+import { Clock, Sparkles, ArrowRight, ShieldCheck, ChevronRight, Zap, X } from "@/components/icons";
 import { useState, useEffect } from "react";
 
 export const TRIAL_EXPIRED_BANNER_DISMISS_KEY = "petrosphere_trial_expired_banner_dismissed";

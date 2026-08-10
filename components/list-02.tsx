@@ -6,7 +6,7 @@ import {
   Plus,
   ArrowRight,
   SendHorizontal,
-} from "lucide-react"
+} from "@/components/icons"
 import { cn } from "../lib/utils"
 
 type Trend = {

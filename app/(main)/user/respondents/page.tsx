@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../../components
 
 import { Button } from '../../../../components/ui/button'
 import { toast } from 'sonner'
-import { Mail } from 'lucide-react'
+import { Mail } from "@/components/icons"
 import { Badge } from '../../../../@/components/ui/badge'
 import { GatedFeature } from '../../../../components/gated-feature'
 import { useApp } from '../../../../components/app/AppProvider'

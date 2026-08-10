@@ -13,7 +13,7 @@
  */
 
 import { useState } from 'react';
-import { Award, BarChart3, Building2, GaugeCircle, Pencil, Check, X, Star, TrendingDown, TrendingUp, Users2, Sparkles, Lock, Loader2, AlertTriangle, Clock, CalendarDays } from "lucide-react";
+import { Award, BarChart3, Building2, GaugeCircle, Pencil, Check, X, Star, TrendingDown, TrendingUp, Users2, Sparkles, Lock, Loader2, AlertTriangle, Clock, CalendarDays } from "@/components/icons";
 import { useApp } from "./app/AppProvider";
 import { toast } from "sonner";
 

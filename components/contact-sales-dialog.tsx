@@ -7,7 +7,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { Mail, Phone, Building2 } from "lucide-react";
+import { Mail, Phone, Building2 } from "@/components/icons";
 
 interface ContactSalesDialogProps {
     open: boolean;

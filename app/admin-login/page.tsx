@@ -8,7 +8,7 @@ import { supabase } from '../../lib/supabaseClient'
 import { Input } from '../../components/ui/input'
 import { Button } from '../../components/ui/button'
 import { Cookies } from '../../lib/cookies-client'
-import { Eye, EyeOff, X, Mail } from 'lucide-react'
+import { Eye, EyeOff, X, Mail } from "@/components/icons"
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('')

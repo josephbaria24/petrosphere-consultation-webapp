@@ -33,7 +33,7 @@ import {
     ExternalLink,
     Plus,
     ShieldAlert
-} from "lucide-react";
+} from "@/components/icons";
 import { Action, ActionComment } from "./types";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";

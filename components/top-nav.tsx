@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react"
 import Image from "next/image"
-import { Bell, ChevronRight, HelpCircle } from "lucide-react"
+import { Bell, ChevronRight, HelpCircle } from "@/components/icons"
 import Link from "next/link"
 import { ThemeToggle } from "./theme-toggle"
 import ProfileDropdown from "./kokonutui/profile-dropdown"

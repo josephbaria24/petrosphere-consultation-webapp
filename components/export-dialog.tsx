@@ -11,7 +11,7 @@ import {
     DialogFooter,
 } from "./ui/dialog";
 import { Button } from "./ui/button";
-import { FileDown, Download, CircleAlert, Lock, Target } from "lucide-react";
+import { FileDown, Download, CircleAlert, Lock, Target } from "@/components/icons";
 import { useApp } from "./app/AppProvider";
 import { cn } from "../lib/utils";
 import { UpgradeRequiredModal } from "./upgrade-required-modal";

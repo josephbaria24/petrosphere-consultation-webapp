@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useApp } from "./app/AppProvider";
 import { Button } from "./ui/button";
-import { X, ChevronRight, ChevronLeft, Info, Sparkles, Copy, BarChart3, ArrowRight, Folder } from "lucide-react";
+import { X, ChevronRight, ChevronLeft, Info, Sparkles, Copy, BarChart3, ArrowRight, Folder } from "@/components/icons";
 import { cn } from "../lib/utils";
 import { usePathname, useRouter } from "next/navigation";
 

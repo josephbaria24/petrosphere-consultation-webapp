@@ -16,7 +16,7 @@ import {
     Trash2,
     Calendar,
     User,
-} from "lucide-react";
+} from "@/components/icons";
 import { Action } from "./types";
 import { getLevelLabel, toPercentage } from "../../lib/survey-utils";
 import { Badge } from "../../@/components/ui/badge";

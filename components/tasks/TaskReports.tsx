@@ -5,7 +5,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../../@/components/ui/badge";
 import { Button } from "../ui/button";
-import { CheckCircle, XCircle, ChevronRight, ArrowLeft, ExternalLink, Calendar as CalendarIcon, Filter, Image as ImageIcon, Maximize2, Trash2, MoreVertical, FileDown, Edit2, MapPin } from "lucide-react";
+import { CheckCircle, XCircle, ChevronRight, ArrowLeft, ExternalLink, Calendar as CalendarIcon, Filter, Image as ImageIcon, Maximize2, Trash2, MoreVertical, FileDown, Edit2, MapPin } from "@/components/icons";
 import { Map, MapTileLayer, MapMarker, MapPopup } from "../ui/map";
 import { format, isToday, isYesterday, isWithinInterval, subDays, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, subMonths, isAfter } from "date-fns";
 import {

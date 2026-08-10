@@ -17,7 +17,7 @@ import {
   BanIcon,
   Trash2Icon,
   XCircleIcon,
-} from "lucide-react";
+} from "@/components/icons";
 import { motion, useAnimation } from "motion/react";
 import { useState, useRef } from "react";
 import { Button } from "../ui/button";

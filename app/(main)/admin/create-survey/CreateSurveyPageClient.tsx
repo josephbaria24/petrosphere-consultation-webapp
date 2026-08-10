@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useMemo, memo } from 'react'
-import { Plus, Trash2, HelpCircle, Settings, FileText, Globe, List, Target, ChevronDown } from 'lucide-react'
+import { Plus, Trash2, HelpCircle, Settings, FileText, Globe, List, Target, ChevronDown } from "@/components/icons"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../../components/ui/card'
 import { Button } from '../../../../components/ui/button'
 import { Input } from '../../../../components/ui/input'

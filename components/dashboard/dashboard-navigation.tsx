@@ -1,5 +1,5 @@
 import { Button } from "../ui/button";
-import { Activity, BarChart3, PieChart, Target, LucideIcon } from "lucide-react";
+import { Activity, BarChart3, PieChart, Target, LucideIcon } from "@/components/icons";
 import React from "react";
 
 interface NavigationItem {

@@ -1,7 +1,7 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
-import { TrendingUp } from "lucide-react";
+import { TrendingUp } from "@/components/icons";
 import { cn } from "../../lib/utils";
 
 interface SparklineData {

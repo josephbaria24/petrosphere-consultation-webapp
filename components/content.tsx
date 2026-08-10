@@ -1,4 +1,4 @@
-import { LucidePercentSquare, TrendingUpIcon } from "lucide-react"
+import { LucidePercentSquare, TrendingUpIcon } from "@/components/icons"
 import List01 from "./list-01"
 import List02 from "./list-02"
 import { cookies } from "next/headers"

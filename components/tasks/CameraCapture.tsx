@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Button } from "../ui/button";
-import { Camera, RefreshCw, Check, X, SwitchCamera } from "lucide-react";
+import { Camera, RefreshCw, Check, X, SwitchCamera } from "@/components/icons";
 import { toast } from "sonner";
 
 interface CameraCaptureProps {

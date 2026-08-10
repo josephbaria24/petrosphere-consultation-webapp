@@ -32,7 +32,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Briefcase
-} from "lucide-react"
+} from "@/components/icons"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import Image from "next/image"
@@ -40,7 +40,7 @@ import { usePathname } from "next/navigation"
 import { cn } from "../lib/utils"
 import { getClientCookie } from "../lib/cookies-client";
 import { useApp } from "./app/AppProvider"
-import { Lock } from "lucide-react"
+import { Lock } from "@/components/icons"
 import { Badge } from "../@/components/ui/badge"
 import { UpgradeRequiredModal } from "./upgrade-required-modal"
 import { LoadingOverlay } from "./ui/loading-overlay"
@@ -230,7 +230,7 @@ export default function Sidebar() {
               width={isCollapsed ? 40 : 168}
               height={isCollapsed ? 40 : 32}
               className={cn(
-                "object-contain transition-all duration-300",
+                "object-contain transition-all duration-300 dark:invert",
                 isCollapsed ? "h-10 w-10" : "h-8 w-auto max-w-[168px]"
               )}
               priority

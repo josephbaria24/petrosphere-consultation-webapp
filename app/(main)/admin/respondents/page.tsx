@@ -6,14 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../../components
 
 import { Button } from '../../../../components/ui/button'
 import { toast } from 'sonner'
-import { Mail } from 'lucide-react'
+import { Mail } from "@/components/icons"
 import { Badge } from '../../../../@/components/ui/badge'
 import { useApp } from '../../../../components/app/AppProvider'
 import { Cookies } from '../../../../lib/cookies-client'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '../../../../components/ui/select'
-import { Building } from 'lucide-react'
+import { Building } from "@/components/icons"
 
 type Respondent = {
   id: string

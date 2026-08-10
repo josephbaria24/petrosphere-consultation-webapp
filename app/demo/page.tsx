@@ -14,7 +14,7 @@ import { useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import Link from "next/link";
 import Image from "next/image";
-import { Mail, Loader2, Globe, ArrowRight } from "lucide-react";
+import { Mail, Loader2, Globe, ArrowRight } from "@/components/icons";
 import { Button } from "../../@/components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Alert, AlertDescription } from "../../@/components/ui/alert";

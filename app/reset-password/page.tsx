@@ -7,7 +7,7 @@ import { Input } from '../../components/ui/input'
 import { Button } from '../../components/ui/button'
 import { toast } from 'sonner'
 import bcrypt from 'bcryptjs'
-import { Eye, EyeOff, Lock, CheckCircle } from 'lucide-react'
+import { Eye, EyeOff, Lock, CheckCircle } from "@/components/icons"
 
 function ResetPasswordForm() {
   const [newPassword, setNewPassword] = useState('')
@@ -240,4 +240,4 @@ export default function ResetPasswordPage() {
 }
 
 // Import X icon for the password match indicator
-import { X } from 'lucide-react'
+import { X } from "@/components/icons"

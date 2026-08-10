@@ -9,7 +9,7 @@ import {
     TableRow
 } from "../../@/components/ui/table";
 import { Badge } from "../../@/components/ui/badge";
-import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown } from "@/components/icons";
 
 interface DimensionTableProps {
     data: any[];

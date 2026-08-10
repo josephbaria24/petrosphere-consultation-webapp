@@ -8,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui
 import { Label } from '../../../components/ui/label'
 import { toast } from 'sonner'
 import bcrypt from 'bcryptjs'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff } from "@/components/icons"
 import { useRouter } from 'next/navigation'
 
 export default function CreateAdminAccount() {

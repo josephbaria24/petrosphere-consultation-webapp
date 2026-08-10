@@ -8,7 +8,7 @@ import {
     DialogDescription,
 } from "./ui/dialog";
 import { Button } from "./ui/button";
-import { Lock, Target, CheckCircle2, Loader2, Zap } from "lucide-react";
+import { Lock, Target, CheckCircle2, Loader2, Zap } from "@/components/icons";
 import { useApp } from "./app/AppProvider";
 import { toast } from "sonner";
 import { TrialActivationModal } from "./TrialActivationModal";

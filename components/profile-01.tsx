@@ -1,6 +1,6 @@
 'use client'
 
-import { LogOut, MoveUpRight, Settings, FileText } from "lucide-react"
+import { LogOut, MoveUpRight, Settings, FileText } from "@/components/icons"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"

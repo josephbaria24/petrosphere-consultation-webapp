@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
-import { Lightbulb, TrendingDown, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Lightbulb, TrendingDown, AlertTriangle, CheckCircle2 } from "@/components/icons";
 
 interface SafetyInsightsProps {
     lowestDimension: { name: string; score: number } | null;

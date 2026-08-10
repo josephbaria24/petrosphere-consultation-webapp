@@ -18,7 +18,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "../ui/select";
-import { Plus } from "lucide-react";
+import { Plus } from "@/components/icons";
 
 export interface ActionFormState {
     title: string;

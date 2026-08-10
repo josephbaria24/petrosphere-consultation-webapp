@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useApp } from "../app/AppProvider";
 import TaskReports from "../tasks/TaskReports";
 import { getClientCookie } from "../../lib/cookies-client";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft } from "@/components/icons";
 import Link from "next/link";
 import { Button } from "../ui/button";
 import { GatedFeature } from "../gated-feature";

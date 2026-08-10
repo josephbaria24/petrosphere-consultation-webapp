@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
-import { Rocket, Building2, User, CheckCircle2, ArrowRight, Loader2, PartyPopper } from 'lucide-react'
+import { Rocket, Building2, User, CheckCircle2, ArrowRight, Loader2, PartyPopper } from "@/components/icons"
 import { Input } from '../../components/ui/input'
 import { Button } from '../../components/ui/button'
 import { useBootstrap } from '../../lib/hooks/useBootstrap'

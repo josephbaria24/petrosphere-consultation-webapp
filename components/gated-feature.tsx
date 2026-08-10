@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Button } from "./ui/button";
-import { Lock, Sparkles, Zap, ShieldCheck } from "lucide-react";
+import { Lock, Sparkles, Zap, ShieldCheck } from "@/components/icons";
 import { UpgradeRequiredModal } from "./upgrade-required-modal";
 import { TrialActivationModal } from "./TrialActivationModal";
 import { useApp } from "./app/AppProvider";

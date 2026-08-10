@@ -5,7 +5,7 @@ import {
     Card, CardHeader, CardTitle, CardContent, CardDescription
 } from "../ui/card";
 import { supabase } from "../../lib/supabaseClient";
-import { Users, AlertTriangle } from "lucide-react";
+import { Users, AlertTriangle } from "@/components/icons";
 import { EmptyState } from "./empty-state";
 
 interface OwnerPerformanceProps {

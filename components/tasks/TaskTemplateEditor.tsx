@@ -17,12 +17,12 @@ import {
   ShieldCheck,
   Eye,
   Save,
-} from "lucide-react";
+} from "@/components/icons";
 import { toast } from "sonner";
 import { Switch } from "../../@/components/ui/switch";
 import { Label } from "../../@/components/ui/label";
 import { getClientCookie } from "../../lib/cookies-client";
-import { X, Loader2, Trash2 as TrashIcon } from "lucide-react";
+import { X, Loader2, Trash2 as TrashIcon } from "@/components/icons";
 import {
   AlertDialog,
   AlertDialogAction,

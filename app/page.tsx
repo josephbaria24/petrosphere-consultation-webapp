@@ -4,7 +4,7 @@ import { Header } from "@/components/header-1";
 import { HeroSection, LogosSection } from "@/components/hero-1";
 import Image from "next/image";
 import Link from "next/link";
-import { ClipboardList, LayoutDashboard, Zap, Check, ArrowRight } from "lucide-react";
+import { ClipboardList, LayoutDashboard, Zap, Check, ArrowRight } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { ContactSalesDialog } from "@/components/contact-sales-dialog";

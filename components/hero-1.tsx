@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { RocketIcon, ArrowRightIcon, PhoneCallIcon } from "lucide-react";
+import { RocketIcon, ArrowRightIcon, PhoneCallIcon } from "@/components/icons";
 import { LogoCloud } from "@/components/logo-cloud-3";
 import Link from 'next/link';
 import { useState } from "react";

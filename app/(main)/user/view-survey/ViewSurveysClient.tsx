@@ -23,7 +23,7 @@ import {
   Calendar,
   HelpCircle,
   Link,
-} from 'lucide-react'
+} from "@/components/icons"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../../../../@/components/ui/accordion'
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../../../../@/components/ui/alert-dialog'
 import { Alert, AlertDescription, AlertTitle } from '../../../../@/components/ui/alert'

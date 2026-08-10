@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Button } from "../ui/button";
-import { FileDown, Loader2 } from "lucide-react";
+import { FileDown, Loader2 } from "@/components/icons";
 import { toast } from "sonner";
 import { useApp } from "../app/AppProvider";
 

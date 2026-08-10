@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Download, FileUp, Loader2, Trash2 } from "lucide-react";
+import { Download, FileUp, Loader2, Trash2 } from "@/components/icons";
 import {
   Dialog,
   DialogContent,

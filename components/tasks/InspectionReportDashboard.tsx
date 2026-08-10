@@ -27,7 +27,7 @@ import {
   FileText,
   Loader2,
   XCircle,
-} from "lucide-react";
+} from "@/components/icons";
 import { toast } from "sonner";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";

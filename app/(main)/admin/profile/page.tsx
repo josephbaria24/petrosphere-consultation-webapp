@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Save, Loader2, ShieldCheck, Mail, User } from "lucide-react";
+import { Save, Loader2, ShieldCheck, Mail, User } from "@/components/icons";
 import { useApp } from "../../../../components/app/AppProvider";
 import { getClientCookie } from "../../../../lib/cookies-client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../../components/ui/card";

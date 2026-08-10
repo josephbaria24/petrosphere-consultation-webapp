@@ -10,7 +10,7 @@ import {
   DialogFooter,
 } from "./ui/dialog";
 import { Button } from "./ui/button";
-import { CheckCircle2, Sparkles, Loader2, Calendar, ShieldCheck, Zap, Clock } from "lucide-react";
+import { CheckCircle2, Sparkles, Loader2, Calendar, ShieldCheck, Zap, Clock } from "@/components/icons";
 import { toast } from "sonner";
 import { useApp } from "./app/AppProvider";
 import { format } from "date-fns";

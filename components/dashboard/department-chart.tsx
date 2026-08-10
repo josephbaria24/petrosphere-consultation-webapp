@@ -14,7 +14,7 @@ import {
     ChartTooltipContent,
 } from "../ui/chart"
 import { supabase } from "../../lib/supabaseClient";
-import { Building } from "lucide-react";
+import { Building } from "@/components/icons";
 import { EmptyState } from "./empty-state";
 
 interface DepartmentChartProps {

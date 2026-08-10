@@ -8,7 +8,7 @@ import {
     CardContent,
 } from "../ui/card";
 import { Button } from "../ui/button";
-import { Maximize2, Info } from "lucide-react";
+import { Maximize2, Info } from "@/components/icons";
 import {
     RadarChart,
     PolarGrid,
