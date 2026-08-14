@@ -21,8 +21,7 @@ import { Input } from '../../../components/ui/input'
 import Question from "../../../components/survey/Question";
 import { cn } from '../../../lib/utils'
 import { ChevronsUpDown, Languages } from "@/components/icons"
-import { useCallback, useMemo, useRef } from "react";
-import { useWindowVirtualizer } from '@tanstack/react-virtual'
+import { useCallback, useMemo } from "react";
 
 import { Button } from '../../../components/ui/button'
 import { toast } from 'sonner'
@@ -82,8 +81,6 @@ function SurveyContent() {
   const [showResubmitModal, setShowResubmitModal] = useState(false)
   const [isResubmitting, setIsResubmitting] = useState(false)
   const [showTooltip, setShowTooltip] = useState(true)
-
-  const parentRef = useRef<HTMLDivElement>(null)
 
   const roles = [
     "Executive",
@@ -193,11 +190,17 @@ function SurveyContent() {
     setMetadata((prev) => ({ ...prev, [field]: value }));
   }, []);
 
+  const emailTrimmed = metadata.email.trim()
+
   const validateMetadata = () => {
-    const required = ['first_name', 'last_name', 'email', 'role', 'department', 'site']
-    const missing = required.filter((key) => !metadata[key as keyof typeof metadata])
+    const required = ['first_name', 'last_name', 'role', 'department', 'site']
+    const missing = required.filter((key) => !metadata[key as keyof typeof metadata]?.trim())
     if (missing.length > 0) {
-      toast.error('Please fill in all fields.')
+      toast.error('Please fill in all required fields.')
+      return false
+    }
+    if (emailTrimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed)) {
+      toast.error('Please enter a valid email, or leave it blank.')
       return false
     }
     return true
@@ -208,10 +211,15 @@ function SurveyContent() {
     if (!survey) return;
 
     try {
+      if (!emailTrimmed) {
+        setStep(2);
+        return;
+      }
+
       const { data: user } = await supabase
         .from('users')
         .select('id')
-        .eq('email', metadata.email)
+        .eq('email', emailTrimmed)
         .maybeSingle();
 
       if (!user) {
@@ -255,18 +263,22 @@ function SurveyContent() {
       return;
     }
     try {
-      const { data: user } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', metadata.email)
-        .maybeSingle()
+      let user: { id: string } | null = null
+      if (emailTrimmed) {
+        const { data } = await supabase
+          .from('users')
+          .select('id')
+          .eq('email', emailTrimmed)
+          .maybeSingle()
+        user = data
+      }
 
       let userId = user?.id
       if (!userId) {
         const { data: newUser, error: insertError } = await supabase
           .from('users')
           .insert({
-            email: metadata.email,
+            email: emailTrimmed || null,
             first_name: metadata.first_name,
             last_name: metadata.last_name,
             role: metadata.role,
@@ -344,12 +356,12 @@ function SurveyContent() {
     }) as [string, SurveyQuestion[]][];
   }, [groupedQuestions]);
 
-  type VirtualRow =
+  type ListRow =
     | { kind: "header"; key: string; title: string }
     | { kind: "question"; key: string; question: SurveyQuestion };
 
-  const virtualRows = useMemo(() => {
-    const rows: VirtualRow[] = [];
+  const listRows = useMemo(() => {
+    const rows: ListRow[] = [];
     for (const [group, questions] of sortedGroups) {
       rows.push({ kind: "header", key: `h-${group}`, title: group });
       const ordered = [...questions].sort(
@@ -363,24 +375,6 @@ function SurveyContent() {
     }
     return rows;
   }, [sortedGroups]);
-
-  const [listOffset, setListOffset] = useState(0);
-
-  useEffect(() => {
-    if (step !== 2) return;
-    const id = requestAnimationFrame(() => {
-      setListOffset(parentRef.current?.offsetTop ?? 0);
-    });
-    return () => cancelAnimationFrame(id);
-  }, [step, survey?.id, virtualRows.length]);
-
-  const rowVirtualizer = useWindowVirtualizer({
-    count: step === 2 ? virtualRows.length : 0,
-    estimateSize: (index) =>
-      virtualRows[index]?.kind === "header" ? 48 : 210,
-    overscan: 4,
-    scrollMargin: listOffset,
-  });
 
   const totalRequiredQuestions = survey?.survey_questions?.length || 0;
   const totalAnswered = useMemo(() => {
@@ -491,8 +485,10 @@ function SurveyContent() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="w-full">
-                  <Label>Email</Label>
-                  <Input placeholder="Email" value={metadata.email} onChange={(e) => handleMetadataChange("email", e.target.value)} />
+                  <Label>
+                    Email <span className="text-muted-foreground font-normal">(optional)</span>
+                  </Label>
+                  <Input placeholder="Email (optional)" value={metadata.email} onChange={(e) => handleMetadataChange("email", e.target.value)} />
                 </div>
                 <div className="w-full">
                   <Label>Position / Role</Label>
@@ -566,43 +562,29 @@ function SurveyContent() {
 
         {step === 2 && (
           <>
-            <div
-              ref={parentRef}
-              className="relative w-full"
-              style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
-            >
-              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                const row = virtualRows[virtualRow.index];
-                if (!row) return null;
-                return (
+            <div className="flex flex-col gap-4 w-full">
+              {listRows.map((row) =>
+                row.kind === "header" ? (
+                  <h3
+                    key={row.key}
+                    className="text-sm font-semibold text-primary bg-muted/50 rounded-md px-3 py-2.5 w-full border"
+                  >
+                    {row.title}
+                  </h3>
+                ) : (
                   <div
                     key={row.key}
-                    data-index={virtualRow.index}
-                    className="absolute top-0 left-0 w-full px-0.5"
-                    style={{
-                      transform: `translateY(${virtualRow.start - listOffset}px)`,
-                      height: `${virtualRow.size}px`,
-                    }}
+                    className="rounded-lg border bg-card px-3 py-4 sm:px-4 sm:py-3"
                   >
-                    {row.kind === "header" ? (
-                      <div className="flex items-center h-full">
-                        <h3 className="text-sm font-semibold text-primary bg-muted/50 rounded-md px-3 py-2 w-full border">
-                          {row.title}
-                        </h3>
-                      </div>
-                    ) : (
-                      <div className="rounded-lg border bg-card px-3 py-2 mb-2">
-                        <Question
-                          q={row.question}
-                          value={answers[row.question.id] || ""}
-                          onChange={handleInputChange}
-                          useFilipino={useFilipino}
-                        />
-                      </div>
-                    )}
+                    <Question
+                      q={row.question}
+                      value={answers[row.question.id] || ""}
+                      onChange={handleInputChange}
+                      useFilipino={useFilipino}
+                    />
                   </div>
-                );
-              })}
+                )
+              )}
             </div>
             <div className="pt-4 pb-8">
               <Button type="button" onClick={handleSubmit} className="w-full">

@@ -41,13 +41,13 @@ const Question = memo(function Question({
     q.question_type === "likert";
 
   return (
-    <div id={`question-${q.id}`} className="py-1">
-      <Label className="block mb-2 text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100 leading-snug">
+    <div id={`question-${q.id}`} className="py-0.5">
+      <Label className="block mb-3 text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100 leading-relaxed">
         {labelText}
       </Label>
 
       {isChoice && options && (
-        <fieldset className="space-y-1.5 border-0 p-0 m-0">
+        <fieldset className="space-y-2.5 sm:space-y-2 border-0 p-0 m-0">
           <legend className="sr-only">{labelText}</legend>
           {options.map((opt, i) => {
             const inputId = `${q.id}-opt-${i}`;
@@ -56,7 +56,7 @@ const Question = memo(function Question({
               <label
                 key={inputId}
                 htmlFor={inputId}
-                className={`flex items-center gap-2.5 rounded-md px-2 py-1.5 cursor-pointer transition-colors ${
+                className={`flex items-start gap-3 rounded-md px-2.5 py-2.5 sm:py-2 min-h-11 cursor-pointer transition-colors ${
                   checked
                     ? "bg-primary/10 text-foreground"
                     : "hover:bg-muted/60"
@@ -69,9 +69,9 @@ const Question = memo(function Question({
                   value={opt}
                   checked={checked}
                   onChange={() => onChange(q.id, opt)}
-                  className="h-4 w-4 shrink-0 accent-primary"
+                  className="mt-0.5 h-5 w-5 sm:h-4 sm:w-4 shrink-0 accent-primary"
                 />
-                <span className="text-sm leading-snug">{opt}</span>
+                <span className="text-sm leading-relaxed pt-px">{opt}</span>
               </label>
             );
           })}
