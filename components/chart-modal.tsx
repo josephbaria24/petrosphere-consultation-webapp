@@ -12,8 +12,7 @@ const ChartModal = ({ open, onClose, title, children }: ChartModalProps) => {
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent
-        className="!max-w-none w-[44vw] h-auto p-6 bg-card"
-        style={{ maxWidth: '50vw' }}
+        className="!max-w-none w-[min(42rem,calc(100vw-20rem))] h-auto p-6 bg-card"
       >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

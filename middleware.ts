@@ -2,6 +2,19 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
+    const host = request.headers.get("host") || request.nextUrl.hostname;
+    const isLocal =
+        host.startsWith("localhost") ||
+        host.startsWith("127.0.0.1") ||
+        host.startsWith("[::1]");
+    const forwardedProto = request.headers.get("x-forwarded-proto");
+    const proto = (forwardedProto || request.nextUrl.protocol.replace(":", "")).split(",")[0].trim();
+    if (!isLocal && proto === "http") {
+        const httpsUrl = request.nextUrl.clone();
+        httpsUrl.protocol = "https:";
+        return NextResponse.redirect(httpsUrl, 308);
+    }
+
     let response = NextResponse.next({
         request: {
             headers: request.headers,

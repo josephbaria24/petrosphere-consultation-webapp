@@ -15,7 +15,7 @@ import ProfessionalSurveySummaryCard from "./summary-card";
 import { DashboardNavigation } from "./dashboard/dashboard-navigation";
 import { SurveySelector } from "./dashboard/survey-selector";
 import { ResponseSummary } from "./dashboard/response-summary";
-import { ActionDialog, ActionFormState } from "./dashboard/action-dialog";
+import { ActionDialog, ActionFormState, type ActionStatus } from "./dashboard/action-dialog";
 import { OverviewCharts, DetailedCharts } from "./dashboard/charts-grid";
 import { Action } from "./dashboard/types";
 import { ActionPlan } from "./dashboard/action-plan";
@@ -59,6 +59,9 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
   const [comparisonRadarData, setComparisonRadarData] = useState<any[]>([]);
   const [openChart, setOpenChart] = useState<"bar" | "radar" | "gauge" | "role" | "comparison" | null>(null);
   const [roleData, setRoleData] = useState<any[]>([]);
+  const [departmentData, setDepartmentData] = useState<
+    { department: string; avg_score: number; respondent_count: number }[]
+  >([]);
   const [minAcceptableScore, setMinAcceptableScore] = useState<number>(2.0);
   const [belowMinimumDimensions, setBelowMinimumDimensions] = useState<string[]>([]);
   const [atRiskDimensions, setAtRiskDimensions] = useState<string[]>([]);
@@ -90,7 +93,8 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
   const [actions, setActions] = useState<Action[]>([]);
   const [isActionDialogOpen, setIsActionDialogOpen] = useState(false);
   const [selectedDimension, setSelectedDimension] = useState<string>("");
-  const [selectedStatus, setSelectedStatus] = useState<"critical" | "at_risk">("critical");
+  const [selectedStatus, setSelectedStatus] = useState<ActionStatus>("planned");
+  const [actionDialogFreeSelect, setActionDialogFreeSelect] = useState(false);
   const [actionForm, setActionForm] = useState<ActionFormState>({
     title: "",
     description: "",
@@ -240,7 +244,8 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
       setStrongDimensions(cached.strong);
       setBarData(cached.barData);
       setRadarData(cached.radarData);
-      setRoleData(cached.roleData);
+      setRoleData(cached.roleData || []);
+      setDepartmentData(cached.departmentData || []);
       setAvgScore(cached.avgScore);
       setTotalAvg(cached.totalAvg);
       setTrend(cached.trend);
@@ -261,9 +266,16 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
       const resp = await fetch("/api/admin/all-responses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ questionIds, orgId: targetOrgId === "all" ? undefined : targetOrgId }) });
       if (resp.ok) responses = await resp.json();
     } else {
-      let query = supabase.from("responses").select("user_id, question_id, answer").in("question_id", questionIds);
+      let query = supabase.from("responses").select("user_id, question_id, answer, role, department").in("question_id", questionIds);
       if (org?.id) query = query.eq("org_id", org.id);
-      responses = (await query).data || [];
+      const result = await query;
+      if (result.error && String(result.error.message || "").toLowerCase().includes("department")) {
+        let fallback = supabase.from("responses").select("user_id, question_id, answer, role").in("question_id", questionIds);
+        if (org?.id) fallback = fallback.eq("org_id", org.id);
+        responses = (await fallback).data || [];
+      } else {
+        responses = result.data || [];
+      }
     }
 
     const templateMap: Record<string, any> = {};
@@ -322,54 +334,139 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
     const currentAvg = Math.min(normalizedScores.length ? (normalizedScores.reduce((a, b) => a + b, 0) / normalizedScores.length) * 4 + 1 : 0, 5);
     setAvgScore(currentAvg); setTotalAvg(currentAvg);
 
-    // Build roleData by joining responses with users.role
+    // Build role + department breakdowns from response metadata, falling back to users
     let computedRoleData: any[] = [];
+    let computedDepartmentData: {
+      department: string;
+      avg_score: number;
+      respondent_count: number;
+    }[] = [];
     try {
       const userIds = Array.from(uniqueRespondents).filter(Boolean);
+      const userRoleMap: Record<string, string> = {};
+      const userDeptMap: Record<string, string> = {};
       if (userIds.length > 0) {
-        const { data: usersWithRoles } = await supabase
+        const { data: usersMeta } = await supabase
           .from("users")
-          .select("id, role")
+          .select("id, role, department")
           .in("id", userIds as string[]);
 
-        if (usersWithRoles?.length) {
-          const userRoleMap: Record<string, string> = {};
-          usersWithRoles.forEach(u => {
-            if (u.role) userRoleMap[u.id] = u.role;
-          });
+        usersMeta?.forEach((u) => {
+          if (u.role) userRoleMap[u.id] = u.role;
+          if (u.department) userDeptMap[u.id] = u.department;
+        });
+      }
 
-          // Group scores by (dimension, role)
-          const dimRoleScores: Record<string, Record<string, number[]>> = {};
-          responses.forEach(r => {
-            const q = questions.find(qu => qu.id === r.question_id);
-            if (!q) return;
-            const role = userRoleMap[r.user_id];
-            if (!role) return;
-            const template = q.template_id ? templateMap[q.template_id] : null;
-            let score = template ? template.scores[template.options.findIndex((opt: string) => opt.trim().toLowerCase() === r.answer.trim().toLowerCase())] : parseFloat(r.answer);
-            if (isNaN(score)) return;
-            if (q.scoring_type === "text" || q.question_type === "text") return;
-            if (q.reverse_score || q.scoring_type === "negative") score = (q.max_score ?? 5) + 1 - score;
-            if (!q.dimension) return;
-            if (!dimRoleScores[q.dimension]) dimRoleScores[q.dimension] = {};
-            if (!dimRoleScores[q.dimension][role]) dimRoleScores[q.dimension][role] = [];
-            dimRoleScores[q.dimension][role].push(score);
-          });
+      // Group scores by (dimension, role)
+      const dimRoleScores: Record<string, Record<string, number[]>> = {};
+      // Group scores by department (overall avg per respondent then dept)
+      const deptUserScores: Record<string, Record<string, number[]>> = {};
 
-          // Shape into [{ dimension, Manager: 3.8, Staff: 3.4 }]
-          computedRoleData = Object.entries(dimRoleScores).map(([dim, roles]) => {
-            const row: any = { dimension: dim };
-            Object.entries(roles).forEach(([role, scores]) => {
-              row[role] = Math.min(scores.reduce((a, b) => a + b, 0) / scores.length, 5);
+      const scoreResponse = (r: any): number | null => {
+        const q = questions.find((qu) => qu.id === r.question_id);
+        if (!q) return null;
+        const template = q.template_id ? templateMap[q.template_id] : null;
+        let score = 0;
+        if (template) {
+          const optionIndex = template.options.findIndex(
+            (opt: string) =>
+              opt?.trim().toLowerCase() === r.answer?.trim().toLowerCase()
+          );
+          score =
+            optionIndex !== -1
+              ? template.scores[optionIndex]
+              : parseFloat(r.answer);
+        } else {
+          score = parseFloat(r.answer);
+        }
+        if (Number.isNaN(score)) return null;
+        if (q.scoring_type === "text" || q.question_type === "text") return null;
+        if (q.reverse_score || q.scoring_type === "negative") {
+          score = (q.max_score ?? 5) + 1 - score;
+        }
+        return score;
+      };
+
+      responses.forEach((r) => {
+        const score = scoreResponse(r);
+        if (score == null) return;
+        const q = questions.find((qu) => qu.id === r.question_id);
+
+        const role = String(r.role || userRoleMap[r.user_id] || "").trim();
+        if (role && q?.dimension) {
+          if (!dimRoleScores[q.dimension]) dimRoleScores[q.dimension] = {};
+          if (!dimRoleScores[q.dimension][role]) {
+            dimRoleScores[q.dimension][role] = [];
+          }
+          dimRoleScores[q.dimension][role].push(score);
+        }
+
+        const department = String(
+          r.department || userDeptMap[r.user_id] || ""
+        ).trim();
+        if (department && r.user_id) {
+          if (!deptUserScores[department]) deptUserScores[department] = {};
+          if (!deptUserScores[department][r.user_id]) {
+            deptUserScores[department][r.user_id] = [];
+          }
+          deptUserScores[department][r.user_id].push(score);
+        }
+      });
+
+      // Shape into [{ dimension, Manager: 3.8, Staff: 3.4 }] with all roles present
+      const allRoles = new Set<string>();
+      Object.values(dimRoleScores).forEach((roles) => {
+        Object.keys(roles).forEach((role) => allRoles.add(role));
+      });
+
+      if (allRoles.size > 0) {
+        computedRoleData = Object.entries(dimRoleScores)
+          .map(([dim, roles]) => {
+            const row: Record<string, string | number> = { dimension: dim };
+            allRoles.forEach((role) => {
+              const scores = roles[role];
+              if (scores?.length) {
+                row[role] = Math.min(
+                  scores.reduce((a, b) => a + b, 0) / scores.length,
+                  5
+                );
+              }
             });
             return row;
-          }).sort((a, b) => extractNumberLocal(a.dimension) - extractNumberLocal(b.dimension));
-        }
+          })
+          .sort(
+            (a, b) =>
+              extractNumberLocal(String(a.dimension)) -
+              extractNumberLocal(String(b.dimension))
+          );
+      } else if (sortedBar.length > 0) {
+        computedRoleData = sortedBar.map((b) => ({
+          dimension: b.name,
+          "All respondents": b.score,
+        }));
       }
-    } catch (err) { console.error("Role data error:", err); }
-    setRoleData(computedRoleData);
 
-    const finalStats = { minAcceptableScore: calculatedMinScore, respondentCount: uniqueRespondents.size, reliability: normalizedScores.length ? Math.round((normalizedScores.reduce((a, b) => a + b, 0) / normalizedScores.length) * 100) : 0, belowMin, atRisk, strong, barData: sortedBar, radarData: sortedBar.map(b => ({ subject: b.name, you: b.score })), avgScore: currentAvg, totalAvg: currentAvg, trend: 0, lowestDimensionPercent: lowest, roleData: computedRoleData };
+      computedDepartmentData = Object.entries(deptUserScores)
+        .map(([department, byUser]) => {
+          const userAvgs = Object.values(byUser).map(
+            (scores) => scores.reduce((a, b) => a + b, 0) / scores.length
+          );
+          const avg =
+            userAvgs.reduce((a, b) => a + b, 0) / Math.max(userAvgs.length, 1);
+          return {
+            department,
+            avg_score: parseFloat(Math.min(avg, 5).toFixed(2)),
+            respondent_count: userAvgs.length,
+          };
+        })
+        .sort((a, b) => b.avg_score - a.avg_score);
+    } catch (err) {
+      console.error("Role/department data error:", err);
+    }
+    setRoleData(computedRoleData);
+    setDepartmentData(computedDepartmentData);
+
+    const finalStats = { minAcceptableScore: calculatedMinScore, respondentCount: uniqueRespondents.size, reliability: normalizedScores.length ? Math.round((normalizedScores.reduce((a, b) => a + b, 0) / normalizedScores.length) * 100) : 0, belowMin, atRisk, strong, barData: sortedBar, radarData: sortedBar.map(b => ({ subject: b.name, you: b.score })), avgScore: currentAvg, totalAvg: currentAvg, trend: 0, lowestDimensionPercent: lowest, roleData: computedRoleData, departmentData: computedDepartmentData };
     if (!dashboardCache.current[cacheKey]) dashboardCache.current[cacheKey] = { stats: null, questions: [], templateCache: [], comparisonData: [], actions: [] };
     dashboardCache.current[cacheKey].stats = finalStats;
     fetchAIInsights(surveyId, { avgScore: currentAvg, respondentCount: uniqueRespondents.size, strongDimensions: strong, belowMinimumDimensions: belowMin, atRiskDimensions: atRisk });
@@ -445,12 +542,14 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
   };
 
   const createAction = async () => {
-    if (!selectedSurvey || !actionForm.title.trim() || !selectedDimension) return;
+    const dimension = selectedDimension.trim() || "General";
+    if (!selectedSurvey || !actionForm.title.trim()) return;
     try {
-      const { data, error } = await supabase.from("actions").insert({ survey_id: selectedSurvey.id, dimension: selectedDimension, status: selectedStatus, title: actionForm.title, description: actionForm.description, priority: actionForm.priority, assigned_to: actionForm.assigned_to, target_date: actionForm.target_date || null, is_completed: false, org_id: org?.id, created_by: isPlatformAdmin ? null : user?.id }).select().single();
+      const { data, error } = await supabase.from("actions").insert({ survey_id: selectedSurvey.id, dimension, status: selectedStatus, title: actionForm.title, description: actionForm.description, priority: actionForm.priority, assigned_to: actionForm.assigned_to, target_date: actionForm.target_date || null, is_completed: false, org_id: org?.id, created_by: isPlatformAdmin ? null : user?.id }).select().single();
       if (error) throw error;
       setActions(prev => [data as Action, ...prev]);
       setIsActionDialogOpen(false);
+      setActionDialogFreeSelect(false);
       setActionForm({ title: "", description: "", priority: "medium", assigned_to: "", target_date: "" });
     } catch (err) { toast.error("Failed to create action"); }
   };
@@ -458,6 +557,22 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
   const handleCreateActionForDimension = (dimension: string, status: "critical" | "at_risk") => {
     setSelectedDimension(dimension);
     setSelectedStatus(status);
+    setActionDialogFreeSelect(false);
+    setIsActionDialogOpen(true);
+  };
+
+  const handleCreateFreeAction = () => {
+    const dims = Array.from(
+      new Set([
+        ...barData.map((b: { name?: string }) => b.name).filter(Boolean),
+        ...belowMinimumDimensions,
+        ...atRiskDimensions,
+        ...strongDimensions,
+      ])
+    ) as string[];
+    setSelectedDimension(dims[0] || "General");
+    setSelectedStatus("planned");
+    setActionDialogFreeSelect(true);
     setIsActionDialogOpen(true);
   };
 
@@ -681,15 +796,17 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
             containerRef={chartsRef}
             radarData={radarData}
             isLoadingStats={isLoadingStats}
+            surveyId={selectedSurvey?.id || null}
+            orgId={isPlatformAdmin ? selectedOrgId : org?.id || null}
+            isPlatformAdmin={isPlatformAdmin}
           />
         </div>
 
         {/* Department Breakdown */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <DepartmentChart
-            orgId={org?.id}
-            surveyId={selectedSurvey?.id}
-            isPlatformAdmin={isPlatformAdmin}
+            data={departmentData}
+            isLoading={isLoadingStats}
           />
           <OwnerPerformance
             orgId={org?.id}
@@ -740,6 +857,7 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
                 onDeleteAction={deleteAction}
                 onUpdateAction={handleUpdateAction}
                 onViewDetails={(a) => { setSelectedActionForDetail(a); setIsDetailDialogOpen(true); }}
+                onAddAction={isActionsRestricted ? undefined : handleCreateFreeAction}
                 containerRef={summaryRef}
               />
             </div>
@@ -748,10 +866,28 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
 
         <ActionDialog
           isOpen={isActionDialogOpen}
-          onOpenChange={setIsActionDialogOpen}
-          onClose={() => setIsActionDialogOpen(false)}
+          onOpenChange={(open) => {
+            setIsActionDialogOpen(open);
+            if (!open) setActionDialogFreeSelect(false);
+          }}
+          onClose={() => {
+            setIsActionDialogOpen(false);
+            setActionDialogFreeSelect(false);
+          }}
           selectedDimension={selectedDimension}
+          onDimensionChange={setSelectedDimension}
           selectedStatus={selectedStatus}
+          onStatusChange={setSelectedStatus}
+          dimensions={Array.from(
+            new Set([
+              ...barData.map((b: { name?: string }) => b.name).filter(Boolean),
+              ...belowMinimumDimensions,
+              ...atRiskDimensions,
+              ...strongDimensions,
+              "General",
+            ])
+          ) as string[]}
+          allowFreeSelect={actionDialogFreeSelect}
           formState={actionForm}
           setFormState={setActionForm}
           createAction={createAction}

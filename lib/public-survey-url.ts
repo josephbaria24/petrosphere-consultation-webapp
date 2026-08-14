@@ -3,12 +3,35 @@
  * so links never stick to localhost after deploy.
  */
 
+function isLocalHostname(hostname: string): boolean {
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "[::1]"
+  );
+}
+
+/** Keep http for local dev; force https everywhere else. */
+export function toHttpsOrigin(raw: string): string {
+  const trimmed = raw.trim().replace(/\/$/, "");
+  if (!trimmed) return "https://safetyvitals.petros-global.com";
+  try {
+    const url = new URL(trimmed.includes("://") ? trimmed : `https://${trimmed}`);
+    if (!isLocalHostname(url.hostname)) {
+      url.protocol = "https:";
+    }
+    return url.origin;
+  } catch {
+    return trimmed.replace(/^http:\/\//i, "https://");
+  }
+}
+
 export function getPublicAppOrigin(): string {
   if (typeof window !== "undefined" && window.location?.origin) {
-    return window.location.origin.replace(/\/$/, "");
+    return toHttpsOrigin(window.location.origin);
   }
   const fromEnv = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (fromEnv) return fromEnv.replace(/\/$/, "");
+  if (fromEnv) return toHttpsOrigin(fromEnv);
   return "https://safetyvitals.petros-global.com";
 }
 

@@ -56,6 +56,7 @@ import {
 } from "../../../../components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../../../components/ui/tooltip";
 import { useApp } from "../../../../components/app/AppProvider";
+import { MigrateResultsDialog } from "../../../../components/admin/MigrateResultsDialog";
 
 const formatDate = (dateString: string) => {
     return new Intl.DateTimeFormat("en-US", {
@@ -86,6 +87,8 @@ export default function OrganizationsClient() {
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
+    const [migrateOpen, setMigrateOpen] = useState(false);
+    const [migrateSourceOrgId, setMigrateSourceOrgId] = useState<string | null>(null);
     const [editLoading, setEditLoading] = useState(false);
     const [editForm, setEditForm] = useState<any>({
         name: "",
@@ -259,6 +262,18 @@ export default function OrganizationsClient() {
                 </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        className="gap-2 h-11 rounded-xl shrink-0"
+                        onClick={() => {
+                            setMigrateSourceOrgId(null);
+                            setMigrateOpen(true);
+                        }}
+                    >
+                        <ArrowUpDown className="h-4 w-4" />
+                        Migrate results
+                    </Button>
                     <div className="relative flex-1 md:w-80">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
@@ -455,6 +470,16 @@ export default function OrganizationsClient() {
                                                         >
                                                             <Edit2 className="w-3.5 h-3.5 text-primary" />
                                                             Edit Details
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem
+                                                            className="gap-2 font-bold text-xs cursor-pointer"
+                                                            onClick={() => {
+                                                                setMigrateSourceOrgId(org.id);
+                                                                setMigrateOpen(true);
+                                                            }}
+                                                        >
+                                                            <ArrowUpDown className="w-3.5 h-3.5 text-primary" />
+                                                            Migrate Results
                                                         </DropdownMenuItem>
                                                         <DropdownMenuSeparator />
                                                         <DropdownMenuItem
@@ -666,6 +691,13 @@ export default function OrganizationsClient() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <MigrateResultsDialog
+                open={migrateOpen}
+                onOpenChange={setMigrateOpen}
+                organizations={organizations.map((o) => ({ id: o.id, name: o.name }))}
+                initialSourceOrgId={migrateSourceOrgId}
+            />
         </div>
     );
 }

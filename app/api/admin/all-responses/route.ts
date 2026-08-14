@@ -25,7 +25,6 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Question IDs are required" }, { status: 400 });
         }
 
-        // Create service role client to bypass RLS
         const supabaseAdmin = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -33,18 +32,52 @@ export async function POST(req: Request) {
 
         let query = supabaseAdmin
             .from("responses")
-            .select("user_id, question_id, answer, org_id, created_at")
+            .select("user_id, question_id, answer, org_id, created_at, role, department")
             .in("question_id", questionIds);
 
-        if (orgId && orgId !== 'all') {
+        if (orgId && orgId !== "all") {
             query = query.eq("org_id", orgId);
         }
 
         const { data, error } = await query;
 
         if (error) {
+            // Older DBs may lack responses.department — retry without it
+            if (String(error.message || "").toLowerCase().includes("department")) {
+                let fallback = supabaseAdmin
+                    .from("responses")
+                    .select("user_id, question_id, answer, org_id, created_at, role")
+                    .in("question_id", questionIds);
+                if (orgId && orgId !== "all") fallback = fallback.eq("org_id", orgId);
+                const retry = await fallback;
+                if (retry.error) {
+                    console.error("Supabase error fetching all responses:", retry.error);
+                    return NextResponse.json({ error: retry.error.message }, { status: 500 });
+                }
+                return NextResponse.json(retry.data);
+            }
             console.error("Supabase error fetching all responses:", error);
             return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        // Enrich with user department/role when response metadata is missing
+        const userIds = Array.from(
+            new Set((data || []).map((r) => r.user_id).filter(Boolean))
+        );
+        if (userIds.length > 0) {
+            const { data: users } = await supabaseAdmin
+                .from("users")
+                .select("id, role, department")
+                .in("id", userIds);
+            const userMap = Object.fromEntries(
+                (users || []).map((u) => [u.id, u])
+            );
+            const enriched = (data || []).map((r) => ({
+                ...r,
+                role: r.role || userMap[r.user_id]?.role || null,
+                department: r.department || userMap[r.user_id]?.department || null,
+            }));
+            return NextResponse.json(enriched);
         }
 
         return NextResponse.json(data);

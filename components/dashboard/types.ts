@@ -10,7 +10,7 @@ export interface Action {
     id: string;
     survey_id: string;
     dimension: string;
-    status: 'critical' | 'at_risk';
+    status: 'critical' | 'at_risk' | 'planned' | 'strong';
     title: string;
     description?: string;
     priority: 'low' | 'medium' | 'high';

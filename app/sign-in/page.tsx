@@ -10,6 +10,7 @@ import { Button } from '../../components/ui/button'
 import { Eye, EyeOff, X, Mail, Loader2, UserPlus, LogIn, ArrowLeft } from "@/components/icons"
 import { useRouter, useSearchParams } from 'next/navigation'
 import { signUpWithCustomEmail } from './actions'
+import { getPublicAppOrigin } from '../../lib/public-survey-url'
 
 function SignInContent() {
   const router = useRouter()
@@ -39,14 +40,7 @@ function SignInContent() {
   const [forgotEmail, setForgotEmail] = useState('')
   const [forgotLoading, setForgotLoading] = useState(false)
 
-  const getBaseUrl = () => {
-    if (typeof window !== 'undefined') {
-      return window.location.origin
-    }
-    return process.env.NODE_ENV === 'production'
-      ? process.env.NEXT_PUBLIC_SITE_URL || 'https://safetyvitals.petros-global.com'
-      : 'http://localhost:3000'
-  }
+  const getBaseUrl = () => getPublicAppOrigin()
 
   // --- Google SSO ---
   const handleGoogleLogin = async () => {

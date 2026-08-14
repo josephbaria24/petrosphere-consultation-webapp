@@ -277,6 +277,18 @@ function SurveyContent() {
           .select().single()
         if (insertError || !newUser) throw insertError || new Error('Failed to create user')
         userId = newUser.id
+      } else {
+        // Keep profile metadata in sync for returning respondents
+        await supabase
+          .from('users')
+          .update({
+            first_name: metadata.first_name,
+            last_name: metadata.last_name,
+            role: metadata.role,
+            department: metadata.department,
+            site: metadata.site,
+          })
+          .eq('id', userId)
       }
 
       const responsePayload = allQuestions.map((q) => ({
@@ -285,6 +297,7 @@ function SurveyContent() {
         question: q.question_text,
         answer: answers[q.id] || '',
         role: metadata.role,
+        department: metadata.department,
         dimension: q.dimension,
         org_id: targetOrgId || survey.org_id
       }))

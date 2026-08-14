@@ -17,6 +17,7 @@ import {
   Edit,
   FileText,
   User,
+  Users,
   Calendar,
   HelpCircle,
   Link,
@@ -32,6 +33,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '../../../../components/ui/tooltip'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../../../components/ui/select'
 import HoldButton from '../../../../components/kokonutui/hold-button'
 import { SurveyImportDialog } from '../../../../components/survey/SurveyImportDialog'
 import {
@@ -39,6 +47,11 @@ import {
   downloadExcel,
   questionsToExcelBuffer,
 } from '../../../../lib/survey-excel'
+import { buildPublicSurveyUrl } from '../../../../lib/public-survey-url'
+import {
+  countRespondentsBySurvey,
+  questionMapFromSurveys,
+} from '../../../../lib/count-survey-respondents'
 
 // Initialized via modular import
 
@@ -69,6 +82,8 @@ type Survey = {
   created_at: string
   is_published: boolean
   created_by: string | null
+  org_id?: string | null
+  respondent_count?: number
   profiles: {
     full_name: string | null
     email: string | null
@@ -88,6 +103,8 @@ export default function ViewSurveysPage() {
   const [adminChecked, setAdminChecked] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [exportingId, setExportingId] = useState<string | null>(null);
+  const [organizations, setOrganizations] = useState<{ id: string; name: string }[]>([]);
+  const [selectedOrgId, setSelectedOrgId] = useState<string>("all");
 
   useEffect(() => {
     const adminId = Cookies.get("admin_id");
@@ -101,6 +118,26 @@ export default function ViewSurveysPage() {
 
   const isRestrictedToAuthored = !isAdminCookie && (sub?.plan === 'demo' || (mem?.role !== 'admin' && (mem?.role as string) !== 'super-admin'));
 
+  useEffect(() => {
+    if (!adminChecked || !isPlatformAdmin) return;
+    const fetchOrgs = async () => {
+      try {
+        const resp = await fetch("/api/admin/all-organizations");
+        if (!resp.ok) return;
+        const data = await resp.json();
+        setOrganizations(
+          (data || []).map((o: { id: string; name: string }) => ({
+            id: o.id,
+            name: o.name,
+          }))
+        );
+      } catch (err) {
+        console.error("Failed to load organizations:", err);
+      }
+    };
+    void fetchOrgs();
+  }, [adminChecked, isPlatformAdmin]);
+
   const fetchSurveys = useCallback(async () => {
     if (!adminChecked) return;
     if (!org?.id && !isPlatformAdmin) {
@@ -112,9 +149,22 @@ export default function ViewSurveysPage() {
     try {
       setLoading(true)
 
-      let query = supabase
-        .from('surveys')
-        .select(`
+      let data: any[] | null = null
+      let error: { message?: string } | null = null
+
+      if (isPlatformAdmin) {
+        const qs = new URLSearchParams({ detailed: "1" })
+        if (selectedOrgId !== "all") qs.set("orgId", selectedOrgId)
+        const resp = await fetch(`/api/admin/all-surveys?${qs.toString()}`)
+        if (resp.ok) {
+          data = await resp.json()
+        } else {
+          error = { message: "Failed to fetch surveys" }
+        }
+      } else {
+        let query = supabase
+          .from('surveys')
+          .select(`
             id,
             slug,
             title,
@@ -122,6 +172,7 @@ export default function ViewSurveysPage() {
             created_at,
             is_published,
             created_by,
+            org_id,
             survey_questions (
               id,
               question_text,
@@ -144,28 +195,32 @@ export default function ViewSurveysPage() {
             )
           `)
 
-      if (!isPlatformAdmin && org?.id) {
-        if (isRestrictedToAuthored) {
-          query = query.or(`and(org_id.eq.${org.id},created_by.eq.${user?.id}),id.eq.${DEFAULT_SURVEY_ID}`)
-        } else {
-          query = query.or(`org_id.eq.${org.id},id.eq.${DEFAULT_SURVEY_ID}`)
+        if (org?.id) {
+          if (isRestrictedToAuthored) {
+            query = query.or(`and(org_id.eq.${org.id},created_by.eq.${user?.id}),id.eq.${DEFAULT_SURVEY_ID}`)
+          } else {
+            query = query.or(`org_id.eq.${org.id},id.eq.${DEFAULT_SURVEY_ID}`)
+          }
         }
+
+        const result = await query.order('created_at', { ascending: false })
+        data = result.data
+        error = result.error
       }
-
-      console.log("[View Surveys Auth Check]:", {
-        isPlatformAdmin,
-        isRestrictedToAuthored,
-        orgId: org?.id,
-        userId: user?.id
-      });
-
-      const { data, error } = await query.order('created_at', { ascending: false })
 
       if (error) {
         toast.error('Error fetching surveys')
         console.error(error)
       } else if (data) {
-        const authorIds = Array.from(new Set(data.map(s => s.created_by).filter(Boolean))) as string[];
+        // Normalize organizations (API may return object or array)
+        const rows = data.map((survey: any) => ({
+          ...survey,
+          organizations: Array.isArray(survey.organizations)
+            ? survey.organizations[0] || null
+            : survey.organizations || null,
+        }))
+
+        const authorIds = Array.from(new Set(rows.map((s: any) => s.created_by).filter(Boolean))) as string[];
         let profilesMap: Record<string, any> = {};
 
         if (authorIds.length > 0) {
@@ -179,10 +234,37 @@ export default function ViewSurveysPage() {
           }
         }
 
-        let normalized = data.map((survey) => ({
+        let normalized = rows.map((survey: any) => ({
           ...survey,
           profiles: profilesMap[survey.created_by!] || null,
+          respondent_count: typeof survey.respondent_count === "number" ? survey.respondent_count : undefined,
         })) as unknown as Survey[]
+
+        // Org consultants: count unique respondents via question_id (scoped to their org)
+        if (!isPlatformAdmin && normalized.length > 0) {
+          try {
+            const counts = await countRespondentsBySurvey({
+              supabase,
+              questionToSurvey: questionMapFromSurveys(normalized),
+              orgId: org?.id,
+            })
+            normalized = normalized.map((s) => ({
+              ...s,
+              respondent_count: counts[s.id] ?? 0,
+            }))
+          } catch (countError) {
+            console.error("Failed to count respondents:", countError)
+            normalized = normalized.map((s) => ({
+              ...s,
+              respondent_count: s.respondent_count ?? 0,
+            }))
+          }
+        } else {
+          normalized = normalized.map((s) => ({
+            ...s,
+            respondent_count: s.respondent_count ?? 0,
+          }))
+        }
 
         normalized = normalized.sort((a, b) => {
           if (a.id === DEFAULT_SURVEY_ID) return -1;
@@ -198,7 +280,7 @@ export default function ViewSurveysPage() {
     } finally {
       setLoading(false)
     }
-  }, [org?.id, adminChecked, isPlatformAdmin, isRestrictedToAuthored, user?.id])
+  }, [org?.id, adminChecked, isPlatformAdmin, isRestrictedToAuthored, user?.id, selectedOrgId])
 
   useEffect(() => {
     void fetchSurveys()
@@ -323,7 +405,22 @@ export default function ViewSurveysPage() {
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Surveys</h1>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 items-center">
+            {isPlatformAdmin && organizations.length > 0 && (
+              <Select value={selectedOrgId} onValueChange={setSelectedOrgId}>
+                <SelectTrigger className="w-full sm:w-[220px] bg-background">
+                  <SelectValue placeholder="All Organizations" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Organizations</SelectItem>
+                  {organizations.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>
+                      {o.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Button
               type="button"
               variant="outline"
@@ -355,6 +452,9 @@ export default function ViewSurveysPage() {
           <AlertTitle>Manage your surveys</AlertTitle>
           <AlertDescription className="text-muted-foreground">
             View, edit, import, and export surveys. Import creates a <span className="font-medium text-foreground">new</span> survey after you review and confirm every question.
+            {isPlatformAdmin && selectedOrgId !== "all" && (
+              <> Showing this organization&apos;s surveys plus the shared Safety Vitals default.</>
+            )}
           </AlertDescription>
         </Alert>
       </div>
@@ -380,7 +480,9 @@ export default function ViewSurveysPage() {
             </div>
             <h3 className="text-lg font-semibold">No surveys yet</h3>
             <p className="text-muted-foreground max-w-sm mt-2 mb-6 text-sm">
-              Create your first survey to start collecting feedback.
+              {isPlatformAdmin && selectedOrgId !== "all"
+                ? "This organization has no surveys yet. Create one or pick another organization."
+                : "Create your first survey to start collecting feedback."}
             </p>
             <Button onClick={() => router.push('/admin/create-survey')}>
               Create Survey
@@ -427,6 +529,11 @@ export default function ViewSurveysPage() {
                       <span className="flex items-center gap-1.5">
                         <User className="h-3.5 w-3.5 opacity-70" />
                         {survey.profiles?.full_name || 'Unknown Author'}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <Users className="h-3.5 w-3.5 opacity-70" />
+                        {survey.respondent_count ?? 0}{" "}
+                        {(survey.respondent_count ?? 0) === 1 ? "respondent" : "respondents"}
                       </span>
                     </div>
                   </div>
@@ -494,14 +601,14 @@ export default function ViewSurveysPage() {
                               size="sm"
                               className="h-9 gap-2 flex-1 md:flex-none border-dashed"
                               onClick={async () => {
-                                const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
-                                let link = survey.slug
-                                  ? `${baseUrl}/survey/${survey.slug}`
-                                  : `${baseUrl}/survey/${survey.id}`
-
-                                const now = new Date();
-                                const periodStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-                                link += `?period=${periodStr}`
+                                const now = new Date()
+                                const periodStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+                                const link = buildPublicSurveyUrl({
+                                  surveyId: survey.id,
+                                  slug: survey.slug,
+                                  period: periodStr,
+                                  orgId: survey.org_id || org?.id || null,
+                                })
 
                                 try {
                                   await navigator.clipboard.writeText(link)

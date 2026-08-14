@@ -5,6 +5,7 @@ import {
     Card,
     CardHeader,
     CardTitle,
+    CardDescription,
     CardContent,
 } from "../ui/card";
 import { Button } from "../ui/button";
@@ -17,11 +18,11 @@ import {
     Radar,
     Legend,
 } from "recharts";
-import { DimensionBarChart } from "../chart/dimension-bar-chart";
 import GaugeChart from "../chart/gauge-chart";
 import CustomTooltip from "../chart/custom-tooltip";
 import ChartModal from "../chart-modal";
 import { RoleAreaChart } from "../chart/area-chart";
+import { BarList } from "../tremor_bar";
 import {
     ChartContainer,
     ChartTooltip,
@@ -29,6 +30,31 @@ import {
     type ChartConfig,
 } from "../../@/components/ui/chart";
 import { EmptyState } from "./empty-state";
+import { barColorForScoreClass } from "./dimension-bar-utils";
+import { DimensionRespondentsDialog } from "../dimension-respondents-dialog";
+
+function toTremorBarData(
+    barData: { name?: string; scorePercent?: number }[]
+) {
+    return (barData || []).map((d, i) => {
+        const value = Number(d.scorePercent ?? 0);
+        return {
+            key: `${d.name ?? "dim"}-${i}`,
+            name: d.name || `Dimension ${i + 1}`,
+            value,
+            color: barColorForScoreClass(value),
+        };
+    });
+}
+
+function getImprovementLevel(scorePercent: number) {
+    if (scorePercent < 60) return "Priority Improvement Area";
+    if (scorePercent < 65) return "Top Improvement Priority";
+    if (scorePercent < 70) return "Most Needed Improvement";
+    if (scorePercent < 75) return "Key Opportunity Area";
+    if (scorePercent < 80) return "Area for Improvement";
+    return "Primary Focus Area";
+}
 
 // Types
 type ChartType = "bar" | "radar" | "gauge" | "role" | "comparison" | null;
@@ -65,16 +91,6 @@ const radarConfig = {
         color: "hsl(var(--chart-2))",
     },
 } satisfies ChartConfig;
-
-// Helper to determine improvement level text
-const getImprovementLevel = (scorePercent: number) => {
-    if (scorePercent < 60) return "Priority Improvement Area";
-    if (scorePercent < 65) return "Top Improvement Priority";
-    if (scorePercent < 70) return "Most Needed Improvement";
-    if (scorePercent < 75) return "Key Opportunity Area";
-    if (scorePercent < 80) return "Area for Improvement";
-    return "Primary Focus Area";
-};
 
 export function OverviewCharts({
     avgScore,
@@ -259,6 +275,9 @@ interface DetailedChartsProps {
     containerRef: React.RefObject<HTMLDivElement>;
     radarData: any[];
     isLoadingStats?: boolean;
+    surveyId?: string | null;
+    orgId?: string | null;
+    isPlatformAdmin?: boolean;
 }
 
 export function DetailedCharts({
@@ -270,24 +289,71 @@ export function DetailedCharts({
     containerRef,
     radarData,
     isLoadingStats,
+    surveyId = null,
+    orgId = null,
+    isPlatformAdmin = false,
 }: DetailedChartsProps) {
+    const [dimensionDialogOpen, setDimensionDialogOpen] = React.useState(false);
+    const [selectedDimension, setSelectedDimension] = React.useState<string | null>(
+        null
+    );
 
-    const improvementLabel = lowestDimensionPercent !== null
-        ? getImprovementLevel(lowestDimensionPercent)
-        : "Improvement Area";
+    const improvementLabel =
+        lowestDimensionPercent !== null
+            ? getImprovementLevel(lowestDimensionPercent)
+            : "Improvement Area";
+
+    const referenceLine =
+        lowestDimensionPercent != null
+            ? {
+                  value: lowestDimensionPercent,
+                  label: `${improvementLabel} (${lowestDimensionPercent.toFixed(1)}%)`,
+              }
+            : null;
+
+    const handleDimensionClick = (payload: { name: string }) => {
+        setSelectedDimension(payload.name);
+        setDimensionDialogOpen(true);
+    };
+
+    const dimensionSummary = React.useMemo(() => {
+        if (!barData?.length) return null;
+        let critical = 0;
+        let review = 0;
+        let onTrack = 0;
+        let sum = 0;
+        let lowest = barData[0];
+        for (const d of barData) {
+            const pct = Number(d.scorePercent ?? 0);
+            sum += pct;
+            if (pct < 70) critical += 1;
+            else if (pct < 75) review += 1;
+            else onTrack += 1;
+            if (pct < Number(lowest.scorePercent ?? 100)) lowest = d;
+        }
+        return {
+            total: barData.length,
+            critical,
+            review,
+            onTrack,
+            avg: sum / barData.length,
+            lowestName: String(lowest.name || "—"),
+            lowestPct: Number(lowest.scorePercent ?? 0),
+        };
+    }, [barData]);
 
     return (
         <div ref={containerRef} className="grid grid-cols-1 lg:grid-cols-1 gap-2 md:gap-4">
-            {/* Bar Chart */}
+            {/* Dimension scores */}
             <Card className="w-full border-0 shadow-lg relative overflow-hidden">
                 {isLoadingStats && <LoadingOverlay />}
                 <CardHeader className="flex justify-between items-center">
-                    <CardTitle>Bar Chart</CardTitle>
+                    <CardTitle>Scores by Dimension</CardTitle>
                     <div className="flex items-center gap-2">
                         <div className="hidden md:flex items-center gap-3 text-[10px] text-muted-foreground mr-4">
                             <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[#ef4444]"></div>&lt;70% Critical</div>
-                            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[#f97316]"></div>&lt;75% Review</div>
-                            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[#FF7A40]"></div>≥75% On track</div>
+                            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[#eab308]"></div>&lt;75% Review</div>
+                            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[#2563eb]"></div>≥75% On track</div>
                         </div>
                         <Button
                             variant="ghost"
@@ -303,11 +369,47 @@ export function DetailedCharts({
                     {barData.length === 0 && !isLoadingStats ? (
                         <EmptyState message="No dimension data available yet." />
                     ) : (
-                        <DimensionBarChart
-                            data={barData}
-                            lowestDimensionPercent={lowestDimensionPercent}
-                            improvementLabel={improvementLabel}
-                        />
+                        <div className="space-y-3">
+                            <div className="max-h-[280px] overflow-y-auto pr-1 pt-5">
+                                <p className="text-[10px] text-muted-foreground mb-2">
+                                    Hover to enlarge · click a dimension for respondent answers
+                                </p>
+                                <BarList
+                                    data={toTremorBarData(barData)}
+                                    sortOrder="none"
+                                    scaleMax={100}
+                                    showAnimation
+                                    referenceLine={referenceLine}
+                                    valueFormatter={(v) => `${v.toFixed(1)}%`}
+                                    onValueChange={handleDimensionClick}
+                                />
+                            </div>
+                            {dimensionSummary && (
+                                <p className="text-xs text-muted-foreground leading-relaxed border-t pt-3 px-0.5">
+                                    Across {dimensionSummary.total} dimensions, average is{" "}
+                                    <span className="font-medium text-foreground">
+                                        {dimensionSummary.avg.toFixed(1)}%
+                                    </span>
+                                    .{" "}
+                                    <span className="text-red-600 dark:text-red-400 font-medium">
+                                        {dimensionSummary.critical} critical
+                                    </span>
+                                    ,{" "}
+                                    <span className="text-yellow-700 dark:text-yellow-400 font-medium">
+                                        {dimensionSummary.review} need review
+                                    </span>
+                                    ,{" "}
+                                    <span className="text-blue-600 dark:text-blue-400 font-medium">
+                                        {dimensionSummary.onTrack} on track
+                                    </span>
+                                    . Lowest:{" "}
+                                    <span className="font-medium text-foreground">
+                                        {dimensionSummary.lowestName}
+                                    </span>{" "}
+                                    ({dimensionSummary.lowestPct.toFixed(1)}%).
+                                </p>
+                            )}
+                        </div>
                     )}
                 </CardContent>
             </Card>
@@ -316,7 +418,12 @@ export function DetailedCharts({
             <Card className="w-full border-0 shadow-lg relative overflow-hidden">
                 {isLoadingStats && <LoadingOverlay />}
                 <CardHeader className="flex justify-between items-center">
-                    <CardTitle>Scores by Role</CardTitle>
+                    <div className="space-y-1">
+                        <CardTitle>Scores by Role</CardTitle>
+                        <CardDescription>
+                            Comparing dimension scores across different roles
+                        </CardDescription>
+                    </div>
                     <Button
                         variant="ghost"
                         size="icon"
@@ -339,14 +446,19 @@ export function DetailedCharts({
             <ChartModal
                 open={openChart === "bar"}
                 onClose={() => setOpenChart(null)}
-                title="Bar Chart"
+                title="Scores by Dimension"
             >
-                <DimensionBarChart
-                    data={barData}
-                    lowestDimensionPercent={lowestDimensionPercent}
-                    improvementLabel={improvementLabel}
-                    className="h-[300px] w-full"
-                />
+                <div className="max-h-[70vh] overflow-y-auto pr-1 pt-5">
+                    <BarList
+                        data={toTremorBarData(barData)}
+                        sortOrder="none"
+                        scaleMax={100}
+                        showAnimation
+                        referenceLine={referenceLine}
+                        valueFormatter={(v) => `${v.toFixed(1)}%`}
+                        onValueChange={handleDimensionClick}
+                    />
+                </div>
             </ChartModal>
 
             <ChartModal
@@ -368,6 +480,15 @@ export function DetailedCharts({
                     </RadarChart>
                 </ChartContainer>
             </ChartModal>
+
+            <DimensionRespondentsDialog
+                open={dimensionDialogOpen}
+                onOpenChange={setDimensionDialogOpen}
+                dimension={selectedDimension}
+                surveyId={surveyId}
+                orgId={orgId}
+                isPlatformAdmin={isPlatformAdmin}
+            />
         </div>
     );
 }

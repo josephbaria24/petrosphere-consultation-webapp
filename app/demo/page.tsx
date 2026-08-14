@@ -18,6 +18,7 @@ import { Mail, Loader2, Globe, ArrowRight } from "@/components/icons";
 import { Button } from "../../@/components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Alert, AlertDescription } from "../../@/components/ui/alert";
+import { getPublicAppOrigin } from "../../lib/public-survey-url";
 
 export default function DemoLoginPage() {
     const [email, setEmail] = useState("");
@@ -34,7 +35,7 @@ export default function DemoLoginPage() {
             const { error } = await supabase.auth.signInWithOtp({
                 email,
                 options: {
-                    emailRedirectTo: `${window.location.origin}/auth/callback`,
+                    emailRedirectTo: `${getPublicAppOrigin()}/auth/callback`,
                 },
             });
 

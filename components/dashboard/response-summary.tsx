@@ -1,288 +1,404 @@
+"use client";
+
 import React from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
 import {
-    DropdownMenu,
-    DropdownMenuTrigger,
-    DropdownMenuContent,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
 } from "../ui/dropdown-menu";
 import {
-    PieChart,
-    AlertTriangle,
-    Target,
-    CheckCircle2,
-    ChevronDown,
-    Plus,
-    Trash2,
-    Calendar,
-    User,
+  ClipboardList,
+  Users,
+  TrendingUp,
+  AlertTriangle,
+  AlertCircle,
+  ShieldCheck,
+  ChevronDown,
+  Plus,
+  Trash2,
+  Calendar,
+  User,
+  CheckCircle2,
 } from "@/components/icons";
 import { Action } from "./types";
-import { getLevelLabel, toPercentage } from "../../lib/survey-utils";
-import { Badge } from "../../@/components/ui/badge";
+import { toPercentage } from "../../lib/survey-utils";
+import { cn } from "../../lib/utils";
 
 interface ResponseSummaryProps {
-    respondentCount: number;
-    avgScore: number;
-    minAcceptableScore: number;
-    belowMinimumDimensions: string[];
-    atRiskDimensions: string[];
-    strongDimensions: string[];
-    actions: Action[];
-    onAddAction: (dimension: string, status: "critical" | "at_risk") => void;
-    onDeleteAction: (id: string) => void;
-    onToggleAction: (id: string, isCompleted: boolean) => void;
+  respondentCount: number;
+  avgScore: number;
+  minAcceptableScore: number;
+  belowMinimumDimensions: string[];
+  atRiskDimensions: string[];
+  strongDimensions: string[];
+  actions: Action[];
+  onAddAction: (dimension: string, status: "critical" | "at_risk") => void;
+  onDeleteAction: (id: string) => void;
+  onToggleAction: (id: string, isCompleted: boolean) => void;
 }
 
+type Band = "critical" | "at_risk" | "strong";
+
+const BAND_STYLES: Record<
+  Band,
+  {
+    icon: React.ElementType;
+    label: string;
+    chip: string;
+    panel: string;
+    title: string;
+    item: string;
+  }
+> = {
+  critical: {
+    icon: AlertTriangle,
+    label: "Critical",
+    chip: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
+    panel: "border-red-500/20 bg-red-500/[0.04]",
+    title: "text-red-700 dark:text-red-400",
+    item: "border-red-500/15 hover:bg-red-500/[0.06]",
+  },
+  at_risk: {
+    icon: AlertCircle,
+    label: "At risk",
+    chip: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
+    panel: "border-amber-500/20 bg-amber-500/[0.04]",
+    title: "text-amber-700 dark:text-amber-400",
+    item: "border-amber-500/15 hover:bg-amber-500/[0.06]",
+  },
+  strong: {
+    icon: ShieldCheck,
+    label: "Strong",
+    chip: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20",
+    panel: "border-emerald-500/20 bg-emerald-500/[0.04]",
+    title: "text-emerald-700 dark:text-emerald-400",
+    item: "border-emerald-500/15",
+  },
+};
+
 export function ResponseSummary({
-    respondentCount,
-    avgScore,
-    minAcceptableScore,
-    belowMinimumDimensions,
-    atRiskDimensions,
-    strongDimensions,
-    actions,
-    onAddAction,
-    onDeleteAction,
-    onToggleAction,
+  respondentCount,
+  avgScore,
+  minAcceptableScore,
+  belowMinimumDimensions,
+  atRiskDimensions,
+  strongDimensions,
+  actions,
+  onAddAction,
+  onDeleteAction,
+  onToggleAction,
 }: ResponseSummaryProps) {
+  const atRiskMax = minAcceptableScore + 0.5;
+  const scorePct = toPercentage(avgScore);
 
-    const renderDimensionItem = (
-        dimension: string,
-        status: "critical" | "at_risk"
-    ) => {
-        const statusColor = status === "critical" ? "red" : "yellow";
-        const dimensionActions = actions.filter(
-            (a) => a.dimension === dimension && a.status === status
-        );
+  const statusTiles = [
+    {
+      band: "critical" as const,
+      count: belowMinimumDimensions.length,
+      hint: `≤ ${minAcceptableScore.toFixed(1)}`,
+    },
+    {
+      band: "at_risk" as const,
+      count: atRiskDimensions.length,
+      hint: `${minAcceptableScore.toFixed(1)} – ${atRiskMax.toFixed(1)}`,
+    },
+    {
+      band: "strong" as const,
+      count: strongDimensions.length,
+      hint: `> ${atRiskMax.toFixed(1)}`,
+    },
+  ];
 
-        return (
-            <div key={dimension} className="space-y-2">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button
-                            variant="ghost"
-                            className={`w-full justify-between text-left p-2 h-auto border border-${statusColor}-200 dark:border-${statusColor}-800 hover:bg-${statusColor}-50 dark:hover:bg-${statusColor}-950/20`}
-                        >
-                            <span className="text-sm">• {dimension}</span>
-                            <div className="flex items-center gap-2">
-                                {dimensionActions.length > 0 && (
-                                    <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded">
-                                        {dimensionActions.length} action
-                                        {dimensionActions.length > 1 ? "s" : ""}
-                                    </span>
-                                )}
-                                <ChevronDown className="w-4 h-4" />
-                            </div>
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-72">
-                        <div className="p-2 space-y-2">
-                            <div className="flex items-center justify-between">
-                                <span className="font-medium text-sm">{dimension}</span>
-                                <Button
-                                    size="sm"
-                                    onClick={() => onAddAction(dimension, status)}
-                                    className="h-6 px-2 text-xs"
-                                >
-                                    <Plus className="w-3 h-3 mr-1" />
-                                    Add Action
-                                </Button>
-                            </div>
-
-                            {dimensionActions.length > 0 ? (
-                                <div className="space-y-2 max-h-48 overflow-y-auto">
-                                    {dimensionActions.map((action) => (
-                                        <div
-                                            key={action.id}
-                                            className={`p-2 border rounded text-xs space-y-1 ${action.is_completed
-                                                ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
-                                                : "bg-card"
-                                                }`}
-                                        >
-                                            <div className="flex items-start justify-between">
-                                                <span
-                                                    className={`font-medium ${action.is_completed
-                                                        ? "line-through text-muted-foreground"
-                                                        : ""
-                                                        }`}
-                                                >
-                                                    {action.title}
-                                                </span>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => onDeleteAction(action.id)}
-                                                    className="h-4 w-4 p-0 text-red-500 hover:text-red-700"
-                                                >
-                                                    <Trash2 className="w-3 h-3" />
-                                                </Button>
-                                            </div>
-
-                                            {action.description && (
-                                                <p className="text-muted-foreground">
-                                                    {action.description}
-                                                </p>
-                                            )}
-
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    {action.priority && (
-                                                        <span
-                                                            className={`px-1 py-0.5 rounded text-xs font-medium ${action.priority === "high"
-                                                                ? "bg-red-100 text-red-800 dark:bg-red-950/20 dark:text-red-400"
-                                                                : action.priority === "medium"
-                                                                    ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/20 dark:text-yellow-400"
-                                                                    : "bg-blue-100 text-blue-800 dark:bg-blue-950/20 dark:text-blue-400"
-                                                                }`}
-                                                        >
-                                                            {action.priority}
-                                                        </span>
-                                                    )}
-                                                    {action.target_date && (
-                                                        <span className="flex items-center gap-1 text-muted-foreground">
-                                                            <Calendar className="w-3 h-3" />
-                                                            {new Date(action.target_date).toLocaleDateString()}
-                                                        </span>
-                                                    )}
-                                                </div>
-
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        onToggleAction(action.id, !action.is_completed)
-                                                    }
-                                                    className="h-5 px-1 text-xs"
-                                                >
-                                                    {action.is_completed ? "Reopen" : "Complete"}
-                                                </Button>
-                                            </div>
-
-                                            {action.assigned_to && (
-                                                <div className="flex items-center gap-1 text-muted-foreground">
-                                                    <User className="w-3 h-3" />
-                                                    <span>{action.assigned_to}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="text-muted-foreground text-xs">
-                                    No actions created yet
-                                </p>
-                            )}
-                        </div>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
-        );
-    };
+  const renderDimensionItem = (dimension: string, status: "critical" | "at_risk") => {
+    const styles = BAND_STYLES[status];
+    const dimensionActions = actions.filter(
+      (a) => a.dimension === dimension && a.status === status
+    );
 
     return (
-        <Card className="border-0 shadow-lg">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <PieChart className="w-5 h-5" />
-                    Response Summary
-                </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="text-center p-3 md:p-4 bg-muted/50 rounded-lg border border-border/50">
-                        <div className="text-xl md:text-2xl font-bold">{respondentCount}</div>
-                        <div className="text-xs md:text-sm text-muted-foreground">Total Responses</div>
-                    </div>
-                    <div className="text-center p-3 md:p-4 bg-muted/50 rounded-lg border border-border/50">
-                        <div className="text-xl md:text-2xl font-bold">
-                            {toPercentage(avgScore).toFixed(1)}%
-                        </div>
-                        <div className="text-xs md:text-sm text-muted-foreground">Overall Score</div>
-                    </div>
-                </div>
+      <DropdownMenu key={dimension}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            className={cn(
+              "w-full h-auto justify-between gap-2 rounded-lg border px-3 py-2.5 text-left font-normal",
+              styles.item
+            )}
+          >
+            <span className="text-sm leading-snug line-clamp-2">{dimension}</span>
+            <div className="flex items-center gap-2 shrink-0">
+              {dimensionActions.length > 0 && (
+                <span className="text-[10px] font-semibold uppercase tracking-wide bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                  {dimensionActions.length}
+                </span>
+              )}
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            </div>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-80 z-[90]">
+          <div className="p-2 space-y-2">
+            <div className="flex items-start justify-between gap-2">
+              <span className="font-medium text-sm leading-snug">{dimension}</span>
+              <Button
+                size="sm"
+                onClick={() => onAddAction(dimension, status)}
+                className="h-7 px-2 text-xs shrink-0 gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Action
+              </Button>
+            </div>
 
-                <div className="space-y-3">
-                    <div className="flex justify-between">
-                        <span>Dimension Status</span>
-                        <span>Dimension Count</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-2 text-sm">
-                            <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                            Critical (≤ {minAcceptableScore.toFixed(1)})
-                        </span>
-                        <span className="font-semibold">{belowMinimumDimensions.length}</span>
+            {dimensionActions.length > 0 ? (
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {dimensionActions.map((action) => (
+                  <div
+                    key={action.id}
+                    className={cn(
+                      "p-2.5 border rounded-lg text-xs space-y-1.5",
+                      action.is_completed
+                        ? "bg-emerald-500/5 border-emerald-500/20"
+                        : "bg-card"
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span
+                        className={cn(
+                          "font-medium",
+                          action.is_completed && "line-through text-muted-foreground"
+                        )}
+                      >
+                        {action.title}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onDeleteAction(action.id)}
+                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
                     </div>
 
-                    <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-2 text-sm">
-                            <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                            At Risk ({minAcceptableScore.toFixed(1)} -{" "}
-                            {(minAcceptableScore + 0.5).toFixed(1)})
-                        </span>
-                        <span className="font-semibold">{atRiskDimensions.length}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-2 text-sm">
-                            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                            Strong (&gt; {(minAcceptableScore + 0.5).toFixed(1)})
-                        </span>
-                        <span className="font-semibold">{strongDimensions.length}</span>
-                    </div>
-                </div>
-
-                {/* Interactive Dimension Lists */}
-                <div className="space-y-4 pt-4">
-                    {belowMinimumDimensions.length > 0 && (
-                        <div className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
-                            <h4 className="flex items-center gap-2 font-semibold text-red-700 dark:text-red-400 mb-3">
-                                <AlertTriangle className="w-4 h-4" />
-                                Critical Areas
-                            </h4>
-                            <div className="space-y-2">
-                                {belowMinimumDimensions.map((dim) =>
-                                    renderDimensionItem(dim, "critical")
-                                )}
-                            </div>
-                        </div>
+                    {action.description && (
+                      <p className="text-muted-foreground">{action.description}</p>
                     )}
 
-                    {atRiskDimensions.length > 0 && (
-                        <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                            <h4 className="flex items-center gap-2 font-semibold text-yellow-700 dark:text-yellow-400 mb-3">
-                                <Target className="w-4 h-4" />
-                                At Risk Areas
-                            </h4>
-                            <div className="space-y-2">
-                                {atRiskDimensions.map((dim) =>
-                                    renderDimensionItem(dim, "at_risk")
-                                )}
-                            </div>
-                        </div>
-                    )}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {action.priority && (
+                          <span
+                            className={cn(
+                              "px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase",
+                              action.priority === "high"
+                                ? "bg-red-500/10 text-red-700 dark:text-red-400"
+                                : action.priority === "medium"
+                                  ? "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                                  : "bg-blue-500/10 text-blue-700 dark:text-blue-400"
+                            )}
+                          >
+                            {action.priority}
+                          </span>
+                        )}
+                        {action.target_date && (
+                          <span className="flex items-center gap-1 text-muted-foreground">
+                            <Calendar className="w-3 h-3" />
+                            {new Date(action.target_date).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onToggleAction(action.id, !action.is_completed)}
+                        className="h-6 px-2 text-xs gap-1"
+                      >
+                        {action.is_completed ? (
+                          "Reopen"
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-3 h-3" />
+                            Done
+                          </>
+                        )}
+                      </Button>
+                    </div>
 
-                    {strongDimensions.length > 0 && (
-                        <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
-                            <h4 className="flex items-center gap-2 font-semibold text-green-700 dark:text-green-400 mb-2">
-                                <CheckCircle2 className="w-4 h-4" />
-                                Strengths
-                            </h4>
-                            <div className="space-y-1">
-                                {strongDimensions.map((dim) => (
-                                    <div
-                                        key={dim}
-                                        className="text-sm text-green-600 dark:text-green-400"
-                                    >
-                                        • {dim}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                    {action.assigned_to && (
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <User className="w-3 h-3" />
+                        <span>{action.assigned_to}</span>
+                      </div>
                     )}
-                </div>
-            </CardContent>
-        </Card>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-xs py-1">
+                No actions yet — add one to start planning.
+              </p>
+            )}
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
+  };
+
+  return (
+    <Card className="border-0 shadow-lg bg-card h-full">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-xl">
+          <ClipboardList className="w-5 h-5 text-primary" />
+          Response Summary
+        </CardTitle>
+        <CardDescription>
+          Snapshot of participation, score, and dimension health
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent className="space-y-5">
+        {/* KPI row */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-xl border border-border/60 bg-muted/30 p-3.5">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Users className="w-4 h-4" />
+              </span>
+              <span className="text-xs font-medium uppercase tracking-wide">
+                Responses
+              </span>
+            </div>
+            <p className="text-2xl font-bold tracking-tight tabular-nums">
+              {respondentCount}
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-border/60 bg-muted/30 p-3.5">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <TrendingUp className="w-4 h-4" />
+              </span>
+              <span className="text-xs font-medium uppercase tracking-wide">
+                Overall
+              </span>
+            </div>
+            <p className="text-2xl font-bold tracking-tight tabular-nums">
+              {scorePct.toFixed(1)}
+              <span className="text-base font-semibold text-muted-foreground ml-0.5">
+                %
+              </span>
+            </p>
+          </div>
+        </div>
+
+        {/* Status bands */}
+        <div className="grid grid-cols-3 gap-2">
+          {statusTiles.map(({ band, count, hint }) => {
+            const styles = BAND_STYLES[band];
+            const Icon = styles.icon;
+            return (
+              <div
+                key={band}
+                className={cn(
+                  "rounded-xl border p-3 flex flex-col gap-2 min-w-0",
+                  styles.chip
+                )}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                <div>
+                  <p className="text-xl font-bold tabular-nums leading-none">{count}</p>
+                  <p className="text-[11px] font-semibold mt-1 truncate">{styles.label}</p>
+                  <p className="text-[10px] opacity-70 truncate">{hint}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Dimension lists */}
+        <div className="space-y-3">
+          {belowMinimumDimensions.length > 0 && (
+            <section className={cn("rounded-xl border p-3 space-y-2.5", BAND_STYLES.critical.panel)}>
+              <h4
+                className={cn(
+                  "flex items-center gap-2 text-sm font-semibold",
+                  BAND_STYLES.critical.title
+                )}
+              >
+                <AlertTriangle className="w-4 h-4" />
+                Critical areas
+                <span className="ml-auto text-xs font-bold tabular-nums opacity-80">
+                  {belowMinimumDimensions.length}
+                </span>
+              </h4>
+              <div className="space-y-1.5">
+                {belowMinimumDimensions.map((dim) =>
+                  renderDimensionItem(dim, "critical")
+                )}
+              </div>
+            </section>
+          )}
+
+          {atRiskDimensions.length > 0 && (
+            <section className={cn("rounded-xl border p-3 space-y-2.5", BAND_STYLES.at_risk.panel)}>
+              <h4
+                className={cn(
+                  "flex items-center gap-2 text-sm font-semibold",
+                  BAND_STYLES.at_risk.title
+                )}
+              >
+                <AlertCircle className="w-4 h-4" />
+                At-risk areas
+                <span className="ml-auto text-xs font-bold tabular-nums opacity-80">
+                  {atRiskDimensions.length}
+                </span>
+              </h4>
+              <div className="space-y-1.5">
+                {atRiskDimensions.map((dim) => renderDimensionItem(dim, "at_risk"))}
+              </div>
+            </section>
+          )}
+
+          {strongDimensions.length > 0 && (
+            <section className={cn("rounded-xl border p-3 space-y-2.5", BAND_STYLES.strong.panel)}>
+              <h4
+                className={cn(
+                  "flex items-center gap-2 text-sm font-semibold",
+                  BAND_STYLES.strong.title
+                )}
+              >
+                <ShieldCheck className="w-4 h-4" />
+                Strengths
+                <span className="ml-auto text-xs font-bold tabular-nums opacity-80">
+                  {strongDimensions.length}
+                </span>
+              </h4>
+              <ul className="space-y-1">
+                {strongDimensions.map((dim) => (
+                  <li
+                    key={dim}
+                    className="flex items-start gap-2 text-sm text-emerald-700/90 dark:text-emerald-400/90 py-1"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0 opacity-80" />
+                    <span className="leading-snug">{dim}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {belowMinimumDimensions.length === 0 &&
+            atRiskDimensions.length === 0 &&
+            strongDimensions.length === 0 && (
+              <div className="rounded-xl border border-dashed border-border/60 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
+                Dimension breakdown will appear once survey scores are available.
+              </div>
+            )}
+        </div>
+      </CardContent>
+    </Card>
+  );
 }

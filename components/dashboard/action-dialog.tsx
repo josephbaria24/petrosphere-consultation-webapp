@@ -20,6 +20,8 @@ import {
 } from "../ui/select";
 import { Plus } from "@/components/icons";
 
+export type ActionStatus = "critical" | "at_risk" | "planned" | "strong";
+
 export interface ActionFormState {
     title: string;
     description: string;
@@ -36,7 +38,11 @@ interface ActionDialogProps {
     setFormState: React.Dispatch<React.SetStateAction<ActionFormState>>;
     createAction: () => void;
     selectedDimension: string;
-    selectedStatus: "critical" | "at_risk";
+    onDimensionChange?: (dimension: string) => void;
+    selectedStatus: ActionStatus;
+    onStatusChange?: (status: ActionStatus) => void;
+    dimensions?: string[];
+    allowFreeSelect?: boolean;
 }
 
 export function ActionDialog({
@@ -47,20 +53,76 @@ export function ActionDialog({
     setFormState,
     createAction,
     selectedDimension,
+    onDimensionChange,
     selectedStatus,
+    onStatusChange,
+    dimensions = [],
+    allowFreeSelect = false,
 }: ActionDialogProps) {
+    const dimensionOptions =
+        dimensions.length > 0
+            ? dimensions
+            : selectedDimension
+              ? [selectedDimension]
+              : ["General"];
+
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>Create Action</DialogTitle>
                     <DialogDescription>
-                        Create an action plan for {selectedDimension} ({selectedStatus}{" "}
-                        status)
+                        {allowFreeSelect
+                            ? "Add a planner action for any dimension or focus area."
+                            : `Create an action plan for ${selectedDimension} (${selectedStatus.replace("_", " ")} status)`}
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4">
+                    {allowFreeSelect && (
+                        <>
+                            <div className="space-y-2">
+                                <Label>Dimension / focus</Label>
+                                <Select
+                                    value={selectedDimension || dimensionOptions[0]}
+                                    onValueChange={(v) => onDimensionChange?.(v)}
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select dimension" />
+                                    </SelectTrigger>
+                                    <SelectContent className="z-[90]">
+                                        {!dimensionOptions.includes("General") && (
+                                            <SelectItem value="General">General</SelectItem>
+                                        )}
+                                        {dimensionOptions.map((dim) => (
+                                            <SelectItem key={dim} value={dim}>
+                                                {dim}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Category</Label>
+                                <Select
+                                    value={selectedStatus}
+                                    onValueChange={(v: ActionStatus) => onStatusChange?.(v)}
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="z-[90]">
+                                        <SelectItem value="planned">Planned</SelectItem>
+                                        <SelectItem value="critical">Critical</SelectItem>
+                                        <SelectItem value="at_risk">At risk</SelectItem>
+                                        <SelectItem value="strong">Maintain / strengthen</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </>
+                    )}
+
                     <div className="space-y-2">
                         <Label htmlFor="title">Action Title *</Label>
                         <Input
@@ -101,7 +163,7 @@ export function ActionDialog({
                                 <SelectTrigger>
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="z-[90]">
                                     <SelectItem value="low">Low</SelectItem>
                                     <SelectItem value="medium">Medium</SelectItem>
                                     <SelectItem value="high">High</SelectItem>
@@ -145,7 +207,10 @@ export function ActionDialog({
                     <Button variant="outline" onClick={onClose}>
                         Cancel
                     </Button>
-                    <Button onClick={createAction} disabled={!formState.title.trim()}>
+                    <Button
+                        onClick={createAction}
+                        disabled={!formState.title.trim() || !selectedDimension}
+                    >
                         <Plus className="w-4 h-4 mr-1" />
                         Create Action
                     </Button>

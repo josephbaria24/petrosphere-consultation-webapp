@@ -34,6 +34,7 @@ import {
   TooltipTrigger,
 } from '../../../../components/ui/tooltip'
 import HoldButton from '../../../../components/kokonutui/hold-button'
+import { buildPublicSurveyUrl } from '../../../../lib/public-survey-url'
 
 // Initialized via modular import
 
@@ -56,6 +57,7 @@ type Survey = {
   created_at: string
   is_published: boolean
   created_by: string | null
+  org_id?: string | null
   profiles: {
     full_name: string | null
     email: string | null
@@ -105,6 +107,7 @@ export default function ViewSurveysPage() {
           created_at,
           is_published,
           created_by,
+          org_id,
             survey_questions (
               id,
               question_text,
@@ -366,21 +369,14 @@ export default function ViewSurveysPage() {
                               id={survey.id === DEFAULT_SURVEY_ID ? "tour-copy-link-button" : undefined}
                               className="h-9 gap-2 flex-1 md:flex-none border-dashed"
                               onClick={async () => {
-                                const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
-                                const orgId = appData?.org?.id
-                                let link = survey.slug
-                                  ? `${baseUrl}/survey/${survey.slug}`
-                                  : `${baseUrl}/survey/${survey.id}`
-
-                                const now = new Date();
-                                const periodStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
-                                // Append org_id for multi-tenancy tracking if available
-                                if (orgId) {
-                                  link += `?org=${orgId}&period=${periodStr}`
-                                } else {
-                                  link += `?period=${periodStr}`
-                                }
+                                const now = new Date()
+                                const periodStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+                                const link = buildPublicSurveyUrl({
+                                  surveyId: survey.id,
+                                  slug: survey.slug,
+                                  period: periodStr,
+                                  orgId: survey.org_id || appData?.org?.id || null,
+                                })
 
                                 try {
                                   await navigator.clipboard.writeText(link)

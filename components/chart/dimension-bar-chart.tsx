@@ -1,11 +1,12 @@
 "use client";
 
-import { useId } from "react";
+import { useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
+  Cell,
+  LabelList,
   ReferenceLine,
-  Rectangle,
   XAxis,
   YAxis,
 } from "recharts";
@@ -15,6 +16,9 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "../../@/components/ui/chart";
+import { Button } from "../ui/button";
+import { Minus, Plus, RotateCcw } from "@/components/icons";
+import { cn } from "@/lib/utils";
 
 export interface DimensionBarDatum {
   name: string;
@@ -27,132 +31,193 @@ const barConfig = {
   },
 } satisfies ChartConfig;
 
-function tierForScore(scorePercent: number): "critical" | "review" | "accent" {
-  if (scorePercent < 70) return "critical";
-  if (scorePercent < 75) return "review";
-  return "accent";
+/** Solid fills: red <70, yellow <75, blue ≥75 */
+export function colorForScore(scorePercent: number): string {
+  if (scorePercent < 70) return "#ef4444";
+  if (scorePercent < 75) return "#eab308";
+  return "#2563eb";
 }
 
-const TIER_STROKE = {
-  critical: "#ef4444",
-  review: "#f97316",
-  accent: "#FF7A40",
-} as const;
-
-function BarGradientDefs({ prefix }: { prefix: string }) {
-  return (
-    <defs>
-      <linearGradient
-        id={`${prefix}-critical`}
-        x1="0"
-        y1="0"
-        x2="0"
-        y2="1"
-      >
-        <stop offset="0%" stopColor="#ef4444" stopOpacity={1} />
-        <stop offset="55%" stopColor="#ef4444" stopOpacity={0.55} />
-        <stop offset="100%" stopColor="#ef4444" stopOpacity={0.18} />
-      </linearGradient>
-      <linearGradient id={`${prefix}-review`} x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#f97316" stopOpacity={1} />
-        <stop offset="55%" stopColor="#f97316" stopOpacity={0.55} />
-        <stop offset="100%" stopColor="#f97316" stopOpacity={0.18} />
-      </linearGradient>
-      <linearGradient id={`${prefix}-accent`} x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#FF7A40" stopOpacity={1} />
-        <stop offset="55%" stopColor="#FF7A40" stopOpacity={0.55} />
-        <stop offset="100%" stopColor="#FF7A40" stopOpacity={0.18} />
-      </linearGradient>
-    </defs>
-  );
-}
-
-function gradientUrl(prefix: string, scorePercent: number) {
-  return `url(#${prefix}-${tierForScore(scorePercent)})`;
-}
-
-function FadingBarShape(
-  prefix: string,
-  props: {
-    x?: number;
-    y?: number;
-    width?: number;
-    height?: number;
-    payload?: DimensionBarDatum;
-  }
-) {
-  const { x = 0, y = 0, width = 0, height = 0, payload } = props;
-  const score = payload?.scorePercent ?? 0;
-  const tier = tierForScore(score);
-  return (
-    <Rectangle
-      x={x}
-      y={y}
-      width={width}
-      height={height}
-      radius={[4, 4, 0, 0]}
-      fill={gradientUrl(prefix, score)}
-      stroke={TIER_STROKE[tier]}
-      strokeWidth={1}
-    />
-  );
+function truncateLabel(label: string, max = 42) {
+  if (label.length <= max) return label;
+  return `${label.slice(0, max - 1)}…`;
 }
 
 interface DimensionBarChartProps {
   data: DimensionBarDatum[];
   lowestDimensionPercent: number | null;
   improvementLabel: string;
-  className?: string;
+  /** Max height of the scroll viewport (px). Chart grows with row count inside. */
+  maxViewportHeight?: number;
+  hideControls?: boolean;
 }
 
+/**
+ * Horizontal bar chart — best practice for long category labels
+ * (Storytelling with Data / shadcn charts): labels read left→right.
+ * Horizontal zoom widens the plot; scroll when overflow.
+ */
 export function DimensionBarChart({
   data,
   lowestDimensionPercent,
   improvementLabel,
-  className = "h-[250px] md:h-[300px] w-full",
+  maxViewportHeight = 280,
+  hideControls = false,
 }: DimensionBarChartProps) {
-  const gradientPrefix = useId().replace(/:/g, "");
+  const [hZoom, setHZoom] = useState(1);
+
+  const labelWidth = useMemo(() => {
+    const longest = data.reduce((m, d) => Math.max(m, d.name.length), 0);
+    return Math.min(220, Math.max(110, longest * 6));
+  }, [data]);
+
+  const chartHeight = Math.max(160, data.length * 32 + 40);
 
   return (
-    <ChartContainer config={barConfig} className={className}>
-      <BarChart data={data} margin={{ top: 50, right: 10, left: 0, bottom: 0 }}>
-        <BarGradientDefs prefix={gradientPrefix} />
-        <XAxis
-          dataKey="name"
-          angle={-20}
-          textAnchor="end"
-          fontSize={12}
-          interval={0}
-          height={100}
-        />
-        <YAxis domain={[0, 100]} tickFormatter={(val) => `${val}%`} />
-        <ChartTooltip
-          content={
-            <ChartTooltipContent
-              formatter={(value) => [`${Number(value).toFixed(1)}%`, "Score"]}
-            />
-          }
-        />
-        <Bar
-          dataKey="scorePercent"
-          shape={(props) => FadingBarShape(gradientPrefix, props)}
-        />
-        <ReferenceLine
-          y={lowestDimensionPercent ?? 0}
-          stroke="#ef4444"
-          strokeDasharray="6 6"
-          strokeWidth={2}
-          ifOverflow="visible"
-          label={{
-            position: "insideTopRight",
-            value: `${improvementLabel} (${(lowestDimensionPercent ?? 0).toFixed(1)}%)`,
-            fill: "#ef4444",
-            fontSize: 12,
-            fontWeight: "bold",
-            dy: -10,
+    <div className="w-full space-y-2">
+      {!hideControls && (
+        <div className="flex flex-wrap items-center justify-end gap-1 px-1">
+          <span className="mr-auto text-[10px] text-muted-foreground">
+            Zoom stretches the score scale horizontally
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-7 w-7"
+            title="Zoom out"
+            disabled={hZoom <= 1}
+            onClick={() =>
+              setHZoom((z) => Math.max(1, Number((z - 0.25).toFixed(2))))
+            }
+          >
+            <Minus className="h-3.5 w-3.5" />
+          </Button>
+          <span className="text-[10px] tabular-nums text-muted-foreground w-10 text-center">
+            {Math.round(hZoom * 100)}%
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-7 w-7"
+            title="Zoom in (horizontal)"
+            disabled={hZoom >= 2.5}
+            onClick={() =>
+              setHZoom((z) => Math.min(2.5, Number((z + 0.25).toFixed(2))))
+            }
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            title="Reset zoom"
+            disabled={hZoom === 1}
+            onClick={() => setHZoom(1)}
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
+
+      <div
+        className="w-full overflow-auto rounded-md border border-border/40"
+        style={{ maxHeight: maxViewportHeight }}
+      >
+        <div
+          style={{
+            width: `${hZoom * 100}%`,
+            minWidth: "100%",
+            height: chartHeight,
           }}
-        />
-      </BarChart>
-    </ChartContainer>
+        >
+          <ChartContainer
+            config={barConfig}
+            className={cn("!aspect-auto h-full w-full justify-stretch")}
+          >
+            <BarChart
+              data={data}
+              layout="vertical"
+              margin={{
+                top: 8,
+                right: 44,
+                left: 4,
+                bottom: 8,
+              }}
+              barCategoryGap="20%"
+            >
+              <XAxis
+                type="number"
+                domain={[0, 100]}
+                tickFormatter={(val) => `${val}%`}
+                fontSize={11}
+              />
+              <YAxis
+                type="category"
+                dataKey="name"
+                width={labelWidth}
+                interval={0}
+                tick={{ fontSize: 11 }}
+                tickFormatter={(v) => truncateLabel(String(v), 40)}
+              />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    labelFormatter={(_, payload) => {
+                      const row = payload?.[0]?.payload as
+                        | DimensionBarDatum
+                        | undefined;
+                      return row?.name ?? "";
+                    }}
+                    formatter={(value) => [
+                      `${Number(value).toFixed(1)}%`,
+                      "Score",
+                    ]}
+                  />
+                }
+              />
+              <Bar
+                dataKey="scorePercent"
+                radius={[0, 4, 4, 0]}
+                maxBarSize={20}
+                isAnimationActive={false}
+              >
+                {data.map((entry, index) => (
+                  <Cell
+                    key={`cell-${entry.name}-${index}`}
+                    fill={colorForScore(entry.scorePercent)}
+                  />
+                ))}
+                <LabelList
+                  dataKey="scorePercent"
+                  position="right"
+                  formatter={(v) => `${Number(v).toFixed(0)}%`}
+                  className="fill-foreground text-[10px]"
+                />
+              </Bar>
+              {lowestDimensionPercent != null && (
+                <ReferenceLine
+                  x={lowestDimensionPercent}
+                  stroke="#ef4444"
+                  strokeDasharray="6 6"
+                  strokeWidth={2}
+                  ifOverflow="visible"
+                  label={{
+                    position: "insideTopRight",
+                    value: `${improvementLabel} (${lowestDimensionPercent.toFixed(1)}%)`,
+                    fill: "#ef4444",
+                    fontSize: 11,
+                    fontWeight: "bold",
+                  }}
+                />
+              )}
+            </BarChart>
+          </ChartContainer>
+        </div>
+      </div>
+    </div>
   );
 }

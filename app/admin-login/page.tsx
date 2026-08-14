@@ -9,6 +9,7 @@ import { Input } from '../../components/ui/input'
 import { Button } from '../../components/ui/button'
 import { Cookies } from '../../lib/cookies-client'
 import { Eye, EyeOff, X, Mail } from "@/components/icons"
+import { getPublicAppOrigin } from '../../lib/public-survey-url'
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('')
@@ -36,10 +37,7 @@ export default function AdminLoginPage() {
 
     setForgotLoading(true)
 
-    // Get the correct base URL for both development and production
-    const baseUrl = process.env.NODE_ENV === 'production'
-      ? process.env.NEXT_PUBLIC_SITE_URL || 'https://safetyvitals.petros-global.com/'
-      : 'http://localhost:3000'
+    const baseUrl = getPublicAppOrigin()
 
     const { data, error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
       redirectTo: `${baseUrl}/reset-password`,

@@ -28,14 +28,16 @@ import {
 } from '../../../../components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '../../../../@/components/ui/alert'
 import { Button } from '../../../../components/ui/button'
-import { Calendar, Filter, User as UserIcon, Building, FileText, Download, HelpCircle } from "@/components/icons"
+import { Calendar, Filter, User as UserIcon, Building, FileText, Download, HelpCircle, Copy, ExternalLink, Link as LinkIcon } from "@/components/icons"
 import { Separator } from '../../../../@/components/ui/separator'
 import { GatedFeature } from '../../../../components/gated-feature'
+import { buildPublicSurveyUrl } from '../../../../lib/public-survey-url'
 
 type Survey = {
   id: string
   title: string
   created_at: string
+  org_id?: string | null
   organizations?: {
     name: string
   }[] | null
@@ -259,6 +261,29 @@ export default function SurveyResponsesPage() {
     surveys.find(s => s.id === selectedSurveyId)?.title || 'Survey',
     [selectedSurveyId, surveys])
 
+  const selectedSurvey = useMemo(
+    () => surveys.find((s) => s.id === selectedSurveyId) || null,
+    [selectedSurveyId, surveys]
+  )
+
+  const selectedSurveyUrl = useMemo(() => {
+    if (!selectedSurveyId) return ''
+    return buildPublicSurveyUrl({
+      surveyId: selectedSurveyId,
+      orgId: selectedSurvey?.org_id || org?.id || null,
+    })
+  }, [selectedSurveyId, selectedSurvey, org?.id])
+
+  const copySurveyLink = async () => {
+    if (!selectedSurveyUrl) return
+    try {
+      await navigator.clipboard.writeText(selectedSurveyUrl)
+      toast.success('Survey link copied')
+    } catch {
+      toast.error('Failed to copy link')
+    }
+  }
+
   return (
     <GatedFeature
       isRestricted={isIndividualResponsesRestricted}
@@ -310,11 +335,53 @@ export default function SurveyResponsesPage() {
           </Alert>
         ) : (
           <>
-            {/* Stats / Info Bar (Optional future expansion) */}
-            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg border">
-              <FileText className="h-4 w-4" />
-              <span>Viewing <strong>{responseGroups.length}</strong> respondents for</span>
-              <span className="font-semibold text-foreground">"{selectedSurveyTitle}"</span>
+            {/* Stats / Info Bar */}
+            <div className="flex flex-col gap-3 bg-muted/30 p-3 rounded-lg border">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <FileText className="h-4 w-4" />
+                <span>Viewing <strong>{responseGroups.length}</strong> respondents for</span>
+                <span className="font-semibold text-foreground">"{selectedSurveyTitle}"</span>
+              </div>
+              {selectedSurveyUrl && (
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0 flex-1 rounded-md border bg-background px-3 py-2">
+                    <LinkIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <a
+                      href={selectedSurveyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="truncate text-sm text-primary hover:underline"
+                      title={selectedSurveyUrl}
+                    >
+                      {selectedSurveyUrl}
+                    </a>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={copySurveyLink}
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                      Copy
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      asChild
+                    >
+                      <a href={selectedSurveyUrl} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Open
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {loadingResponses ? (
@@ -338,29 +405,32 @@ export default function SurveyResponsesPage() {
                 <Accordion type="multiple" className="space-y-3">
                   {responseGroups.map((group, idx) => (
                     <AccordionItem key={group.user_id + idx} value={group.user_id + idx} className="border rounded-xl bg-card shadow-sm px-0 overflow-hidden">
-                      <AccordionTrigger className="hover:no-underline px-4 py-3 md:px-6">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full text-left">
+                      <AccordionTrigger className="hover:no-underline px-4 py-3 md:px-6 items-center gap-3">
+                        <div className="flex flex-col lg:flex-row lg:items-center gap-3 min-w-0 flex-1 text-left">
                           {/* User Info */}
                           <div className="flex items-center gap-3 min-w-0 flex-1">
                             <div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
                               {group.user?.first_name?.[0] || 'U'}
                             </div>
-                            <div>
+                            <div className="min-w-0 space-y-0.5">
                               <div className="font-semibold truncate">
                                 {group.user ? `${group.user.first_name} ${group.user.last_name}` : 'Unknown Respondent'}
                               </div>
-                              <div className="text-xs text-muted-foreground flex items-center gap-2">
-                                <span className="truncate">{group.user?.email || 'No email provided'}</span>
+                              <div className="text-xs text-muted-foreground truncate">
+                                {group.user?.email || 'No email provided'}
+                              </div>
+                              <div
+                                className="flex items-center text-xs text-muted-foreground"
+                                title={new Date(group.metadata.created_at).toLocaleString()}
+                              >
+                                <Calendar className="h-3 w-3 mr-1 shrink-0" />
+                                {new Date(group.metadata.created_at).toLocaleDateString()}
                               </div>
                             </div>
                           </div>
 
                           {/* Meta Badges */}
-                          <div className="flex flex-wrap gap-2 sm:justify-end mr-4">
-                            <div className="flex items-center text-xs text-muted-foreground mr-2" title={new Date(group.metadata.created_at).toLocaleString()}>
-                              <Calendar className="h-3 w-3 mr-1" />
-                              {new Date(group.metadata.created_at).toLocaleDateString()}
-                            </div>
+                          <div className="flex flex-wrap gap-2 lg:justify-end lg:max-w-[58%] shrink-0">
                             <Badge variant="outline" className="font-normal text-xs bg-muted/50">
                               {group.metadata.role}
                             </Badge>
