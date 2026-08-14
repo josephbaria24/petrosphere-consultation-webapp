@@ -28,7 +28,11 @@ import {
 } from '../../../../components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '../../../../@/components/ui/alert'
 import { Button } from '../../../../components/ui/button'
-import { Calendar, Filter, User as UserIcon, Building, FileText, Download, HelpCircle, Copy, ExternalLink, Link as LinkIcon } from "@/components/icons"
+import { Calendar, Filter, User as UserIcon, Building, FileText, Download, HelpCircle, Copy, ExternalLink, Link as LinkIcon, Trash2 } from "@/components/icons"
+import {
+  AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
+} from '../../../../@/components/ui/alert-dialog'
+import { Input } from '../../../../components/ui/input'
 import { Separator } from '../../../../@/components/ui/separator' // Ensure this exists or use border
 import { ExportDialog } from '../../../../components/export-dialog'
 import jsPDF from 'jspdf'
@@ -73,9 +77,12 @@ type ResponseGroup = {
     role: string
     created_at: string
     org_name?: string
+    org_id?: string | null
   }
   answers: AnswerWithDimension[]
 }
+
+const DELETE_CONFIRMATION = "Delete this user responses"
 
 const getBadgeColor = (answer: string) => {
   // Simple heuristic for badge colors based on typical Likert scale text or numbers
@@ -112,6 +119,9 @@ export default function SurveyResponsesPage() {
   const [responseGroups, setResponseGroups] = useState<ResponseGroup[]>([])
   const [loadingSurveys, setLoadingSurveys] = useState(true)
   const [loadingResponses, setLoadingResponses] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<ResponseGroup | null>(null)
+  const [deleteConfirmText, setDeleteConfirmText] = useState("")
+  const [deleting, setDeleting] = useState(false)
   const responsesContentRef = useRef<HTMLDivElement>(null)
 
   const handleExportResults = async () => {
@@ -355,7 +365,8 @@ export default function SurveyResponsesPage() {
                 site: user?.site || r.site || 'Unknown',
                 role: user?.role || r.role || 'Unknown',
                 created_at: r.created_at,
-                org_name: organizations.find(o => o.id === r.org_id)?.name || 'Unknown Org'
+                org_name: organizations.find(o => o.id === r.org_id)?.name || 'Unknown Org',
+                org_id: r.org_id || null,
               },
               answers: []
             })
@@ -418,6 +429,83 @@ export default function SurveyResponsesPage() {
       toast.success('Survey link copied')
     } catch {
       toast.error('Failed to copy link')
+    }
+  }
+
+  const closeDeleteDialog = () => {
+    if (deleting) return
+    setDeleteTarget(null)
+    setDeleteConfirmText("")
+  }
+
+  const handleDeleteResponses = async () => {
+    if (!deleteTarget || !selectedSurveyId) return
+    if (deleteConfirmText.trim() !== DELETE_CONFIRMATION) {
+      toast.error(`Type "${DELETE_CONFIRMATION}" to confirm.`)
+      return
+    }
+    if (!deleteTarget.user_id || deleteTarget.user_id === "anonymous") {
+      toast.error("This respondent cannot be deleted.")
+      return
+    }
+
+    setDeleting(true)
+    try {
+      const orgIdForDelete =
+        selectedOrgId !== "all"
+          ? selectedOrgId
+          : deleteTarget.metadata.org_id || undefined
+
+      if (isPlatformAdmin) {
+        const resp = await fetch("/api/admin/delete-responses", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: deleteTarget.user_id,
+            surveyId: selectedSurveyId,
+            orgId: orgIdForDelete,
+            confirmation: deleteConfirmText.trim(),
+          }),
+        })
+        const payload = await resp.json().catch(() => ({}))
+        if (!resp.ok) {
+          throw new Error(payload.error || "Failed to delete responses")
+        }
+      } else {
+        const { data: questions, error: qErr } = await supabase
+          .from("survey_questions")
+          .select("id")
+          .eq("survey_id", selectedSurveyId)
+        if (qErr) throw qErr
+        const questionIds = (questions || []).map((q) => q.id)
+        if (questionIds.length === 0) {
+          toast.success("No answers to delete")
+          setDeleteTarget(null)
+          setDeleteConfirmText("")
+          return
+        }
+        let query = supabase
+          .from("responses")
+          .delete()
+          .eq("user_id", deleteTarget.user_id)
+          .in("question_id", questionIds)
+        if (org?.id) query = query.eq("org_id", org.id)
+        const { error } = await query
+        if (error) throw error
+      }
+
+      const removedId = deleteTarget.user_id
+      setResponseGroups((prev) => prev.filter((g) => g.user_id !== removedId))
+      setDeleteTarget(null)
+      setDeleteConfirmText("")
+      toast.success("Respondent answers deleted")
+    } catch (error) {
+      console.error("Delete responses error:", error)
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete responses"
+      )
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -564,7 +652,8 @@ export default function SurveyResponsesPage() {
                 <Accordion type="multiple" className="space-y-3">
                   {responseGroups.map((group, idx) => (
                     <AccordionItem key={group.user_id + idx} value={group.user_id + idx} className="border rounded-xl bg-card shadow-sm px-0 overflow-hidden">
-                      <AccordionTrigger className="hover:no-underline px-4 py-3 md:px-6 items-center gap-3">
+                      <div className="flex items-center gap-1 pr-2">
+                      <AccordionTrigger className="hover:no-underline px-4 py-3 md:px-6 items-center gap-3 flex-1">
                         <div className="flex flex-col lg:flex-row lg:items-center gap-3 min-w-0 flex-1 text-left">
                           {/* User Info */}
                           <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -613,6 +702,22 @@ export default function SurveyResponsesPage() {
                           </div>
                         </div>
                       </AccordionTrigger>
+                      {group.user_id !== "anonymous" && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          title="Delete this respondent's answers"
+                          onClick={() => {
+                            setDeleteConfirmText("")
+                            setDeleteTarget(group)
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                      </div>
                       <AccordionContent className="px-0 pb-0">
                         <div className="border-t bg-muted/10 p-4 md:p-6 space-y-6">
 
@@ -662,6 +767,53 @@ export default function SurveyResponsesPage() {
           </div>
         </>
       )}
+
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) closeDeleteDialog()
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this user responses</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes every answer for{" "}
+              <span className="font-medium text-foreground">
+                {deleteTarget?.user
+                  ? `${deleteTarget.user.first_name} ${deleteTarget.user.last_name}`.trim()
+                  : "this respondent"}
+              </span>
+              {deleteTarget?.user?.email ? ` (${deleteTarget.user.email})` : ""} on{" "}
+              <span className="font-medium text-foreground">"{selectedSurveyTitle}"</span>.
+              This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Type <span className="font-mono text-foreground">{DELETE_CONFIRMATION}</span> to confirm.
+            </p>
+            <Input
+              autoFocus
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder={DELETE_CONFIRMATION}
+              disabled={deleting}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deleting || deleteConfirmText.trim() !== DELETE_CONFIRMATION}
+              onClick={() => void handleDeleteResponses()}
+            >
+              {deleting ? "Deleting…" : "Delete responses"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   )
