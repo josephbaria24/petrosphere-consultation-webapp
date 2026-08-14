@@ -21,7 +21,7 @@ import { Input } from '../../../components/ui/input'
 import Question from "../../../components/survey/Question";
 import { cn } from '../../../lib/utils'
 import { ChevronsUpDown, Languages } from "@/components/icons"
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 
 import { Button } from '../../../components/ui/button'
 import { toast } from 'sonner'
@@ -56,6 +56,66 @@ type Survey = {
   survey_questions: SurveyQuestion[]
 }
 
+type SurveyMetadata = {
+  first_name: string
+  last_name: string
+  email: string
+  role: string
+  department: string
+  site: string
+}
+
+type SurveyDraft = {
+  answers: Record<string, string>
+  metadata: SurveyMetadata
+  step: number
+  isOtherRole: boolean
+  useFilipino: boolean
+}
+
+function surveyDraftKey(surveyId: string, orgId: string | null, period: string | null) {
+  return `safety-vitals:survey-draft:${surveyId}:${orgId || "none"}:${period || "none"}`
+}
+
+function readSurveyDraft(key: string): SurveyDraft | null {
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as SurveyDraft
+    if (!parsed || typeof parsed !== "object") return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function writeSurveyDraft(key: string, draft: SurveyDraft) {
+  try {
+    localStorage.setItem(key, JSON.stringify(draft))
+  } catch {
+    // Private mode / quota — ignore
+  }
+}
+
+function clearSurveyDraft(key: string) {
+  try {
+    localStorage.removeItem(key)
+  } catch {
+    // ignore
+  }
+}
+
+function runWhenIdle(fn: () => void) {
+  const ric = (window as Window & {
+    requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number
+  }).requestIdleCallback
+  if (typeof ric === "function") {
+    ric(fn, { timeout: 1200 })
+    return
+  }
+  window.setTimeout(fn, 0)
+}
+
 
 
 function SurveyContent() {
@@ -81,6 +141,15 @@ function SurveyContent() {
   const [showResubmitModal, setShowResubmitModal] = useState(false)
   const [isResubmitting, setIsResubmitting] = useState(false)
   const [showTooltip, setShowTooltip] = useState(true)
+  const [draftReady, setDraftReady] = useState(false)
+  const restoredDraftKey = useRef<string | null>(null)
+  const pendingDraft = useRef<SurveyDraft | null>(null)
+  const draftSaveTimer = useRef<number>(0)
+
+  const period = searchParams.get('period')
+  const draftStorageKey = survey
+    ? surveyDraftKey(survey.id, targetOrgId, period)
+    : null
 
   const roles = [
     "Executive",
@@ -176,6 +245,88 @@ function SurveyContent() {
       cancelled = true
     }
   }, [params.id])
+
+  useEffect(() => {
+    if (!survey || loading) return
+    const key = surveyDraftKey(survey.id, targetOrgId, period)
+    if (restoredDraftKey.current === key) return
+    restoredDraftKey.current = key
+    const draft = readSurveyDraft(key)
+    if (draft) {
+      const validIds = new Set((survey.survey_questions || []).map((q) => q.id))
+      const restoredAnswers: Record<string, string> = {}
+      for (const [id, value] of Object.entries(draft.answers || {})) {
+        if (validIds.has(id) && typeof value === "string" && value.trim()) {
+          restoredAnswers[id] = value
+        }
+      }
+      setAnswers(restoredAnswers)
+      if (draft.metadata) {
+        setMetadata({
+          first_name: draft.metadata.first_name || "",
+          last_name: draft.metadata.last_name || "",
+          email: draft.metadata.email || "",
+          role: draft.metadata.role || "",
+          department: draft.metadata.department || "",
+          site: draft.metadata.site || "",
+        })
+      }
+      setIsOtherRole(!!draft.isOtherRole)
+      setUseFilipino(!!draft.useFilipino)
+      setStep(draft.step === 2 ? 2 : 1)
+    }
+    setDraftReady(true)
+  }, [survey, loading, targetOrgId, period])
+
+  useEffect(() => {
+    if (!draftReady || !draftStorageKey) return
+
+    if (step === 3) {
+      pendingDraft.current = null
+      if (draftSaveTimer.current) {
+        window.clearTimeout(draftSaveTimer.current)
+        draftSaveTimer.current = 0
+      }
+      clearSurveyDraft(draftStorageKey)
+      return
+    }
+
+    pendingDraft.current = {
+      answers,
+      metadata,
+      step,
+      isOtherRole,
+      useFilipino,
+    }
+
+    if (draftSaveTimer.current) {
+      window.clearTimeout(draftSaveTimer.current)
+    }
+    const key = draftStorageKey
+    draftSaveTimer.current = window.setTimeout(() => {
+      draftSaveTimer.current = 0
+      const draft = pendingDraft.current
+      if (!draft) return
+      runWhenIdle(() => writeSurveyDraft(key, draft))
+    }, 500)
+  }, [draftReady, draftStorageKey, answers, metadata, step, isOtherRole, useFilipino])
+
+  useEffect(() => {
+    if (!draftStorageKey) return
+    const key = draftStorageKey
+    const flush = () => {
+      if (pendingDraft.current) writeSurveyDraft(key, pendingDraft.current)
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flush()
+    }
+    window.addEventListener("pagehide", flush)
+    document.addEventListener("visibilitychange", onVisibility)
+    return () => {
+      window.removeEventListener("pagehide", flush)
+      document.removeEventListener("visibilitychange", onVisibility)
+    }
+  }, [draftStorageKey])
 
   const handleInputChange = useCallback((questionId: string, value: string) => {
     startTransition(() => {
@@ -352,6 +503,7 @@ function SurveyContent() {
 
       const { error: responseError } = await supabase.from('responses').insert(responsePayload)
       if (responseError) throw responseError
+      if (draftStorageKey) clearSurveyDraft(draftStorageKey)
       toast.success('Answers submitted successfully!')
       setStep(3)
     } catch (err) {
