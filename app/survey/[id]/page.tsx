@@ -286,9 +286,30 @@ function SurveyContent() {
             site: metadata.site,
             status: 'active',
           })
-          .select().single()
-        if (insertError || !newUser) throw insertError || new Error('Failed to create user')
-        userId = newUser.id
+          .select('id')
+          .single()
+
+        if (insertError) {
+          // Returning respondent: unique email, or INSERT succeeded but SELECT is blocked by RLS
+          if (emailTrimmed) {
+            const { data: existing } = await supabase
+              .from('users')
+              .select('id')
+              .eq('email', emailTrimmed)
+              .maybeSingle()
+            if (existing?.id) {
+              userId = existing.id
+            } else {
+              throw insertError
+            }
+          } else {
+            throw insertError
+          }
+        } else if (!newUser) {
+          throw new Error('Failed to create respondent')
+        } else {
+          userId = newUser.id
+        }
       } else {
         // Keep profile metadata in sync for returning respondents
         await supabase
@@ -303,15 +324,18 @@ function SurveyContent() {
           .eq('id', userId)
       }
 
-      const responsePayload = allQuestions.map((q) => ({
+      const baseResponse = {
         user_id: userId,
+        role: metadata.role,
+        org_id: targetOrgId || survey.org_id,
+      }
+
+      const responsePayload = allQuestions.map((q) => ({
+        ...baseResponse,
         question_id: q.id,
         question: q.question_text,
         answer: answers[q.id] || '',
-        role: metadata.role,
-        department: metadata.department,
         dimension: q.dimension,
-        org_id: targetOrgId || survey.org_id
       }))
 
       if (isResubmitting && userId) {
@@ -332,7 +356,11 @@ function SurveyContent() {
       setStep(3)
     } catch (err) {
       console.error('Submission error:', err)
-      toast.error('Something went wrong during submission.')
+      const message =
+        err && typeof err === 'object' && 'message' in err && typeof err.message === 'string'
+          ? err.message
+          : 'Something went wrong during submission.'
+      toast.error(message)
     }
   }
 
