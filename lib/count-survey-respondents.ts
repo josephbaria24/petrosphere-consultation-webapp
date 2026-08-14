@@ -3,17 +3,13 @@
  * `responses` rows are stored per question, not per survey_id.
  */
 
-type ResponsesClient = {
-  from: (table: string) => {
-    select: (columns: string) => any;
-  };
-};
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 const QUESTION_CHUNK = 150;
 const PAGE_SIZE = 1000;
 
 export async function countRespondentsBySurvey(options: {
-  supabase: ResponsesClient;
+  supabase: SupabaseClient;
   questionToSurvey: Map<string, string>;
   orgId?: string | null;
 }): Promise<Record<string, number>> {

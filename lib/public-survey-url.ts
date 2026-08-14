@@ -39,7 +39,7 @@ export function getPublicAppOrigin(): string {
  * Prefer UUID path for take-survey links.
  * Slugs can collide or fail lookup; UUID is stable after create.
  */
-export function surveyPathId(surveyId: string, _slug?: string | null): string {
+export function surveyPathId(surveyId: string): string {
   return surveyId;
 }
 
@@ -50,7 +50,7 @@ export function buildPublicSurveyUrl(opts: {
   orgId?: string | null;
 }): string {
   const origin = getPublicAppOrigin();
-  const id = surveyPathId(opts.surveyId, opts.slug);
+  const id = surveyPathId(opts.surveyId);
   const params = new URLSearchParams();
   if (opts.period?.trim()) params.set("period", opts.period.trim());
   if (opts.orgId?.trim()) params.set("org", opts.orgId.trim());

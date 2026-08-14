@@ -101,8 +101,13 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
+        type SurveyListRow = {
+            id: string;
+            survey_questions?: { id: string }[] | null;
+        };
+
         // Prefer default Safety Vitals survey at the top when present
-        const sorted = [...(data || [])].sort((a: any, b: any) => {
+        const sorted = [...((data || []) as unknown as SurveyListRow[])].sort((a, b) => {
             const aDefault = DEFAULT_SURVEY_IDS.includes(a.id) ? 0 : 1;
             const bDefault = DEFAULT_SURVEY_IDS.includes(b.id) ? 0 : 1;
             if (aDefault !== bDefault) return aDefault - bDefault;
