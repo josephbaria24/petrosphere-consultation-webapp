@@ -29,6 +29,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { sanitizeDomForPdf } from "../lib/export-utils";
 import { Lock } from "@/components/icons";
+import { dimensionKey, numericScoreForAnswer } from "../lib/survey-score";
 import { useOrgKPIs } from "../lib/hooks/use-org-kpis";
 import { DepartmentChart } from "./dashboard/department-chart";
 import { OwnerPerformance } from "./dashboard/owner-performance";
@@ -46,6 +47,36 @@ interface DashboardProps {
   embedded?: boolean;
 }
 
+function parseAiInsights(raw: unknown): { quick_insight?: string; recommendations?: unknown[] } | null {
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    const obj = raw as { quick_insight?: string; recommendations?: unknown[] };
+    if (obj.quick_insight || obj.recommendations) return obj;
+  }
+
+  let jsonText = typeof raw === "string" ? raw : "";
+  if (!jsonText) return null;
+
+  if (jsonText.includes("```json")) {
+    jsonText = jsonText.split("```json")[1]?.split("```")[0] || jsonText;
+  } else if (jsonText.includes("```")) {
+    jsonText = jsonText.split("```")[1]?.split("```")[0] || jsonText;
+  }
+
+  const start = jsonText.indexOf("{");
+  const end = jsonText.lastIndexOf("}");
+  if (start >= 0 && end > start) {
+    jsonText = jsonText.slice(start, end + 1);
+  }
+
+  try {
+    const parsed = JSON.parse(jsonText.trim());
+    if (parsed && typeof parsed === "object") return parsed;
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 export default function Dashboard({ embedded = false }: DashboardProps) {
   const [surveys, setSurveys] = useState<any[]>([]);
   const [, setQuestions] = useState<any[]>([]);
@@ -54,6 +85,7 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
   const [totalAvg, setTotalAvg] = useState<number>(0);
   const [trend, setTrend] = useState<number>(0);
   const [respondentCount, setRespondentCount] = useState<number>(0);
+  const [responsesThisMonth, setResponsesThisMonth] = useState<number>(0);
   const [barData, setBarData] = useState<any[]>([]);
   const [radarData, setRadarData] = useState<any[]>([]);
   const [comparisonRadarData, setComparisonRadarData] = useState<any[]>([]);
@@ -138,10 +170,16 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
     { id: 'summary', label: 'Summary', icon: PieChart, ref: summaryRef },
   ], []);
 
+  const DEFAULT_SURVEY_IDS = [
+    "67813802-0821-4013-8b96-ddc5ba288c60",
+    "00000000-0000-0000-0000-000000000000",
+  ];
+
   const filteredSurveys = useMemo(() => {
-    const DEFAULT_SURVEY_ID = '67813802-0821-4013-8b96-ddc5ba288c60';
     if (selectedOrgId === "all") return surveys;
-    return surveys.filter(s => s.org_id === selectedOrgId || s.id === DEFAULT_SURVEY_ID);
+    return surveys.filter(
+      (s) => s.org_id === selectedOrgId || DEFAULT_SURVEY_IDS.includes(s.id)
+    );
   }, [surveys, selectedOrgId]);
 
   useEffect(() => {
@@ -198,15 +236,16 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
       const { data: existing } = await supabase.from('survey_ai_insights').select('insights').eq('survey_id', surveyId).single();
       if (existing) { setAiInsights(existing.insights); return; }
       setIsGeneratingAI(true);
+      const avg = Number(statsData?.avgScore);
       const prompt = `
         As a Safety Culture Expert, analyze these survey results and provide actionable recommendations.
         
         DATA:
-        - Average Score: ${statsData.avgScore.toFixed(2)}/5.0
-        - Respondent Count: ${statsData.respondentCount}
-        - Top Dimensions: ${statsData.strongDimensions.join(', ')}
-        - Critical Areas: ${statsData.belowMinimumDimensions.join(', ')}
-        - At Risk Areas: ${statsData.atRiskDimensions.join(', ')}
+        - Average Score: ${Number.isFinite(avg) ? avg.toFixed(2) : "n/a"}/5.0
+        - Respondent Count: ${statsData?.respondentCount ?? 0}
+        - Top Dimensions: ${(statsData?.strongDimensions || []).join(', ') || "None"}
+        - Critical Areas: ${(statsData?.belowMinimumDimensions || []).join(', ') || "None"}
+        - At Risk Areas: ${(statsData?.atRiskDimensions || []).join(', ') || "None"}
 
         INSTRUCTIONS:
         Return a JSON object with exactly two keys:
@@ -224,10 +263,8 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
       });
       if (!response.ok) throw new Error(`AI API failed: ${response.status}`);
       const aiResult = await response.json();
-      let rawText = aiResult?.result?.response || "";
-      let jsonText = rawText;
-      if (jsonText.includes('```json')) jsonText = jsonText.split('```json')[1].split('```')[0].trim();
-      const cleanInsights = JSON.parse(jsonText);
+      const cleanInsights = parseAiInsights(aiResult?.result?.response);
+      if (!cleanInsights) throw new Error("AI returned invalid insights JSON");
       setAiInsights(cleanInsights);
       await supabase.from('survey_ai_insights').upsert({ survey_id: surveyId, insights: cleanInsights, updated_at: new Date().toISOString() });
     } catch (err) { console.error("AI Insight Error:", err); } finally { setIsGeneratingAI(false); }
@@ -239,6 +276,7 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
       const cached = dashboardCache.current[cacheKey].stats;
       setMinAcceptableScore(cached.minAcceptableScore);
       setRespondentCount(cached.respondentCount);
+      setResponsesThisMonth(cached.responsesThisMonth || 0);
       setBelowMinimumDimensions(cached.belowMin);
       setAtRiskDimensions(cached.atRisk);
       setStrongDimensions(cached.strong);
@@ -281,34 +319,29 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
     const templateMap: Record<string, any> = {};
     templateCache.forEach(t => { templateMap[t.id] = { options: t.options, scores: t.scores }; });
     const uniqueRespondents = new Set(responses.map(r => r.user_id));
+    const startOfThisMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const thisMonthCount = new Set(
+      responses
+        .filter((r) => r.created_at && new Date(r.created_at) >= startOfThisMonth)
+        .map((r) => r.user_id)
+        .filter(Boolean)
+    ).size;
     setRespondentCount(uniqueRespondents.size);
+    setResponsesThisMonth(thisMonthCount);
 
     const dimensionScores: Record<string, number[]> = {};
-    let normalizedScores: number[] = [];
-    responses.forEach(r => {
-      const q = questions.find(qu => qu.id === r.question_id);
+    const normalizedScores: number[] = [];
+    responses.forEach((r) => {
+      const q = questions.find((qu) => qu.id === r.question_id);
       if (!q) return;
-      const template = q.template_id ? templateMap[q.template_id] : null;
-      let score = 0;
-      if (template) {
-        const optionIndex = template.options.findIndex((opt: string) => opt?.trim().toLowerCase() === r.answer?.trim().toLowerCase());
-        score = optionIndex !== -1 ? template.scores[optionIndex] : parseFloat(r.answer);
-      } else {
-        score = parseFloat(r.answer);
-      }
-
-      if (isNaN(score)) {
-        console.warn(`[Dashboard] Non-numeric answer for question ${r.question_id}: "${r.answer}"`);
-        return;
-      }
-      // Skip non-scored items (open text / feedback)
-      if (q.scoring_type === "text" || q.question_type === "text") return;
-      // Negative scoring type (or legacy reverse_score) flips the scale
-      if (q.reverse_score || q.scoring_type === "negative") score = (q.max_score ?? 5) + 1 - score;
-      if (!q.dimension) return;
-      if (!dimensionScores[q.dimension]) dimensionScores[q.dimension] = [];
-      dimensionScores[q.dimension].push(score);
-      normalizedScores.push((score - (q.min_score || 1)) / ((q.max_score || 5) - (q.min_score || 1)));
+      const score = numericScoreForAnswer(q, r.answer, templateMap);
+      if (score == null) return;
+      const dim = dimensionKey(q);
+      if (!dimensionScores[dim]) dimensionScores[dim] = [];
+      dimensionScores[dim].push(score);
+      normalizedScores.push(
+        (score - (q.min_score || 1)) / ((q.max_score || 5) - (q.min_score || 1) || 1)
+      );
     });
 
     const belowMin: string[] = [], atRisk: string[] = [], strong: string[] = [];
@@ -365,40 +398,22 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
       const scoreResponse = (r: any): number | null => {
         const q = questions.find((qu) => qu.id === r.question_id);
         if (!q) return null;
-        const template = q.template_id ? templateMap[q.template_id] : null;
-        let score = 0;
-        if (template) {
-          const optionIndex = template.options.findIndex(
-            (opt: string) =>
-              opt?.trim().toLowerCase() === r.answer?.trim().toLowerCase()
-          );
-          score =
-            optionIndex !== -1
-              ? template.scores[optionIndex]
-              : parseFloat(r.answer);
-        } else {
-          score = parseFloat(r.answer);
-        }
-        if (Number.isNaN(score)) return null;
-        if (q.scoring_type === "text" || q.question_type === "text") return null;
-        if (q.reverse_score || q.scoring_type === "negative") {
-          score = (q.max_score ?? 5) + 1 - score;
-        }
-        return score;
+        return numericScoreForAnswer(q, r.answer, templateMap);
       };
 
       responses.forEach((r) => {
         const score = scoreResponse(r);
         if (score == null) return;
         const q = questions.find((qu) => qu.id === r.question_id);
+        const dim = q ? dimensionKey(q) : "";
 
         const role = String(r.role || userRoleMap[r.user_id] || "").trim();
-        if (role && q?.dimension) {
-          if (!dimRoleScores[q.dimension]) dimRoleScores[q.dimension] = {};
-          if (!dimRoleScores[q.dimension][role]) {
-            dimRoleScores[q.dimension][role] = [];
+        if (role && dim) {
+          if (!dimRoleScores[dim]) dimRoleScores[dim] = {};
+          if (!dimRoleScores[dim][role]) {
+            dimRoleScores[dim][role] = [];
           }
-          dimRoleScores[q.dimension][role].push(score);
+          dimRoleScores[dim][role].push(score);
         }
 
         const department = String(
@@ -466,7 +481,7 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
     setRoleData(computedRoleData);
     setDepartmentData(computedDepartmentData);
 
-    const finalStats = { minAcceptableScore: calculatedMinScore, respondentCount: uniqueRespondents.size, reliability: normalizedScores.length ? Math.round((normalizedScores.reduce((a, b) => a + b, 0) / normalizedScores.length) * 100) : 0, belowMin, atRisk, strong, barData: sortedBar, radarData: sortedBar.map(b => ({ subject: b.name, you: b.score })), avgScore: currentAvg, totalAvg: currentAvg, trend: 0, lowestDimensionPercent: lowest, roleData: computedRoleData, departmentData: computedDepartmentData };
+    const finalStats = { minAcceptableScore: calculatedMinScore, respondentCount: uniqueRespondents.size, responsesThisMonth: thisMonthCount, reliability: normalizedScores.length ? Math.round((normalizedScores.reduce((a, b) => a + b, 0) / normalizedScores.length) * 100) : 0, belowMin, atRisk, strong, barData: sortedBar, radarData: sortedBar.map(b => ({ subject: b.name, you: b.score })), avgScore: currentAvg, totalAvg: currentAvg, trend: 0, lowestDimensionPercent: lowest, roleData: computedRoleData, departmentData: computedDepartmentData };
     if (!dashboardCache.current[cacheKey]) dashboardCache.current[cacheKey] = { stats: null, questions: [], templateCache: [], comparisonData: [], actions: [] };
     dashboardCache.current[cacheKey].stats = finalStats;
     fetchAIInsights(surveyId, { avgScore: currentAvg, respondentCount: uniqueRespondents.size, strongDimensions: strong, belowMinimumDimensions: belowMin, atRiskDimensions: atRisk });
@@ -617,18 +632,42 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
   useEffect(() => {
     if (!adminChecked) return;
     const fetchSurveys = async () => {
-      let query = supabase.from('surveys').select('id, title, created_at, target_company, org_id, organizations(name)').order('created_at', { ascending: false });
-      const DEFAULT_SURVEY_ID = '67813802-0821-4013-8b96-ddc5ba288c60';
-      if (org?.id) {
-        // ALWAYS restrict to authored surveys within the Org OR Safety Vitals
-        // The user wants strict exclusivity to the creator.
-        query = query.or(`and(org_id.eq.${org.id},created_by.eq.${user?.id || ''}),id.eq.${DEFAULT_SURVEY_ID}`);
+      const DEFAULT_SURVEY_ID = "67813802-0821-4013-8b96-ddc5ba288c60";
+      let data: any[] | null = null;
+
+      if (isPlatformAdmin) {
+        const resp = await fetch("/api/admin/all-surveys");
+        if (resp.ok) data = await resp.json();
+      } else {
+        let query = supabase
+          .from("surveys")
+          .select("id, title, created_at, target_company, org_id, organizations(name)")
+          .order("created_at", { ascending: false });
+        if (org?.id) {
+          if (isRestrictedToAuthored) {
+            query = query.or(
+              `and(org_id.eq.${org.id},created_by.eq.${user?.id || ""}),id.eq.${DEFAULT_SURVEY_ID}`
+            );
+          } else {
+            query = query.or(`org_id.eq.${org.id},id.eq.${DEFAULT_SURVEY_ID}`);
+          }
+        }
+        const result = await query;
+        data = result.data;
       }
-      const { data } = await query;
+
       if (data) {
-        const normalized = data.map((s: any) => ({ ...s, organizations: Array.isArray(s.organizations) ? s.organizations[0] : s.organizations }));
-        const final = normalized.sort((a, b) => { if (a.id === DEFAULT_SURVEY_ID) return -1; if (b.id === DEFAULT_SURVEY_ID) return 1; return 0; });
-        setSurveys(final); if (final.length) setSelectedSurvey(final[0]);
+        const normalized = data.map((s: any) => ({
+          ...s,
+          organizations: Array.isArray(s.organizations) ? s.organizations[0] : s.organizations,
+        }));
+        const final = normalized.sort((a, b) => {
+          if (a.id === DEFAULT_SURVEY_ID) return -1;
+          if (b.id === DEFAULT_SURVEY_ID) return 1;
+          return 0;
+        });
+        setSurveys(final);
+        if (final.length) setSelectedSurvey(final[0]);
       }
     };
     fetchSurveys();
@@ -757,7 +796,11 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
             respondentCount={respondentCount}
             avgScore={avgScore}
             trend={orgKPIs.trendPct}
-            orgName={org?.name}
+            orgName={
+              (selectedOrgId !== "all"
+                ? organizations.find((o) => o.id === selectedOrgId)?.name
+                : null) || org?.name
+            }
             onUpdateOrgName={handleUpdateOrgName}
             isPlatformAdmin={isPlatformAdmin}
             aiInsights={aiInsights}
@@ -766,7 +809,7 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
             onUpgradeClick={() => setShowUpgradeModal(true)}
             overdueActionsPct={orgKPIs.overdueActionsPct}
             avgClosureTimeDays={orgKPIs.avgClosureTimeDays}
-            totalResponsesThisMonth={orgKPIs.totalResponsesThisMonth}
+            totalResponsesThisMonth={responsesThisMonth}
             isLoadingKPIs={isLoadingKPIs}
           />
         </div>

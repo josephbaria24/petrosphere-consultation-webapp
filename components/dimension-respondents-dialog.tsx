@@ -12,6 +12,7 @@ import {
 import { Badge } from "../@/components/ui/badge";
 import { Loader2 } from "@/components/icons";
 import { barColorForScoreClass } from "./dashboard/dimension-bar-utils";
+import { dimensionKey, numericScoreForAnswer } from "../lib/survey-score";
 
 export type DimensionRespondentRow = {
   userId: string;
@@ -41,6 +42,7 @@ function scoreAnswer(
   answer: string,
   q: {
     template_id?: string | null;
+    options?: string[] | null;
     scoring_type?: string | null;
     question_type?: string | null;
     reverse_score?: boolean | null;
@@ -49,25 +51,7 @@ function scoreAnswer(
   },
   templateMap: Record<string, { options: string[]; scores: number[] }>
 ): number | null {
-  if (q.scoring_type === "text" || q.question_type === "text") return null;
-  const template = q.template_id ? templateMap[q.template_id] : null;
-  let score = 0;
-  if (template) {
-    const optionIndex = template.options.findIndex(
-      (opt) => opt?.trim().toLowerCase() === answer?.trim().toLowerCase()
-    );
-    score =
-      optionIndex !== -1
-        ? template.scores[optionIndex]
-        : parseFloat(answer);
-  } else {
-    score = parseFloat(answer);
-  }
-  if (Number.isNaN(score)) return null;
-  if (q.reverse_score || q.scoring_type === "negative") {
-    score = (q.max_score ?? 5) + 1 - score;
-  }
-  return score;
+  return numericScoreForAnswer(q, answer, templateMap);
 }
 
 export function DimensionRespondentsDialog({
@@ -91,14 +75,18 @@ export function DimensionRespondentsDialog({
       setError(null);
       setRows([]);
       try {
-        const { data: questions, error: qErr } = await supabase
+        const { data: allQuestions, error: qErr } = await supabase
           .from("survey_questions")
           .select(
-            "id, question_text, dimension, template_id, scoring_type, question_type, reverse_score, max_score, min_score, options"
+            "id, question_text, dimension, dimension_code, template_id, scoring_type, question_type, reverse_score, max_score, min_score, options"
           )
           .eq("survey_id", surveyId)
-          .eq("dimension", dimension)
           .order("order_index", { ascending: true });
+
+        if (qErr) throw qErr;
+        const questions = (allQuestions || []).filter(
+          (q) => q.dimension === dimension || dimensionKey(q) === dimension
+        );
 
         if (qErr) throw qErr;
         if (!questions?.length) {

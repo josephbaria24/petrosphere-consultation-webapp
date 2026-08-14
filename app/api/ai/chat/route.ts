@@ -4,6 +4,32 @@ import { checkIpRateLimit } from "../../../../lib/server/rate-limit";
 
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
+function extractWorkersAiText(data: unknown): string {
+    const payload = data as {
+        result?: { response?: unknown };
+        response?: unknown;
+    } | null;
+    const response = payload?.result?.response ?? payload?.response;
+    if (typeof response === "string") return response;
+    if (Array.isArray(response)) {
+        return response
+            .map((part) => {
+                if (typeof part === "string") return part;
+                if (part && typeof part === "object") {
+                    const item = part as { text?: unknown; content?: unknown };
+                    if (typeof item.text === "string") return item.text;
+                    if (typeof item.content === "string") return item.content;
+                }
+                return "";
+            })
+            .join("");
+    }
+    if (response && typeof response === "object") {
+        return JSON.stringify(response);
+    }
+    return "";
+}
+
 export async function POST(req: Request) {
     try {
         const rate = checkIpRateLimit(req, "ai-chat", 45, 60_000);
@@ -64,22 +90,12 @@ export async function POST(req: Request) {
             );
         }
 
-        const model = "@cf/meta/llama-3-8b-instruct";
+        // llama-3-8b-instruct was removed from Workers AI on 2026-05-30 (HTTP 410).
+        const model =
+            process.env.CLOUDFLARE_AI_MODEL?.trim() ||
+            "@cf/meta/llama-3.1-8b-instruct-fast";
 
-        // Llama 3 Instruct template for Workers AI
-        let prompt = "";
-        for (const msg of messages) {
-            if (msg.role === 'system') {
-                prompt += `<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n${msg.content}<|eot_id|>`;
-            } else if (msg.role === 'user') {
-                prompt += `<|start_header_id|>user<|end_header_id|>\n\n${msg.content}<|eot_id|>`;
-            } else if (msg.role === 'assistant') {
-                prompt += `<|start_header_id|>assistant<|end_header_id|>\n\n${msg.content}<|eot_id|>`;
-            }
-        }
-        prompt += `<|start_header_id|>assistant<|end_header_id|>\n\n`;
-
-        console.log(`[API AI] Running model ${model} with prompt length ${prompt.length}`);
+        console.log(`[API AI] Running model ${model} with ${messages.length} messages`);
 
         const r = await fetch(
             `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
@@ -90,7 +106,7 @@ export async function POST(req: Request) {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    prompt,
+                    messages,
                     max_tokens: 1024,
                     temperature: 0.6,
                 }),
@@ -103,12 +119,18 @@ export async function POST(req: Request) {
         if (!r.ok) {
             return NextResponse.json(
                 { error: "Cloudflare Workers AI request failed", details: data },
-                { status: 500 }
+                { status: r.status === 410 ? 502 : 500 }
             );
         }
 
-        // Common shape: data.result.response (text). Exact envelope may vary by model.
-        return NextResponse.json(data);
+        const text = extractWorkersAiText(data);
+        return NextResponse.json({
+            ...data,
+            result: {
+                ...(data?.result && typeof data.result === "object" ? data.result : {}),
+                response: text,
+            },
+        });
     } catch (e: any) {
         return NextResponse.json(
             { error: "Unexpected error", details: String(e?.message ?? e) },

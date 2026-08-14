@@ -75,6 +75,7 @@ export async function GET(req: Request) {
                 title,
                 target_company,
                 org_id,
+                created_at,
                 organizations (
                     name
                 )

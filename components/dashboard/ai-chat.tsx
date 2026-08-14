@@ -149,7 +149,9 @@ export default function SafetyAIChat({ stats, isDemo, onUpgradeClick }: SafetyAI
             }
 
             const data = await response.json();
-            const aiText = data?.result?.response || "I'm sorry, I couldn't process that request.";
+            const aiText = typeof data?.result?.response === "string"
+                ? data.result.response
+                : "I'm sorry, I couldn't process that request.";
 
             setMessages(prev => [...prev, { role: "assistant", content: aiText }]);
         } catch (err: any) {

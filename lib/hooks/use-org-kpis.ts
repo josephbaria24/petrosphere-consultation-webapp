@@ -25,31 +25,34 @@ const DEFAULT_KPIS: OrgKPIs = {
     trendPct: 0,
 };
 
-export function useOrgKPIs(orgId?: string) {
+export function useOrgKPIs(orgId?: string, options?: { unrestricted?: boolean }) {
     const [kpis, setKpis] = useState<OrgKPIs>(DEFAULT_KPIS);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const unrestricted = !!options?.unrestricted;
 
     const fetchKPIs = useCallback(async (targetOrgId: string) => {
         setIsLoading(true);
         setError(null);
 
         try {
-            // Get current user for filtering
             const { data: { user } } = await supabase.auth.getUser();
             const userId = user?.id;
 
-            if (!userId) {
+            if (!unrestricted && !userId) {
                 setKpis(DEFAULT_KPIS);
                 return;
             }
 
-            // 1. Fetch actions for this user/org
-            const { data: actions } = await supabase
+            let actionsQuery = supabase
                 .from("actions")
                 .select("id, is_completed, target_date, created_at, updated_at")
-                .eq("org_id", targetOrgId)
-                .eq("created_by", userId);
+                .eq("org_id", targetOrgId);
+            if (!unrestricted && userId) {
+                actionsQuery = actionsQuery.eq("created_by", userId);
+            }
+
+            const { data: actions } = await actionsQuery;
 
             const totalActions = actions?.length || 0;
             const overdueActions = actions?.filter(a => !a.is_completed && a.target_date && new Date(a.target_date) < new Date()).length || 0;
@@ -68,11 +71,14 @@ export function useOrgKPIs(orgId?: string) {
 
             // 2. Fetch responses for this user's surveys
             // First find surveys created by this user
-            const { data: userSurveys } = await supabase
+            let surveyQuery = supabase
                 .from("surveys")
                 .select("id")
-                .eq("org_id", targetOrgId)
-                .eq("created_by", userId);
+                .eq("org_id", targetOrgId);
+            if (!unrestricted && userId) {
+                surveyQuery = surveyQuery.eq("created_by", userId);
+            }
+            const { data: userSurveys } = await surveyQuery;
             
             const userSurveyIds = userSurveys?.map(s => s.id) || [];
             let totalResponsesThisMonth = 0;
@@ -90,7 +96,7 @@ export function useOrgKPIs(orgId?: string) {
 
                     const { data: responses } = await supabase
                         .from("responses")
-                        .select("answer, created_at")
+                        .select("user_id, answer, created_at")
                         .eq("org_id", targetOrgId)
                         .in("question_id", validQIds)
                         .gte("created_at", startOfLastMonth);
@@ -98,7 +104,9 @@ export function useOrgKPIs(orgId?: string) {
                     const thisMonthResponses = responses?.filter(r => r.created_at >= startOfThisMonth) || [];
                     const lastMonthResponses = responses?.filter(r => r.created_at >= startOfLastMonth && r.created_at < startOfThisMonth) || [];
 
-                    totalResponsesThisMonth = thisMonthResponses.length;
+                    totalResponsesThisMonth = new Set(
+                        thisMonthResponses.map((r) => r.user_id).filter(Boolean)
+                    ).size;
 
                     const calculateAvg = (resps: any[]) => {
                         const scores = resps.map(r => {
@@ -135,7 +143,7 @@ export function useOrgKPIs(orgId?: string) {
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [unrestricted]);
 
     useEffect(() => {
         if (!orgId) {
