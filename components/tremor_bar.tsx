@@ -33,6 +33,73 @@ interface BarListProps<T = unknown>
   scaleMax?: number
   /** Vertical dashed marker across the bar track (e.g. lowest score). */
   referenceLine?: ReferenceLineConfig | null
+  /**
+   * Vertical density of rows. 1 = default; lower squeezes bars; higher expands.
+   * Typical range: 0.5 – 1.5
+   */
+  density?: number
+}
+
+function densityStyles(density: number) {
+  const d = Math.min(Math.max(density, 0.45), 1.6)
+  if (d <= 0.55) {
+    return {
+      row: "h-4",
+      hover: "group-hover:h-5",
+      gap: "space-y-0.5",
+      valueGap: "mb-0.5",
+      label: "text-[11px]",
+      value: "text-[11px]",
+    }
+  }
+  if (d <= 0.7) {
+    return {
+      row: "h-5",
+      hover: "group-hover:h-6",
+      gap: "space-y-0.5",
+      valueGap: "mb-0.5",
+      label: "text-xs",
+      value: "text-xs",
+    }
+  }
+  if (d <= 0.85) {
+    return {
+      row: "h-6",
+      hover: "group-hover:h-7",
+      gap: "space-y-1",
+      valueGap: "mb-1",
+      label: "text-xs",
+      value: "text-xs",
+    }
+  }
+  if (d <= 1.05) {
+    return {
+      row: "h-8",
+      hover: "group-hover:h-10",
+      gap: "space-y-1.5",
+      valueGap: "mb-1.5",
+      label: "text-sm",
+      value: "text-sm",
+    }
+  }
+  if (d <= 1.25) {
+    return {
+      row: "h-9",
+      hover: "group-hover:h-11",
+      gap: "space-y-2",
+      valueGap: "mb-2",
+      label: "text-sm",
+      value: "text-sm",
+    }
+  }
+  return {
+    row: "h-10",
+    hover: "group-hover:h-12",
+    gap: "space-y-2.5",
+    valueGap: "mb-2.5",
+    label: "text-base",
+    value: "text-base",
+  }
 }
 
 function BarListInner<T>(
@@ -44,6 +111,7 @@ function BarListInner<T>(
     sortOrder = "descending",
     scaleMax,
     referenceLine,
+    density = 1,
     className,
     ...props
   }: BarListProps<T>,
@@ -77,7 +145,7 @@ function BarListInner<T>(
       ? Math.min(Math.max((referenceLine.value / maxValue) * 100, 0), 100)
       : null
 
-  const rowHeight = "h-8"
+  const styles = densityStyles(density)
 
   return (
     <div
@@ -87,7 +155,7 @@ function BarListInner<T>(
       tremor-id="tremor-raw"
       {...props}
     >
-      <div className="relative w-full space-y-1.5">
+      <div className={cx("relative w-full", styles.gap)}>
         {referenceLeft != null && (
           <div
             className="pointer-events-none absolute inset-y-0 z-10"
@@ -128,8 +196,9 @@ function BarListInner<T>(
                 "flex items-center rounded origin-left",
                 // snappy hover (do not reuse enter-animation duration)
                 "transition-[height,box-shadow,filter] duration-75 ease-out",
-                rowHeight,
-                "group-hover:h-10 group-hover:shadow-sm group-hover:brightness-[1.03]",
+                styles.row,
+                styles.hover,
+                "group-hover:shadow-sm group-hover:brightness-[1.03]",
                 item.color || "bg-blue-200 dark:bg-blue-900",
                 onValueChange
                   ? "group-hover:ring-1 group-hover:ring-black/5 dark:group-hover:ring-white/10"
@@ -146,7 +215,8 @@ function BarListInner<T>(
                   <a
                     href={item.href}
                     className={cx(
-                      "truncate whitespace-nowrap rounded-sm text-sm",
+                      "truncate whitespace-nowrap rounded-sm",
+                      styles.label,
                       "text-gray-900 dark:text-gray-50",
                       "hover:underline hover:underline-offset-2",
                       focusRing,
@@ -160,7 +230,8 @@ function BarListInner<T>(
                 ) : (
                   <p
                     className={cx(
-                      "truncate whitespace-nowrap text-sm",
+                      "truncate whitespace-nowrap",
+                      styles.label,
                       "text-gray-900 dark:text-gray-50",
                     )}
                   >
@@ -178,13 +249,14 @@ function BarListInner<T>(
             key={item.key ?? item.name}
             className={cx(
               "flex items-center justify-end",
-              rowHeight,
-              index === sortedData.length - 1 ? "mb-0" : "mb-1.5",
+              styles.row,
+              index === sortedData.length - 1 ? "mb-0" : styles.valueGap,
             )}
           >
             <p
               className={cx(
-                "truncate whitespace-nowrap text-sm leading-none tabular-nums",
+                "truncate whitespace-nowrap leading-none tabular-nums",
+                styles.value,
                 "text-gray-900 dark:text-gray-50",
               )}
             >

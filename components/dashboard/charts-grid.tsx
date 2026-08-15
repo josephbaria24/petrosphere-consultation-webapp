@@ -9,19 +9,19 @@ import {
     CardContent,
 } from "../ui/card";
 import { Button } from "../ui/button";
-import { Maximize2, Info } from "@/components/icons";
+import { Maximize2, Info, Minus, Plus } from "@/components/icons";
 import {
     RadarChart,
     PolarGrid,
     PolarAngleAxis,
     PolarRadiusAxis,
     Radar,
-    Legend,
 } from "recharts";
 import GaugeChart from "../chart/gauge-chart";
 import CustomTooltip from "../chart/custom-tooltip";
 import ChartModal from "../chart-modal";
 import { RoleAreaChart } from "../chart/area-chart";
+import { DimensionRadarChart, buildRoleDimensionRadar } from "../chart/dimension-radar-chart";
 import { BarList } from "../tremor_bar";
 import {
     ChartContainer,
@@ -33,7 +33,6 @@ import { EmptyState } from "./empty-state";
 import { barColorForScoreClass } from "./dimension-bar-utils";
 import { DimensionRespondentsDialog } from "../dimension-respondents-dialog";
 import {
-    aggregateScoresByVital,
     barDataForSelectedRoles,
     buildVitalsSunburstData,
     ROLE_SCORE_FILTERS,
@@ -55,16 +54,6 @@ function toTremorBarData(
             color: barColorForScoreClass(value),
         };
     });
-}
-
-function toVitalBarData(barData: { name?: string; scorePercent?: number }[]) {
-    return aggregateScoresByVital(barData).map((v) => ({
-        key: v.id,
-        name: v.name,
-        value: v.value,
-        color: v.barClass,
-        dimensionCount: v.dimensionCount,
-    }));
 }
 
 function getImprovementLevel(scorePercent: number) {
@@ -95,17 +84,6 @@ interface OverviewChartsProps {
     isDemo?: boolean;
     onUpgradeClick?: () => void;
 }
-
-const comparisonConfig = {
-    current: {
-        label: "Your Score",
-        color: "hsl(var(--primary))",
-    },
-    average: {
-        label: "Industry Average",
-        color: "hsl(var(--warning))",
-    },
-} satisfies ChartConfig;
 
 const radarConfig = {
     you: {
@@ -142,17 +120,18 @@ export function OverviewCharts({
         [roleData, selectedRoles, barData]
     );
 
-    const vitalBars = React.useMemo(
-        () => toVitalBarData(filteredBarData),
-        [filteredBarData]
-    );
-    const dimensionBars = React.useMemo(
-        () => toTremorBarData(filteredBarData),
-        [filteredBarData]
+    const dimensionRadar = React.useMemo(
+        () => buildRoleDimensionRadar(roleData, selectedRoles),
+        [roleData, selectedRoles]
     );
     const sunburstData = React.useMemo(
-        () => buildVitalsSunburstData(filteredBarData),
-        [filteredBarData]
+        () =>
+            buildVitalsSunburstData(
+                filteredBarData,
+                roleData,
+                selectedRoles.length ? selectedRoles : undefined
+            ),
+        [filteredBarData, roleData, selectedRoles]
     );
     const hasScoreData = filteredBarData.length > 0;
 
@@ -179,6 +158,49 @@ export function OverviewCharts({
             return prev.filter((r) => r !== id);
         });
     };
+
+    const renderRoleFilterPanel = () => (
+        <div className="rounded-lg border border-border/60 bg-muted/20 p-2.5">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                Filter by role
+            </p>
+            <div className="flex flex-wrap gap-x-3 gap-y-2">
+                {ROLE_SCORE_FILTERS.map((role) => {
+                    const checked = selectedRoles.includes(role.id);
+                    const hasData = availableRoleIds.includes(role.id);
+                    return (
+                        <label
+                            key={role.id}
+                            className={cn(
+                                "inline-flex items-center gap-1.5 text-xs",
+                                hasData
+                                    ? "cursor-pointer text-foreground"
+                                    : "cursor-not-allowed opacity-45"
+                            )}
+                        >
+                            <Checkbox
+                                checked={checked}
+                                disabled={!hasData}
+                                onCheckedChange={(v) =>
+                                    toggleRole(role.id, v === true)
+                                }
+                            />
+                            <span>{role.label}</span>
+                        </label>
+                    );
+                })}
+            </div>
+            {selectedRoles.length > 0 && (
+                <button
+                    type="button"
+                    className="mt-2 text-[10px] font-medium text-primary hover:underline"
+                    onClick={() => setSelectedRoles([])}
+                >
+                    Clear role filters
+                </button>
+            )}
+        </div>
+    );
 
     return (
         <div ref={containerRef} id="tour-overview-charts" className="grid grid-cols-1 lg:grid-cols-2 gap-2 md:gap-4">
@@ -224,8 +246,8 @@ export function OverviewCharts({
                             </CardTitle>
                             <CardDescription className="text-xs">
                                 {scoreView === "vitals"
-                                    ? "Inner ring = vitals · outer ring = dimensions"
-                                    : "Individual dimension performance across this survey"}
+                                    ? "Inner = vitals · middle = dimensions · outer = roles"
+                                    : "One radar polygon per role across all dimensions"}
                                 {selectedRoles.length > 0
                                     ? " · filtered by role"
                                     : " · all roles"}
@@ -235,7 +257,9 @@ export function OverviewCharts({
                             variant="ghost"
                             size="icon"
                             onClick={() =>
-                                setOpenChart(scoreView === "vitals" ? "vitals" : "bar")
+                                setOpenChart(
+                                    scoreView === "vitals" ? "vitals" : "comparison"
+                                )
                             }
                             disabled={isLoadingStats || !hasScoreData}
                         >
@@ -270,46 +294,7 @@ export function OverviewCharts({
                         </button>
                     </div>
 
-                    <div className="rounded-lg border border-border/60 bg-muted/20 p-2.5">
-                        <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                            Filter by role
-                        </p>
-                        <div className="flex flex-wrap gap-x-3 gap-y-2">
-                            {ROLE_SCORE_FILTERS.map((role) => {
-                                const checked = selectedRoles.includes(role.id);
-                                const hasData = availableRoleIds.includes(role.id);
-                                return (
-                                    <label
-                                        key={role.id}
-                                        className={cn(
-                                            "inline-flex items-center gap-1.5 text-xs",
-                                            hasData
-                                                ? "cursor-pointer text-foreground"
-                                                : "cursor-not-allowed opacity-45"
-                                        )}
-                                    >
-                                        <Checkbox
-                                            checked={checked}
-                                            disabled={!hasData}
-                                            onCheckedChange={(v) =>
-                                                toggleRole(role.id, v === true)
-                                            }
-                                        />
-                                        <span>{role.label}</span>
-                                    </label>
-                                );
-                            })}
-                        </div>
-                        {selectedRoles.length > 0 && (
-                            <button
-                                type="button"
-                                className="mt-2 text-[10px] font-medium text-primary hover:underline"
-                                onClick={() => setSelectedRoles([])}
-                            >
-                                Clear role filters
-                            </button>
-                        )}
-                    </div>
+                    {renderRoleFilterPanel()}
                 </CardHeader>
 
                 <CardContent
@@ -319,26 +304,34 @@ export function OverviewCharts({
                             : "transition-all duration-500"
                     }`}
                 >
-                    {!hasScoreData && !isLoadingStats ? (
+                    {!isLoadingStats &&
+                    (scoreView === "vitals"
+                        ? !hasScoreData
+                        : dimensionRadar.data.length === 0) ? (
                         <EmptyState message="No score data available for the selected filters." />
                     ) : scoreView === "vitals" ? (
-                        <VitalsSunburst data={sunburstData} size={340} />
+                        <VitalsSunburst
+                            data={sunburstData}
+                            size={380}
+                            avgScore={avgScore}
+                            roleData={roleData}
+                        />
                     ) : (
-                        <div className="max-h-[420px] overflow-y-auto pr-1">
-                            <BarList
-                                data={dimensionBars}
-                                sortOrder="none"
-                                scaleMax={100}
-                                showAnimation
-                                valueFormatter={(v) => `${v.toFixed(1)}%`}
-                            />
-                        </div>
+                        <DimensionRadarChart
+                            data={dimensionRadar.data}
+                            series={dimensionRadar.series}
+                        />
                     )}
                 </CardContent>
             </Card>
 
             {/* Modals */}
-            <ChartModal open={openChart === "gauge"} onClose={() => setOpenChart(null)} title="Gauge Chart">
+            <ChartModal
+                open={openChart === "gauge"}
+                onClose={() => setOpenChart(null)}
+                title="Gauge Chart"
+                className="!w-[min(72rem,calc(100vw-2rem))] lg:!w-[min(72rem,calc(100vw-20rem))] !max-h-[min(90vh,820px)] !overflow-y-auto"
+            >
                 <GaugeChart score={avgScore} bare />
             </ChartModal>
 
@@ -346,52 +339,36 @@ export function OverviewCharts({
                 open={openChart === "vitals"}
                 onClose={() => setOpenChart(null)}
                 title="Scores by Vitals"
+                className="!w-[90vw] !max-w-[90vw] !h-[90vh] !max-h-[90vh] !overflow-y-auto"
             >
-                <div className="flex justify-center py-4">
-                    <VitalsSunburst data={sunburstData} size={420} />
+                <div className="flex w-full min-h-0 flex-col gap-3 py-2">
+                    {renderRoleFilterPanel()}
+                    {!hasScoreData && !isLoadingStats ? (
+                        <EmptyState message="No score data available for the selected filters." />
+                    ) : (
+                        <VitalsSunburst
+                            data={sunburstData}
+                            size={680}
+                            avgScore={avgScore}
+                            roleData={roleData}
+                            barData={filteredBarData}
+                            variant="expanded"
+                        />
+                    )}
                 </div>
             </ChartModal>
 
             <ChartModal
                 open={openChart === "comparison"}
                 onClose={() => setOpenChart(null)}
-                title="Survey vs Average Comparison"
+                title="Scores by Dimensions"
+                className="!w-[min(56rem,90vw)] !max-h-[90vh] !overflow-y-auto"
             >
-                <ChartContainer config={comparisonConfig} className="h-[450px] w-full">
-                    <RadarChart
-                        cx="50%"
-                        cy="50%"
-                        outerRadius="80%"
-                        data={comparisonRadarData}
-                    >
-                        <PolarGrid stroke="#e4e4e7" gridType="polygon" />
-                        <PolarAngleAxis
-                            dataKey="subject"
-                            fontSize={10}
-                            fontWeight={700}
-                            tick={{ fill: "#71717a" }}
-                        />
-                        <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
-                        <Radar
-                            name="Current Survey"
-                            dataKey="current"
-                            stroke="#14b8a6"
-                            fill="#14b8a6"
-                            fillOpacity={0.6}
-                            strokeWidth={3}
-                        />
-                        <Radar
-                            name="Average"
-                            dataKey="average"
-                            stroke="#f59e0b"
-                            fill="#f59e0b"
-                            fillOpacity={0.4}
-                            strokeWidth={2}
-                        />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Legend iconType="rect" verticalAlign="bottom" />
-                    </RadarChart>
-                </ChartContainer>
+                <DimensionRadarChart
+                    data={dimensionRadar.data}
+                    series={dimensionRadar.series}
+                    bare
+                />
             </ChartModal>
         </div>
     );
@@ -428,6 +405,14 @@ export function DetailedCharts({
     const [selectedDimension, setSelectedDimension] = React.useState<string | null>(
         null
     );
+    const [barZoom, setBarZoom] = React.useState(1);
+    const BAR_ZOOM_MIN = 0.5;
+    const BAR_ZOOM_MAX = 1.5;
+    const BAR_ZOOM_STEP = 0.15;
+
+    React.useEffect(() => {
+        if (openChart !== "bar") setBarZoom(1);
+    }, [openChart]);
 
     const improvementLabel =
         lowestDimensionPercent !== null
@@ -568,7 +553,7 @@ export function DetailedCharts({
                     {roleData.length === 0 && !isLoadingStats ? (
                         <EmptyState message="No role-based data available yet." />
                     ) : (
-                        <RoleAreaChart data={roleData} />
+                        <RoleAreaChart data={roleData} showAnalysis />
                     )}
                 </CardContent>
             </Card>
@@ -579,12 +564,48 @@ export function DetailedCharts({
                 onClose={() => setOpenChart(null)}
                 title="Scores by Dimension"
             >
-                <div className="max-h-[70vh] overflow-y-auto pr-1 pt-5">
+                <div className="flex items-center justify-end gap-1 -mt-1 mb-2">
+                    <span className="mr-1 text-xs text-muted-foreground tabular-nums">
+                        {Math.round(barZoom * 100)}%
+                    </span>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        aria-label="Zoom out — squeeze bars"
+                        disabled={barZoom <= BAR_ZOOM_MIN}
+                        onClick={() =>
+                            setBarZoom((z) =>
+                                Math.max(BAR_ZOOM_MIN, Number((z - BAR_ZOOM_STEP).toFixed(2)))
+                            )
+                        }
+                    >
+                        <Minus className="h-4 w-4" />
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        aria-label="Zoom in — expand bars"
+                        disabled={barZoom >= BAR_ZOOM_MAX}
+                        onClick={() =>
+                            setBarZoom((z) =>
+                                Math.min(BAR_ZOOM_MAX, Number((z + BAR_ZOOM_STEP).toFixed(2)))
+                            )
+                        }
+                    >
+                        <Plus className="h-4 w-4" />
+                    </Button>
+                </div>
+                <div className="max-h-[70vh] overflow-y-auto pr-1">
                     <BarList
                         data={toTremorBarData(barData)}
                         sortOrder="none"
                         scaleMax={100}
                         showAnimation
+                        density={barZoom}
                         referenceLine={referenceLine}
                         valueFormatter={(v) => `${v.toFixed(1)}%`}
                         onValueChange={handleDimensionClick}
@@ -597,7 +618,7 @@ export function DetailedCharts({
                 onClose={() => setOpenChart(null)}
                 title="Scores by Role"
             >
-                <RoleAreaChart data={roleData} bare />
+                <RoleAreaChart data={roleData} bare showAnalysis />
             </ChartModal>
 
             <ChartModal open={openChart === "radar"} onClose={() => setOpenChart(null)} title="Radar Chart">

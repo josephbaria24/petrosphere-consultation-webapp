@@ -28,6 +28,27 @@ import { ExportDialog } from "./export-dialog";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { sanitizeDomForPdf } from "../lib/export-utils";
+
+const DASHBOARD_ORG_KEY = "safety-vitals:dashboard:orgId";
+const DASHBOARD_SURVEY_KEY = "safety-vitals:dashboard:surveyId";
+
+function readDashboardPreference(key: string): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeDashboardPreference(key: string, value: string) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
 import { Lock } from "@/components/icons";
 import { dimensionKey, numericScoreForAnswer } from "../lib/survey-score";
 import {
@@ -110,7 +131,9 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
   const [isLoadingStats, setIsLoadingStats] = useState<boolean>(true);
   const [isLoadingComparison, setIsLoadingComparison] = useState<boolean>(true);
   const [organizations, setOrganizations] = useState<{ id: string, name: string }[]>([]);
-  const [selectedOrgId, setSelectedOrgId] = useState<string>("all");
+  const [selectedOrgId, setSelectedOrgId] = useState<string>(
+    () => readDashboardPreference(DASHBOARD_ORG_KEY) || "all"
+  );
 
   const { user, membership, subscription, org, limits, resetTour, refresh } = useApp();
   const { theme } = useTheme();
@@ -191,9 +214,23 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
     if (!selectedSurvey || !filteredSurveys.length) return;
     const isStillAvailable = filteredSurveys.some(s => s.id === selectedSurvey.id);
     if (!isStillAvailable) {
-      setSelectedSurvey(filteredSurveys[0]);
+      const savedId = readDashboardPreference(DASHBOARD_SURVEY_KEY);
+      const saved = savedId
+        ? filteredSurveys.find((s) => s.id === savedId)
+        : null;
+      setSelectedSurvey(saved || filteredSurveys[0]);
     }
   }, [filteredSurveys, selectedSurvey]);
+
+  useEffect(() => {
+    writeDashboardPreference(DASHBOARD_ORG_KEY, selectedOrgId);
+  }, [selectedOrgId]);
+
+  useEffect(() => {
+    if (selectedSurvey?.id) {
+      writeDashboardPreference(DASHBOARD_SURVEY_KEY, selectedSurvey.id);
+    }
+  }, [selectedSurvey?.id]);
 
   const [refreshTick, setRefreshTick] = useState(0);
 
@@ -352,8 +389,10 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
     const belowMin: string[] = [], atRisk: string[] = [], strong: string[] = [];
     Object.entries(dimensionScores).forEach(([dim, scores]) => {
       const avg = Math.min(scores.reduce((a, b) => a + b, 0) / scores.length, 5);
-      if (avg <= calculatedMinScore) belowMin.push(dim);
-      else if (avg <= calculatedMinScore + 0.5) atRisk.push(dim);
+      const pct = (avg / 5) * 100;
+      // Align with Scores by Dimension bands: <70% critical, 70–75% review, ≥75% on track
+      if (pct < 70) belowMin.push(dim);
+      else if (pct < 75) atRisk.push(dim);
       else strong.push(dim);
     });
     setBelowMinimumDimensions(belowMin); setAtRiskDimensions(atRisk); setStrongDimensions(strong);
@@ -681,7 +720,11 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
           return 0;
         });
         setSurveys(final);
-        if (final.length) setSelectedSurvey(final[0]);
+        if (final.length) {
+          const savedId = readDashboardPreference(DASHBOARD_SURVEY_KEY);
+          const saved = savedId ? final.find((s) => s.id === savedId) : null;
+          setSelectedSurvey(saved || final[0]);
+        }
       }
     };
     fetchSurveys();
@@ -699,6 +742,7 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
 
   const handleOrgChange = (orgId: string) => {
     setSelectedOrgId(orgId);
+    writeDashboardPreference(DASHBOARD_ORG_KEY, orgId);
   };
 
   const handleExportDashboard = async () => {
@@ -828,7 +872,7 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
           />
         </div>
 
-        <SafetyVitalsArchitecture />
+        <SafetyVitalsArchitecture barData={barData} />
 
         <OverviewCharts
           avgScore={avgScore}

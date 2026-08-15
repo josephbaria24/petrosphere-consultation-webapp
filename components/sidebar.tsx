@@ -211,11 +211,12 @@ export default function Sidebar() {
         className={cn(
           "fixed inset-y-0 left-0 z-[70] bg-white dark:bg-[#0F0F12] transition-all duration-300 ease-in-out border-r border-border/50",
           isCollapsed ? "lg:w-20" : "lg:w-72",
-          "lg:translate-x-0 lg:static border-0 shadow-2xl overflow-hidden",
+          // Sticky + viewport height keeps Settings/Collapse pinned on tall screens
+          "lg:translate-x-0 lg:sticky lg:top-0 lg:h-svh lg:self-start border-0 shadow-2xl overflow-hidden",
           isMobileMenuOpen ? "translate-x-0 w-64" : "-translate-x-full"
         )}
       >
-        <div className="h-full flex flex-col relative overflow-visible">
+        <div className="flex h-full min-h-0 flex-col">
           <Link
             href="/dashboard"
             onClick={handleNavigation}
@@ -237,7 +238,7 @@ export default function Sidebar() {
             />
           </Link>
 
-          <div className={cn("flex-1 overflow-y-auto py-1 px-4 space-y-6 scrollbar-hide", isCollapsed ? "px-2" : "px-4")}>
+          <div className={cn("flex-1 min-h-0 overflow-y-auto py-1 space-y-6 scrollbar-hide", isCollapsed ? "px-2" : "px-4")}>
             <div className={cn("border-0 rounded-2xl p-2 bg-zinc-100 dark:bg-zinc-900 transition-all", isCollapsed ? "p-1 rounded-xl" : "p-2")}>
               <div className="space-y-1">
                 <div id="tour-sidebar-dashboard">
@@ -317,7 +318,12 @@ export default function Sidebar() {
             </div>
           </div>
 
-          <div className={cn("px-4 py-4 border-t border-border/10 space-y-1", isCollapsed ? "px-2" : "px-4")}>
+          <div
+            className={cn(
+              "shrink-0 mt-auto py-4 border-t border-border/10 space-y-1 bg-white dark:bg-[#0F0F12]",
+              isCollapsed ? "px-2" : "px-4"
+            )}
+          >
             <NavItem href={`${basePath}/settings`} icon={Settings}>Settings</NavItem>
 
             <button

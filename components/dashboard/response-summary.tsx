@@ -41,6 +41,18 @@ interface ResponseSummaryProps {
 
 type Band = "critical" | "at_risk" | "strong";
 
+function sortDimensionsByNumber(dims: string[]) {
+  return [...dims].sort((a, b) => {
+    const numA = Number(/^(\d+)/.exec(a)?.[1]);
+    const numB = Number(/^(\d+)/.exec(b)?.[1]);
+    const hasA = Number.isFinite(numA);
+    const hasB = Number.isFinite(numB);
+    if (hasA && hasB && numA !== numB) return numA - numB;
+    if (hasA !== hasB) return hasA ? -1 : 1;
+    return a.localeCompare(b);
+  });
+}
+
 const BAND_STYLES: Record<
   Band,
   {
@@ -62,7 +74,7 @@ const BAND_STYLES: Record<
   },
   at_risk: {
     icon: AlertCircle,
-    label: "At risk",
+    label: "Need review",
     chip: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
     panel: "border-amber-500/20 bg-amber-500/[0.04]",
     title: "text-amber-700 dark:text-amber-400",
@@ -70,7 +82,7 @@ const BAND_STYLES: Record<
   },
   strong: {
     icon: ShieldCheck,
-    label: "Strong",
+    label: "On track",
     chip: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20",
     panel: "border-emerald-500/20 bg-emerald-500/[0.04]",
     title: "text-emerald-700 dark:text-emerald-400",
@@ -81,7 +93,7 @@ const BAND_STYLES: Record<
 export function ResponseSummary({
   respondentCount,
   avgScore,
-  minAcceptableScore,
+  minAcceptableScore: _minAcceptableScore,
   belowMinimumDimensions,
   atRiskDimensions,
   strongDimensions,
@@ -90,24 +102,27 @@ export function ResponseSummary({
   onDeleteAction,
   onToggleAction,
 }: ResponseSummaryProps) {
-  const atRiskMax = minAcceptableScore + 0.5;
   const scorePct = toPercentage(avgScore);
+
+  const criticalDims = sortDimensionsByNumber(belowMinimumDimensions);
+  const reviewDims = sortDimensionsByNumber(atRiskDimensions);
+  const onTrackDims = sortDimensionsByNumber(strongDimensions);
 
   const statusTiles = [
     {
       band: "critical" as const,
-      count: belowMinimumDimensions.length,
-      hint: `≤ ${minAcceptableScore.toFixed(1)}`,
+      count: criticalDims.length,
+      hint: "< 70%",
     },
     {
       band: "at_risk" as const,
-      count: atRiskDimensions.length,
-      hint: `${minAcceptableScore.toFixed(1)} – ${atRiskMax.toFixed(1)}`,
+      count: reviewDims.length,
+      hint: "70 – 75%",
     },
     {
       band: "strong" as const,
-      count: strongDimensions.length,
-      hint: `> ${atRiskMax.toFixed(1)}`,
+      count: onTrackDims.length,
+      hint: "≥ 75%",
     },
   ];
 
@@ -320,7 +335,7 @@ export function ResponseSummary({
 
         {/* Dimension lists */}
         <div className="space-y-3">
-          {belowMinimumDimensions.length > 0 && (
+          {criticalDims.length > 0 && (
             <section className={cn("rounded-xl border p-3 space-y-2.5", BAND_STYLES.critical.panel)}>
               <h4
                 className={cn(
@@ -331,18 +346,18 @@ export function ResponseSummary({
                 <AlertTriangle className="w-4 h-4" />
                 Critical areas
                 <span className="ml-auto text-xs font-bold tabular-nums opacity-80">
-                  {belowMinimumDimensions.length}
+                  {criticalDims.length}
                 </span>
               </h4>
               <div className="space-y-1.5">
-                {belowMinimumDimensions.map((dim) =>
+                {criticalDims.map((dim) =>
                   renderDimensionItem(dim, "critical")
                 )}
               </div>
             </section>
           )}
 
-          {atRiskDimensions.length > 0 && (
+          {reviewDims.length > 0 && (
             <section className={cn("rounded-xl border p-3 space-y-2.5", BAND_STYLES.at_risk.panel)}>
               <h4
                 className={cn(
@@ -351,18 +366,18 @@ export function ResponseSummary({
                 )}
               >
                 <AlertCircle className="w-4 h-4" />
-                At-risk areas
+                Need review
                 <span className="ml-auto text-xs font-bold tabular-nums opacity-80">
-                  {atRiskDimensions.length}
+                  {reviewDims.length}
                 </span>
               </h4>
               <div className="space-y-1.5">
-                {atRiskDimensions.map((dim) => renderDimensionItem(dim, "at_risk"))}
+                {reviewDims.map((dim) => renderDimensionItem(dim, "at_risk"))}
               </div>
             </section>
           )}
 
-          {strongDimensions.length > 0 && (
+          {onTrackDims.length > 0 && (
             <section className={cn("rounded-xl border p-3 space-y-2.5", BAND_STYLES.strong.panel)}>
               <h4
                 className={cn(
@@ -371,13 +386,13 @@ export function ResponseSummary({
                 )}
               >
                 <ShieldCheck className="w-4 h-4" />
-                Strengths
+                On track
                 <span className="ml-auto text-xs font-bold tabular-nums opacity-80">
-                  {strongDimensions.length}
+                  {onTrackDims.length}
                 </span>
               </h4>
               <ul className="space-y-1">
-                {strongDimensions.map((dim) => (
+                {onTrackDims.map((dim) => (
                   <li
                     key={dim}
                     className="flex items-start gap-2 text-sm text-emerald-700/90 dark:text-emerald-400/90 py-1"
@@ -390,9 +405,9 @@ export function ResponseSummary({
             </section>
           )}
 
-          {belowMinimumDimensions.length === 0 &&
-            atRiskDimensions.length === 0 &&
-            strongDimensions.length === 0 && (
+          {criticalDims.length === 0 &&
+            reviewDims.length === 0 &&
+            onTrackDims.length === 0 && (
               <div className="rounded-xl border border-dashed border-border/60 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
                 Dimension breakdown will appear once survey scores are available.
               </div>
