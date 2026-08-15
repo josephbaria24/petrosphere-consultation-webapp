@@ -141,11 +141,11 @@ export const ProfessionalSurveySummaryCard = ({
   };
 
   const getLevelLabel = (score: number) => {
-    if (score >= 4.20 && score <= 5.0) return { label: 'Level 5 – Excellence', variant: 'excellent', icon: Star };
+    if (score >= 4.20 && score <= 5.0) return { label: 'Level 5 – Resilient', variant: 'excellent', icon: Star };
     if (score >= 3.40) return { label: 'Level 4 – Integrated', variant: 'excellent', icon: Star };
-    if (score >= 2.60) return { label: 'Level 3 – Interdependent', variant: 'good', icon: Award };
-    if (score >= 1.80) return { label: 'Level 2 – Independent', variant: 'fair', icon: GaugeCircle };
-    return { label: 'Level 1 – Dependent', variant: 'poor', icon: GaugeCircle };
+    if (score >= 2.60) return { label: 'Level 3 – Engaged', variant: 'good', icon: Award };
+    if (score >= 1.80) return { label: 'Level 2 – Managed', variant: 'fair', icon: GaugeCircle };
+    return { label: 'Level 1 – Vulnerable', variant: 'poor', icon: GaugeCircle };
   };
 
   const levelInfo = getLevelLabel(avgScore);

@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell } from "recharts";
 import {
   Card,
   CardHeader,
@@ -9,14 +8,10 @@ import {
   CardContent,
   CardDescription,
 } from "../ui/card";
-import {
-  ChartConfig,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "../ui/chart";
 import { Building } from "@/components/icons";
 import { EmptyState } from "./empty-state";
+import { BarList } from "../tremor_bar";
+import { barColorForScoreClass } from "./dimension-bar-utils";
 
 export interface DeptData {
   department: string;
@@ -29,23 +24,18 @@ interface DepartmentChartProps {
   isLoading?: boolean;
 }
 
-const chartConfig = {
-  avg_score: {
-    label: "Score",
-    color: "hsl(var(--chart-1))",
-  },
-} satisfies ChartConfig;
-
-const COLORS = [
-  "#4A90E2",
-  "#50C878",
-  "#FF7A40",
-  "#9B59B6",
-  "#E74C3C",
-  "#1ABC9C",
-  "#F39C12",
-  "#3498DB",
-];
+function toBarData(data: DeptData[]) {
+  return data.map((d, i) => {
+    const scorePercent = (Number(d.avg_score) / 5) * 100;
+    return {
+      key: `${d.department}-${i}`,
+      name: d.department,
+      value: Number(d.avg_score) || 0,
+      color: barColorForScoreClass(scorePercent),
+      respondent_count: d.respondent_count,
+    };
+  });
+}
 
 export function DepartmentChart({
   data = [],
@@ -53,7 +43,7 @@ export function DepartmentChart({
 }: DepartmentChartProps) {
   if (isLoading) {
     return (
-      <Card className="border-0 bg-card">
+      <Card className="border-0 bg-card shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
             <Building className="w-4 h-4" /> Scores by Department
@@ -72,7 +62,7 @@ export function DepartmentChart({
 
   if (data.length === 0) {
     return (
-      <Card className="border-0 bg-card">
+      <Card className="border-0 bg-card shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
             <Building className="w-4 h-4" /> Scores by Department
@@ -88,8 +78,10 @@ export function DepartmentChart({
     );
   }
 
+  const barData = toBarData(data);
+
   return (
-    <Card className="border-0 bg-card">
+    <Card className="border-0 bg-card shadow-sm">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-semibold flex items-center gap-2">
           <Building className="w-4 h-4" /> Scores by Department
@@ -98,48 +90,30 @@ export function DepartmentChart({
           Average safety score per department ({data.length} departments)
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <ChartContainer config={chartConfig} className="min-h-[300px] w-full">
-          <BarChart
-            data={data}
-            layout="vertical"
-            margin={{ left: 20, right: 20, top: 5, bottom: 5 }}
-          >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              horizontal={false}
-              vertical={true}
-            />
-            <XAxis type="number" domain={[0, 5]} tick={{ fontSize: 11 }} />
-            <YAxis
-              type="category"
-              dataKey="department"
-              tick={{ fontSize: 11 }}
-              width={120}
-              axisLine={false}
-              tickLine={false}
-            />
-            <ChartTooltip
-              cursor={false}
-              content={
-                <ChartTooltipContent
-                  indicator="line"
-                  labelFormatter={(value) => String(value)}
-                />
-              }
-            />
-            <Bar
-              dataKey="avg_score"
-              fill="var(--color-avg_score)"
-              radius={[0, 4, 4, 0]}
-              maxBarSize={28}
-            >
-              {data.map((_, idx) => (
-                <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ChartContainer>
+      <CardContent className="pt-2">
+        <div className="mb-3 flex flex-wrap gap-3 text-[10px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-sm bg-red-200/80 dark:bg-red-900/50" />
+            Below 70%
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-sm bg-yellow-200/80 dark:bg-yellow-900/40" />
+            70–75%
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-sm bg-blue-200 dark:bg-blue-900" />
+            75%+
+          </span>
+        </div>
+        <div className="max-h-[340px] overflow-y-auto pr-1">
+          <BarList
+            data={barData}
+            sortOrder="descending"
+            scaleMax={5}
+            showAnimation
+            valueFormatter={(v) => `${v.toFixed(2)} / 5`}
+          />
+        </div>
       </CardContent>
     </Card>
   );

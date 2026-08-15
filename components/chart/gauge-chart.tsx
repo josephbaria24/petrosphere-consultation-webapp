@@ -67,16 +67,16 @@ export default function GaugeChart({
               type: "outer",
               ticks: [
                 { value: 20, valueConfig: { formatTextValue: () => "1.0" } },
-                { value: 28, valueConfig: { formatTextValue: () => "L1", style: { fontSize: "9px", fontWeight: "bold" } } },
+                { value: 28, valueConfig: { formatTextValue: () => "Vulnerable", style: { fontSize: "10px", fontWeight: "bold" } } },
                 { value: 40, valueConfig: { formatTextValue: () => "2.0" } },
-                { value: 44, valueConfig: { formatTextValue: () => "L2", style: { fontSize: "9px", fontWeight: "bold" } } },
-                { value: 60, valueConfig: { formatTextValue: () => "L3", style: { fontSize: "9px", fontWeight: "bold" } } },
-                { value: 76, valueConfig: { formatTextValue: () => "L4", style: { fontSize: "9px", fontWeight: "bold" } } },
+                { value: 44, valueConfig: { formatTextValue: () => "Managed", style: { fontSize: "10px", fontWeight: "bold" } } },
+                { value: 60, valueConfig: { formatTextValue: () => "Engaged", style: { fontSize: "10px", fontWeight: "bold" } } },
+                { value: 76, valueConfig: { formatTextValue: () => "Integrated", style: { fontSize: "10px", fontWeight: "bold" } } },
                 { value: 80, valueConfig: { formatTextValue: () => "4.0" } },
-                { value: 92, valueConfig: { formatTextValue: () => "L5", style: { fontSize: "9px", fontWeight: "bold" } } },
+                { value: 92, valueConfig: { formatTextValue: () => "Resilient", style: { fontSize: "10px", fontWeight: "bold" } } },
                 { value: 100, valueConfig: { formatTextValue: () => "5.0" } },
               ],
-              defaultTickValueConfig: { style: { fontSize: "8px" } }
+              defaultTickValueConfig: { style: { fontSize: "10px" } }
             },
             valueLabel: {
               formatTextValue: () => `${toPercentage(score).toFixed(0)}%`,
@@ -86,11 +86,11 @@ export default function GaugeChart({
           arc={{
             colorArray: ["#991b1b", "#dc2626", "#f97316", "#fbbf24", "#22c55e"],
             subArcs: [
-              { limit: 36, onMouseMove: () => setHoveredTooltip("Level 1 – Dependent (Rules-driven; safety not priority)"), onMouseLeave: () => setHoveredTooltip(null) },
-              { limit: 52, onMouseMove: () => setHoveredTooltip("Level 2 – Independent (Needs Intervention)"), onMouseLeave: () => setHoveredTooltip(null) },
-              { limit: 68, onMouseMove: () => setHoveredTooltip("Level 3 – Interdependent (At risk: over-reliance on systems)"), onMouseLeave: () => setHoveredTooltip(null) },
-              { limit: 84, onMouseMove: () => setHoveredTooltip("Level 4 – Integrated (Cooperative Culture)"), onMouseLeave: () => setHoveredTooltip(null) },
-              { limit: 100, onMouseMove: () => setHoveredTooltip("Level 5 – Excellence (Resilient & Learning Culture)"), onMouseLeave: () => setHoveredTooltip(null) },
+              { limit: 36, onMouseMove: () => setHoveredTooltip("Level 1 – Vulnerable"), onMouseLeave: () => setHoveredTooltip(null) },
+              { limit: 52, onMouseMove: () => setHoveredTooltip("Level 2 – Managed"), onMouseLeave: () => setHoveredTooltip(null) },
+              { limit: 68, onMouseMove: () => setHoveredTooltip("Level 3 – Engaged"), onMouseLeave: () => setHoveredTooltip(null) },
+              { limit: 84, onMouseMove: () => setHoveredTooltip("Level 4 – Integrated"), onMouseLeave: () => setHoveredTooltip(null) },
+              { limit: 100, onMouseMove: () => setHoveredTooltip("Level 5 – Resilient"), onMouseLeave: () => setHoveredTooltip(null) },
             ],
             padding: 0.01,
             width: 0.3,
@@ -111,20 +111,58 @@ export default function GaugeChart({
         </div>
       </div>
 
-      <div className="w-full mt-2 p-3 md:p-4 border border-gray dark:border-zinc-800 rounded-lg bg-card text-start">
-        <div className="text-gray-600 dark:text-zinc-400 text-[10px] md:text-sm font-medium mb-1 uppercase tracking-wider">
-          Your Company Score
-        </div>
+      <div className="relative w-full overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-90"
+          style={{
+            background: `linear-gradient(135deg, ${levelInfo.colorCode}22 0%, transparent 58%)`,
+          }}
+        />
+        <div
+          aria-hidden
+          className="absolute inset-y-0 left-0 w-1"
+          style={{ backgroundColor: levelInfo.colorCode }}
+        />
+        <div className="relative flex flex-col gap-3 p-3.5 pl-4 md:p-4 md:pl-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 space-y-1">
+              <p className="text-[10px] md:text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Your company score
+              </p>
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <span className="text-3xl md:text-4xl font-extrabold tracking-tight tabular-nums text-foreground">
+                  {toPercentage(score).toFixed(0)}
+                  <span className="text-lg md:text-xl font-bold text-muted-foreground">%</span>
+                </span>
+                <span className="text-xs md:text-sm text-muted-foreground tabular-nums">
+                  {score.toFixed(2)}
+                  <span className="text-muted-foreground/70"> / 5.0</span>
+                </span>
+              </div>
+            </div>
+            <Badge
+              className={`${levelInfo.badgeColor} shrink-0 text-[10px] md:text-xs px-2.5 py-1 rounded-full border-0 shadow-sm whitespace-nowrap`}
+            >
+              {levelInfo.label}
+            </Badge>
+          </div>
 
-        <Badge className={`${levelInfo.badgeColor} text-[10px] md:text-sm px-2 md:px-3 py-0.5 md:py-1 rounded-full whitespace-normal text-center leading-tight`}>
-          {levelInfo.label}
-        </Badge>
-
-        <div className="text-xl md:text-2xl font-extrabold mt-1 md:mt-2">
-          {toPercentage(score).toFixed(0)}%
-          <span className="text-xs md:text-sm text-gray-500 font-normal ml-2">
-            ({score.toFixed(2)} / 5.0)
-          </span>
+          <div className="space-y-1.5">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted/80">
+              <div
+                className="h-full rounded-full transition-all duration-500 ease-out"
+                style={{
+                  width: `${Math.min(Math.max(toPercentage(score), 0), 100)}%`,
+                  backgroundColor: levelInfo.colorCode,
+                }}
+              />
+            </div>
+            <div className="flex justify-between text-[9px] md:text-[10px] font-medium uppercase tracking-wider text-muted-foreground/80">
+              <span>Vulnerable</span>
+              <span>Resilient</span>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -279,7 +279,7 @@ function TasksPageContent({
               </Select>
             ) : null}
             <Button
-              className="gap-2 bg-[#1e3a5f] hover:bg-[#162d4a] shrink-0"
+              className="gap-2 bg-[#1e3a5f] text-white hover:bg-[#162d4a] hover:text-white shrink-0"
               disabled={!selectedTemplateId || starting || loading}
               onClick={handleStartInspection}
             >

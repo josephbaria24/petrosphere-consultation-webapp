@@ -32,6 +32,16 @@ import {
 import { EmptyState } from "./empty-state";
 import { barColorForScoreClass } from "./dimension-bar-utils";
 import { DimensionRespondentsDialog } from "../dimension-respondents-dialog";
+import {
+    aggregateScoresByVital,
+    barDataForSelectedRoles,
+    buildVitalsSunburstData,
+    ROLE_SCORE_FILTERS,
+    type RoleFilterId,
+} from "../../lib/vitals-framework";
+import { VitalsSunburst } from "./vitals-sunburst";
+import { cn } from "../../lib/utils";
+import { Checkbox } from "../../@/components/ui/checkbox";
 
 function toTremorBarData(
     barData: { name?: string; scorePercent?: number }[]
@@ -47,6 +57,16 @@ function toTremorBarData(
     });
 }
 
+function toVitalBarData(barData: { name?: string; scorePercent?: number }[]) {
+    return aggregateScoresByVital(barData).map((v) => ({
+        key: v.id,
+        name: v.name,
+        value: v.value,
+        color: v.barClass,
+        dimensionCount: v.dimensionCount,
+    }));
+}
+
 function getImprovementLevel(scorePercent: number) {
     if (scorePercent < 60) return "Priority Improvement Area";
     if (scorePercent < 65) return "Top Improvement Priority";
@@ -57,13 +77,15 @@ function getImprovementLevel(scorePercent: number) {
 }
 
 // Types
-type ChartType = "bar" | "radar" | "gauge" | "role" | "comparison" | null;
+type ChartType = "bar" | "radar" | "gauge" | "role" | "vitals" | "comparison" | null;
 
 interface OverviewChartsProps {
     avgScore: number;
     openChart: ChartType;
     setOpenChart: (chart: ChartType) => void;
     comparisonRadarData: any[];
+    barData: any[];
+    roleData?: any[];
     theme: string | undefined;
     containerRef: React.RefObject<HTMLDivElement>;
     isLoadingStats?: boolean;
@@ -97,6 +119,8 @@ export function OverviewCharts({
     openChart,
     setOpenChart,
     comparisonRadarData,
+    barData = [],
+    roleData = [],
     theme,
     containerRef,
     isLoadingStats,
@@ -106,8 +130,54 @@ export function OverviewCharts({
     isDemo,
     onUpgradeClick
 }: OverviewChartsProps) {
-    const toPercentage = (score: number): number => {
-        return (score / 5) * 100;
+    const [scoreView, setScoreView] = React.useState<"vitals" | "dimensions">(
+        "vitals"
+    );
+    const [selectedRoles, setSelectedRoles] = React.useState<RoleFilterId[]>(
+        []
+    );
+
+    const filteredBarData = React.useMemo(
+        () => barDataForSelectedRoles(roleData, selectedRoles, barData),
+        [roleData, selectedRoles, barData]
+    );
+
+    const vitalBars = React.useMemo(
+        () => toVitalBarData(filteredBarData),
+        [filteredBarData]
+    );
+    const dimensionBars = React.useMemo(
+        () => toTremorBarData(filteredBarData),
+        [filteredBarData]
+    );
+    const sunburstData = React.useMemo(
+        () => buildVitalsSunburstData(filteredBarData),
+        [filteredBarData]
+    );
+    const hasScoreData = filteredBarData.length > 0;
+
+    const availableRoleIds = React.useMemo(() => {
+        const keys = new Set<string>();
+        for (const row of roleData || []) {
+            Object.keys(row || {}).forEach((k) => {
+                if (k !== "dimension") keys.add(k);
+            });
+        }
+        return ROLE_SCORE_FILTERS.filter((f) =>
+            [...keys].some((key) => {
+                const norm = key.toLowerCase();
+                return f.match.some(
+                    (token) => norm === token || norm.includes(token)
+                );
+            })
+        ).map((f) => f.id);
+    }, [roleData]);
+
+    const toggleRole = (id: RoleFilterId, checked: boolean) => {
+        setSelectedRoles((prev) => {
+            if (checked) return prev.includes(id) ? prev : [...prev, id];
+            return prev.filter((r) => r !== id);
+        });
     };
 
     return (
@@ -141,76 +211,128 @@ export function OverviewCharts({
                 </CardContent>
             </Card>
 
-            {/* Comparison Radar Chart */}
+            {/* Scores by Vitals / Dimensions */}
             <Card className="w-full border-0 shadow-lg relative overflow-hidden">
-                {(isLoadingComparison || isLoadingStats) && <LoadingOverlay />}
-                <CardHeader className="flex justify-between items-center">
-                    <CardTitle>Survey vs Average</CardTitle>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setOpenChart("comparison")}
-                        disabled={isLoadingComparison || isLoadingStats || comparisonRadarData.length === 0}
-                    >
-                        <Maximize2 className="w-4 h-4" />
-                    </Button>
+                {isLoadingStats && <LoadingOverlay />}
+                <CardHeader className="space-y-3">
+                    <div className="flex justify-between items-start gap-2">
+                        <div className="space-y-1">
+                            <CardTitle>
+                                {scoreView === "vitals"
+                                    ? "Scores by Vitals"
+                                    : "Scores by Dimensions"}
+                            </CardTitle>
+                            <CardDescription className="text-xs">
+                                {scoreView === "vitals"
+                                    ? "Inner ring = vitals · outer ring = dimensions"
+                                    : "Individual dimension performance across this survey"}
+                                {selectedRoles.length > 0
+                                    ? " · filtered by role"
+                                    : " · all roles"}
+                            </CardDescription>
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() =>
+                                setOpenChart(scoreView === "vitals" ? "vitals" : "bar")
+                            }
+                            disabled={isLoadingStats || !hasScoreData}
+                        >
+                            <Maximize2 className="w-4 h-4" />
+                        </Button>
+                    </div>
+
+                    <div className="inline-flex rounded-lg border border-border/70 bg-muted/40 p-0.5">
+                        <button
+                            type="button"
+                            onClick={() => setScoreView("vitals")}
+                            className={cn(
+                                "rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
+                                scoreView === "vitals"
+                                    ? "bg-background text-foreground shadow-sm"
+                                    : "text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            By Vitals
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setScoreView("dimensions")}
+                            className={cn(
+                                "rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
+                                scoreView === "dimensions"
+                                    ? "bg-background text-foreground shadow-sm"
+                                    : "text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            By Dimensions
+                        </button>
+                    </div>
+
+                    <div className="rounded-lg border border-border/60 bg-muted/20 p-2.5">
+                        <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                            Filter by role
+                        </p>
+                        <div className="flex flex-wrap gap-x-3 gap-y-2">
+                            {ROLE_SCORE_FILTERS.map((role) => {
+                                const checked = selectedRoles.includes(role.id);
+                                const hasData = availableRoleIds.includes(role.id);
+                                return (
+                                    <label
+                                        key={role.id}
+                                        className={cn(
+                                            "inline-flex items-center gap-1.5 text-xs",
+                                            hasData
+                                                ? "cursor-pointer text-foreground"
+                                                : "cursor-not-allowed opacity-45"
+                                        )}
+                                    >
+                                        <Checkbox
+                                            checked={checked}
+                                            disabled={!hasData}
+                                            onCheckedChange={(v) =>
+                                                toggleRole(role.id, v === true)
+                                            }
+                                        />
+                                        <span>{role.label}</span>
+                                    </label>
+                                );
+                            })}
+                        </div>
+                        {selectedRoles.length > 0 && (
+                            <button
+                                type="button"
+                                className="mt-2 text-[10px] font-medium text-primary hover:underline"
+                                onClick={() => setSelectedRoles([])}
+                            >
+                                Clear role filters
+                            </button>
+                        )}
+                    </div>
                 </CardHeader>
 
-                <CardContent className={`h-[350px] md:h-[550px] p-1 md:p-4 ${(isLoadingComparison || isLoadingStats) ? "filter blur-[4px] grayscale-[0.5] transition-all duration-500 opacity-50" : "transition-all duration-500"}`}>
-                    {comparisonRadarData.length === 0 && !isLoadingComparison && !isLoadingStats ? (
-                        <EmptyState message="No comparison data available yet." />
+                <CardContent
+                    className={`p-2 md:p-4 ${
+                        isLoadingStats
+                            ? "filter blur-[4px] grayscale-[0.5] transition-all duration-500 opacity-50"
+                            : "transition-all duration-500"
+                    }`}
+                >
+                    {!hasScoreData && !isLoadingStats ? (
+                        <EmptyState message="No score data available for the selected filters." />
+                    ) : scoreView === "vitals" ? (
+                        <VitalsSunburst data={sunburstData} size={340} />
                     ) : (
-                        <ChartContainer config={comparisonConfig} className="h-full w-full">
-                            <RadarChart
-                                cx="50%"
-                                cy="50%"
-                                outerRadius="80%"
-                                data={comparisonRadarData}
-                            >
-                                <PolarGrid stroke="#e4e4e7" strokeWidth={1} gridType="polygon" />
-                                <PolarAngleAxis
-                                    dataKey="subject"
-                                    fontSize={typeof window !== 'undefined' && window.innerWidth < 768 ? 8 : 10}
-                                    fontWeight={700}
-                                    tick={{ fill: theme === "dark" ? "#a1a1aa" : "#71717a" }}
-                                    dy={4}
-                                />
-                                <PolarRadiusAxis
-                                    domain={[0, 100]}
-                                    tick={false}
-                                    axisLine={false}
-                                />
-
-                                <Radar
-                                    name="Your Score"
-                                    dataKey="current"
-                                    stroke="#14b8a6"
-                                    fill="#14b8a6"
-                                    fillOpacity={0.6}
-                                    strokeWidth={3}
-                                />
-                                <Radar
-                                    name="Industry Average"
-                                    dataKey="average"
-                                    stroke="#f59e0b"
-                                    fill="#f59e0b"
-                                    fillOpacity={0.4}
-                                    strokeWidth={2}
-                                />
-                                <ChartTooltip content={<ChartTooltipContent />} />
-                                <Legend
-                                    verticalAlign="bottom"
-                                    height={36}
-                                    iconType="rect"
-                                    wrapperStyle={{
-                                        paddingTop: "20px",
-                                        fontSize: "10px",
-                                        fontWeight: "bold",
-                                        color: theme === "dark" ? "#fff" : "#000",
-                                    }}
-                                />
-                            </RadarChart>
-                        </ChartContainer>
+                        <div className="max-h-[420px] overflow-y-auto pr-1">
+                            <BarList
+                                data={dimensionBars}
+                                sortOrder="none"
+                                scaleMax={100}
+                                showAnimation
+                                valueFormatter={(v) => `${v.toFixed(1)}%`}
+                            />
+                        </div>
                     )}
                 </CardContent>
             </Card>
@@ -220,6 +342,15 @@ export function OverviewCharts({
                 <GaugeChart score={avgScore} bare />
             </ChartModal>
 
+            <ChartModal
+                open={openChart === "vitals"}
+                onClose={() => setOpenChart(null)}
+                title="Scores by Vitals"
+            >
+                <div className="flex justify-center py-4">
+                    <VitalsSunburst data={sunburstData} size={420} />
+                </div>
+            </ChartModal>
 
             <ChartModal
                 open={openChart === "comparison"}

@@ -30,10 +30,15 @@ import html2canvas from "html2canvas";
 import { sanitizeDomForPdf } from "../lib/export-utils";
 import { Lock } from "@/components/icons";
 import { dimensionKey, numericScoreForAnswer } from "../lib/survey-score";
+import {
+  departmentMergeKey,
+  pickDepartmentLabel,
+} from "../lib/department-utils";
 import { useOrgKPIs } from "../lib/hooks/use-org-kpis";
 import { DepartmentChart } from "./dashboard/department-chart";
 import { OwnerPerformance } from "./dashboard/owner-performance";
 import { ComplianceReportButton } from "./dashboard/compliance-report-button";
+import { SafetyVitalsArchitecture } from "./dashboard/safety-vitals-architecture";
 import {
   Sheet,
   SheetContent,
@@ -89,7 +94,7 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
   const [barData, setBarData] = useState<any[]>([]);
   const [radarData, setRadarData] = useState<any[]>([]);
   const [comparisonRadarData, setComparisonRadarData] = useState<any[]>([]);
-  const [openChart, setOpenChart] = useState<"bar" | "radar" | "gauge" | "role" | "comparison" | null>(null);
+  const [openChart, setOpenChart] = useState<"bar" | "radar" | "gauge" | "role" | "vitals" | "comparison" | null>(null);
   const [roleData, setRoleData] = useState<any[]>([]);
   const [departmentData, setDepartmentData] = useState<
     { department: string; avg_score: number; respondent_count: number }[]
@@ -392,8 +397,12 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
 
       // Group scores by (dimension, role)
       const dimRoleScores: Record<string, Record<string, number[]>> = {};
-      // Group scores by department (overall avg per respondent then dept)
-      const deptUserScores: Record<string, Record<string, number[]>> = {};
+      // Group scores by department (overall avg per respondent then dept).
+      // Merge near-duplicate labels (e.g. "Power Plant" / "Powerplant").
+      const deptUserScores: Record<
+        string,
+        { labelVariants: string[]; byUser: Record<string, number[]> }
+      > = {};
 
       const scoreResponse = (r: any): number | null => {
         const q = questions.find((qu) => qu.id === r.question_id);
@@ -420,11 +429,16 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
           r.department || userDeptMap[r.user_id] || ""
         ).trim();
         if (department && r.user_id) {
-          if (!deptUserScores[department]) deptUserScores[department] = {};
-          if (!deptUserScores[department][r.user_id]) {
-            deptUserScores[department][r.user_id] = [];
+          const key = departmentMergeKey(department);
+          if (!key) return;
+          if (!deptUserScores[key]) {
+            deptUserScores[key] = { labelVariants: [], byUser: {} };
           }
-          deptUserScores[department][r.user_id].push(score);
+          deptUserScores[key].labelVariants.push(department);
+          if (!deptUserScores[key].byUser[r.user_id]) {
+            deptUserScores[key].byUser[r.user_id] = [];
+          }
+          deptUserScores[key].byUser[r.user_id].push(score);
         }
       });
 
@@ -461,15 +475,15 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
         }));
       }
 
-      computedDepartmentData = Object.entries(deptUserScores)
-        .map(([department, byUser]) => {
+      computedDepartmentData = Object.values(deptUserScores)
+        .map(({ labelVariants, byUser }) => {
           const userAvgs = Object.values(byUser).map(
             (scores) => scores.reduce((a, b) => a + b, 0) / scores.length
           );
           const avg =
             userAvgs.reduce((a, b) => a + b, 0) / Math.max(userAvgs.length, 1);
           return {
-            department,
+            department: pickDepartmentLabel(labelVariants),
             avg_score: parseFloat(Math.min(avg, 5).toFixed(2)),
             respondent_count: userAvgs.length,
           };
@@ -814,11 +828,15 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
           />
         </div>
 
+        <SafetyVitalsArchitecture />
+
         <OverviewCharts
           avgScore={avgScore}
           openChart={openChart}
           setOpenChart={setOpenChart}
           comparisonRadarData={comparisonRadarData}
+          barData={barData}
+          roleData={roleData}
           theme={theme}
           containerRef={chartsRef}
           isLoadingStats={isLoadingStats}

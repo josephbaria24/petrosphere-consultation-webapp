@@ -11,35 +11,42 @@
  */
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef, useCallback, startTransition } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { supabase } from '../../../../lib/supabaseClient'
 import { toast } from 'sonner'
 import { useApp } from '../../../../components/app/AppProvider'
 import { Cookies } from "../../../../lib/cookies-client";
-import { Badge } from '../../../../@/components/ui/badge'
-import {
-  Accordion, AccordionContent, AccordionItem, AccordionTrigger
-} from '../../../../@/components/ui/accordion'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
-} from '../../../../components/ui/select'
-import {
-  Card, CardContent, CardHeader, CardTitle, CardDescription
-} from '../../../../components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '../../../../@/components/ui/alert'
 import { Button } from '../../../../components/ui/button'
-import { Calendar, Filter, User as UserIcon, Building, FileText, Download, HelpCircle, Copy, ExternalLink, Link as LinkIcon, Trash2 } from "@/components/icons"
+import { Card, CardContent } from '../../../../components/ui/card'
+import { FileText, HelpCircle, Copy, ExternalLink, Link as LinkIcon, Search, User as UserIcon } from "@/components/icons"
 import {
   AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from '../../../../@/components/ui/alert-dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../../../../components/ui/dialog'
+import { Label } from '../../../../components/ui/label'
 import { Input } from '../../../../components/ui/input'
-import { Separator } from '../../../../@/components/ui/separator' // Ensure this exists or use border
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from '../../../../components/ui/select'
 import { ExportDialog } from '../../../../components/export-dialog'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import { sanitizeDomForPdf } from '../../../../lib/export-utils'
-import { useRef } from 'react'
 import { buildPublicSurveyUrl } from '../../../../lib/public-survey-url'
+import {
+  RespondentRow,
+  groupAnswersByDimension,
+  type ResponseGroup,
+} from '../../../../components/survey-responses/respondent-row'
 
 type Survey = {
   id: string
@@ -61,39 +68,7 @@ type User = {
   site: string
 }
 
-type AnswerWithDimension = {
-  question: string
-  answer: string
-  dimension: string
-  question_type?: string
-}
-
-type ResponseGroup = {
-  user_id: string
-  user: User | null
-  metadata: {
-    department: string
-    site: string
-    role: string
-    created_at: string
-    org_name?: string
-    org_id?: string | null
-  }
-  answers: AnswerWithDimension[]
-}
-
 const DELETE_CONFIRMATION = "Delete this user responses"
-
-const getBadgeColor = (answer: string) => {
-  // Simple heuristic for badge colors based on typical Likert scale text or numbers
-  const lower = answer.toLowerCase()
-  if (lower.includes('strongly disagree') || lower.startsWith('1')) return 'bg-destructive/90 text-destructive-foreground hover:bg-destructive'
-  if (lower.includes('disagree') || lower.startsWith('2')) return 'bg-orange-500 text-white hover:bg-orange-600'
-  if (lower.includes('undecided') || lower.includes('neutral') || lower.startsWith('3')) return 'bg-yellow-500 text-white hover:bg-yellow-600'
-  if (lower.includes('agree') || lower.startsWith('4')) return 'bg-blue-500 text-white hover:bg-blue-600'
-  if (lower.includes('strongly agree') || lower.startsWith('5')) return 'bg-emerald-500 text-white hover:bg-emerald-600'
-  return 'bg-secondary text-secondary-foreground'
-}
 export default function SurveyResponsesPage() {
   const appData = useApp() // Use appData to access all context values
   const { user, org, membership, subscription } = appData
@@ -122,10 +97,27 @@ export default function SurveyResponsesPage() {
   const [deleteTarget, setDeleteTarget] = useState<ResponseGroup | null>(null)
   const [deleteConfirmText, setDeleteConfirmText] = useState("")
   const [deleting, setDeleting] = useState(false)
+  const [editTarget, setEditTarget] = useState<ResponseGroup | null>(null)
+  const [editForm, setEditForm] = useState({
+    first_name: "",
+    last_name: "",
+    email: "",
+    role: "",
+    department: "",
+    site: "",
+  })
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [openRespondentId, setOpenRespondentId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [isExportingPdf, setIsExportingPdf] = useState(false)
   const responsesContentRef = useRef<HTMLDivElement>(null)
+  const listParentRef = useRef<HTMLDivElement>(null)
 
   const handleExportResults = async () => {
     if (!responsesContentRef.current) return;
+
+    setIsExportingPdf(true);
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
     try {
       const canvas = await html2canvas(responsesContentRef.current, {
@@ -169,6 +161,8 @@ export default function SurveyResponsesPage() {
       console.error("PDF Export Error:", error);
       toast.error("Failed to generate PDF");
       throw error;
+    } finally {
+      setIsExportingPdf(false);
     }
   };
 
@@ -368,7 +362,8 @@ export default function SurveyResponsesPage() {
                 org_name: organizations.find(o => o.id === r.org_id)?.name || 'Unknown Org',
                 org_id: r.org_id || null,
               },
-              answers: []
+              answers: [],
+              answersByDimension: [],
             })
           }
 
@@ -387,7 +382,13 @@ export default function SurveyResponsesPage() {
           })
         })
 
-        setResponseGroups(Array.from(groupedMap.values()))
+        setResponseGroups(
+          Array.from(groupedMap.values()).map((group) => ({
+            ...group,
+            answersByDimension: groupAnswersByDimension(group.answers),
+          }))
+        )
+        setOpenRespondentId(null)
 
       } catch (error) {
         console.error('Error fetching responses:', error)
@@ -422,6 +423,64 @@ export default function SurveyResponsesPage() {
     })
   }, [selectedSurveyId, selectedSurvey, selectedOrgId])
 
+  const filteredGroups = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return responseGroups
+    return responseGroups.filter((g) => {
+      const name = g.user
+        ? `${g.user.first_name} ${g.user.last_name}`.toLowerCase()
+        : ""
+      const email = (g.user?.email || "").toLowerCase()
+      const role = (g.metadata.role || "").toLowerCase()
+      const department = (g.metadata.department || "").toLowerCase()
+      const site = (g.metadata.site || "").toLowerCase()
+      const orgName = (g.metadata.org_name || "").toLowerCase()
+      return (
+        name.includes(q) ||
+        email.includes(q) ||
+        role.includes(q) ||
+        department.includes(q) ||
+        site.includes(q) ||
+        orgName.includes(q)
+      )
+    })
+  }, [responseGroups, searchQuery])
+
+  const rowVirtualizer = useVirtualizer({
+    count: isExportingPdf ? 0 : filteredGroups.length,
+    getScrollElement: () => listParentRef.current,
+    estimateSize: () => 104,
+    overscan: 6,
+    measureElement:
+      typeof window !== "undefined" &&
+      navigator.userAgent.indexOf("Firefox") === -1
+        ? (el) => el.getBoundingClientRect().height
+        : undefined,
+  })
+
+  const toggleRespondent = useCallback((id: string) => {
+    startTransition(() => {
+      setOpenRespondentId((prev) => (prev === id ? null : id))
+    })
+  }, [])
+
+  useEffect(() => {
+    rowVirtualizer.measure()
+  }, [openRespondentId, filteredGroups.length, rowVirtualizer])
+
+  const onSurveyChange = (id: string) => {
+    setLoadingResponses(true)
+    setOpenRespondentId(null)
+    setSearchQuery("")
+    startTransition(() => setSelectedSurveyId(id))
+  }
+
+  const onOrgChange = (id: string) => {
+    setLoadingResponses(true)
+    setOpenRespondentId(null)
+    startTransition(() => setSelectedOrgId(id))
+  }
+
   const copySurveyLink = async () => {
     if (!selectedSurveyUrl) return
     try {
@@ -436,6 +495,174 @@ export default function SurveyResponsesPage() {
     if (deleting) return
     setDeleteTarget(null)
     setDeleteConfirmText("")
+  }
+
+  const openEditDialog = (group: ResponseGroup) => {
+    if (!group.user_id || group.user_id === "anonymous") {
+      toast.error("This respondent cannot be edited.")
+      return
+    }
+    setEditForm({
+      first_name: group.user?.first_name || "",
+      last_name: group.user?.last_name || "",
+      email: group.user?.email || "",
+      role:
+        group.metadata.role !== "Unknown"
+          ? group.metadata.role
+          : group.user?.role || "",
+      department:
+        group.metadata.department !== "Unknown"
+          ? group.metadata.department
+          : group.user?.department || "",
+      site:
+        group.metadata.site !== "Unknown"
+          ? group.metadata.site
+          : group.user?.site || "",
+    })
+    setEditTarget(group)
+  }
+
+  const closeEditDialog = () => {
+    if (savingEdit) return
+    setEditTarget(null)
+  }
+
+  const handleSaveRespondent = async () => {
+    if (!editTarget || !selectedSurveyId) return
+    if (!editTarget.user_id || editTarget.user_id === "anonymous") {
+      toast.error("This respondent cannot be edited.")
+      return
+    }
+
+    const payload = {
+      first_name: editForm.first_name.trim(),
+      last_name: editForm.last_name.trim(),
+      email: editForm.email.trim(),
+      role: editForm.role.trim(),
+      department: editForm.department.trim(),
+      site: editForm.site.trim(),
+    }
+
+    if (
+      !payload.first_name ||
+      !payload.last_name ||
+      !payload.role ||
+      !payload.department ||
+      !payload.site
+    ) {
+      toast.error("Please fill in name, role, department, and site.")
+      return
+    }
+
+    setSavingEdit(true)
+    try {
+      const orgIdForUpdate =
+        selectedOrgId !== "all"
+          ? selectedOrgId
+          : editTarget.metadata.org_id || undefined
+
+      if (isPlatformAdmin) {
+        const resp = await fetch("/api/admin/update-respondent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: editTarget.user_id,
+            surveyId: selectedSurveyId,
+            orgId: orgIdForUpdate,
+            ...payload,
+          }),
+        })
+        const result = await resp.json().catch(() => ({}))
+        if (!resp.ok) {
+          throw new Error(result.error || "Failed to update respondent")
+        }
+      } else {
+        const { error: userError } = await supabase
+          .from("users")
+          .update({
+            first_name: payload.first_name,
+            last_name: payload.last_name,
+            ...(payload.email ? { email: payload.email } : {}),
+            role: payload.role,
+            department: payload.department,
+            site: payload.site,
+          })
+          .eq("id", editTarget.user_id)
+        if (userError) throw userError
+
+        const { data: questions, error: qErr } = await supabase
+          .from("survey_questions")
+          .select("id")
+          .eq("survey_id", selectedSurveyId)
+        if (qErr) throw qErr
+
+        const questionIds = (questions || []).map((q) => q.id).filter(Boolean)
+        if (questionIds.length > 0) {
+          let updateQuery = supabase
+            .from("responses")
+            .update({
+              role: payload.role,
+              department: payload.department,
+              site: payload.site,
+            })
+            .eq("user_id", editTarget.user_id)
+            .in("question_id", questionIds)
+
+          if (orgIdForUpdate) {
+            updateQuery = updateQuery.eq("org_id", orgIdForUpdate)
+          }
+
+          const { error: respError } = await updateQuery
+          if (respError) {
+            const msg = String(respError.message || "").toLowerCase()
+            if (msg.includes("department") || msg.includes("site")) {
+              let fallback = supabase
+                .from("responses")
+                .update({ role: payload.role })
+                .eq("user_id", editTarget.user_id)
+                .in("question_id", questionIds)
+              if (orgIdForUpdate) fallback = fallback.eq("org_id", orgIdForUpdate)
+              const retry = await fallback
+              if (retry.error) throw retry.error
+            } else {
+              throw respError
+            }
+          }
+        }
+      }
+
+      setResponseGroups((prev) =>
+        prev.map((g) => {
+          if (g.user_id !== editTarget.user_id) return g
+          return {
+            ...g,
+            user: {
+              id: g.user_id,
+              first_name: payload.first_name,
+              last_name: payload.last_name,
+              email: payload.email || g.user?.email || "",
+              role: payload.role,
+              department: payload.department,
+              site: payload.site,
+            },
+            metadata: {
+              ...g.metadata,
+              role: payload.role,
+              department: payload.department,
+              site: payload.site,
+            },
+          }
+        })
+      )
+
+      toast.success("Respondent info updated")
+      setEditTarget(null)
+    } catch (error: any) {
+      console.error("Update respondent error:", error)
+      toast.error(error?.message || "Failed to update respondent")
+    } finally {
+      setSavingEdit(false)
+    }
   }
 
   const handleDeleteResponses = async () => {
@@ -496,6 +723,7 @@ export default function SurveyResponsesPage() {
 
       const removedId = deleteTarget.user_id
       setResponseGroups((prev) => prev.filter((g) => g.user_id !== removedId))
+      setOpenRespondentId((prev) => (prev === removedId ? null : prev))
       setDeleteTarget(null)
       setDeleteConfirmText("")
       toast.success("Respondent answers deleted")
@@ -524,7 +752,7 @@ export default function SurveyResponsesPage() {
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
           {isPlatformAdmin && organizations.length > 0 && (
-            <Select value={selectedOrgId} onValueChange={setSelectedOrgId}>
+            <Select value={selectedOrgId} onValueChange={onOrgChange}>
               <SelectTrigger className="w-full md:w-[200px] bg-background">
                 <SelectValue placeholder="All Organizations" />
               </SelectTrigger>
@@ -543,7 +771,7 @@ export default function SurveyResponsesPage() {
             {loadingSurveys ? (
               <div className="h-10 w-full animate-pulse bg-muted rounded-md" />
             ) : surveys.length > 0 ? (
-              <Select value={selectedSurveyId} onValueChange={setSelectedSurveyId}>
+              <Select value={selectedSurveyId} onValueChange={onSurveyChange}>
                 <SelectTrigger className="w-full bg-background">
                   <SelectValue placeholder="Select a survey" />
                 </SelectTrigger>
@@ -630,7 +858,16 @@ export default function SurveyResponsesPage() {
             )}
           </div>
 
-          <div ref={responsesContentRef} className="space-y-6">
+          <div ref={responsesContentRef} className="space-y-6 relative">
+            {(loadingResponses || isExportingPdf) && (
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 rounded-xl bg-background/70 backdrop-blur-[1px]">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                <p className="text-sm text-muted-foreground">
+                  {isExportingPdf ? "Preparing PDF export…" : "Loading response data…"}
+                </p>
+              </div>
+            )}
+
             {loadingResponses ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
@@ -647,126 +884,192 @@ export default function SurveyResponsesPage() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-4">
-                {/* Responses List */}
-                <Accordion type="multiple" className="space-y-3">
-                  {responseGroups.map((group, idx) => (
-                    <AccordionItem key={group.user_id + idx} value={group.user_id + idx} className="border rounded-xl bg-card shadow-sm px-0 overflow-hidden">
-                      <div className="flex items-center gap-1 pr-2">
-                      <AccordionTrigger className="hover:no-underline px-4 py-3 md:px-6 items-center gap-3 flex-1">
-                        <div className="flex flex-col lg:flex-row lg:items-center gap-3 min-w-0 flex-1 text-left">
-                          {/* User Info */}
-                          <div className="flex items-center gap-3 min-w-0 flex-1">
-                            <div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                              {group.user?.first_name?.[0] || 'U'}
-                            </div>
-                            <div className="min-w-0 space-y-0.5">
-                              <div className="font-semibold truncate">
-                                {group.user ? `${group.user.first_name} ${group.user.last_name}` : 'Unknown Respondent'}
-                              </div>
-                              <div className="text-xs text-muted-foreground truncate">
-                                {group.user?.email || 'No email provided'}
-                              </div>
-                              <div
-                                className="flex items-center text-xs text-muted-foreground"
-                                title={new Date(group.metadata.created_at).toLocaleString()}
-                              >
-                                <Calendar className="h-3 w-3 mr-1 shrink-0" />
-                                {new Date(group.metadata.created_at).toLocaleDateString()}
-                              </div>
-                            </div>
+              <div className="space-y-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value)
+                      setOpenRespondentId(null)
+                    }}
+                    placeholder="Search by name, email, role, department, or site…"
+                    className="pl-9 bg-background"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Showing {filteredGroups.length} of {responseGroups.length} respondents
+                  {openRespondentId ? " · open one card at a time for faster browsing" : ""}
+                </p>
+
+                {isExportingPdf ? (
+                  <div className="space-y-3">
+                    {filteredGroups.map((group) => (
+                      <RespondentRow
+                        key={group.user_id}
+                        group={group}
+                        isOpen
+                        isPlatformAdmin={isPlatformAdmin}
+                        onToggle={() => {}}
+                        onEdit={() => {}}
+                        onDelete={() => {}}
+                      />
+                    ))}
+                  </div>
+                ) : filteredGroups.length === 0 ? (
+                  <Card className="border-dashed bg-muted/5">
+                    <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                      No respondents match “{searchQuery.trim()}”.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div
+                    ref={listParentRef}
+                    className="h-[min(70vh,720px)] overflow-y-auto rounded-xl border bg-muted/10 p-2"
+                  >
+                    <div
+                      className="relative w-full"
+                      style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
+                    >
+                      {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                        const group = filteredGroups[virtualRow.index]
+                        return (
+                          <div
+                            key={group.user_id}
+                            data-index={virtualRow.index}
+                            ref={rowVirtualizer.measureElement}
+                            className="absolute top-0 left-0 w-full"
+                            style={{
+                              transform: `translateY(${virtualRow.start}px)`,
+                            }}
+                          >
+                            <RespondentRow
+                              group={group}
+                              isOpen={openRespondentId === group.user_id}
+                              isPlatformAdmin={isPlatformAdmin}
+                              onToggle={() => toggleRespondent(group.user_id)}
+                              onEdit={() => openEditDialog(group)}
+                              onDelete={() => {
+                                setDeleteConfirmText("")
+                                setDeleteTarget(group)
+                              }}
+                            />
                           </div>
-
-                          {/* Meta Badges */}
-                          <div className="flex flex-wrap gap-2 lg:justify-end lg:max-w-[58%] shrink-0">
-                            {isPlatformAdmin && (
-                              <Badge variant="outline" className="text-[10px] uppercase tracking-wider py-0 px-1.5 border-blue-500/30 bg-blue-500/5">
-                                ADMIN CONTEXT
-                              </Badge>
-                            )}
-                            <Badge variant="outline" className="font-normal text-xs bg-muted/50">
-                              {group.metadata.role}
-                            </Badge>
-                            <Badge variant="outline" className="font-normal text-xs bg-muted/50">
-                              {group.metadata.department}
-                            </Badge>
-                            <Badge variant="outline" className="font-normal text-xs bg-muted/50">
-                              {group.metadata.site}
-                            </Badge>
-                            {isPlatformAdmin && (
-                              <Badge variant="secondary" className="font-semibold text-xs flex items-center gap-1">
-                                <Building className="h-3 w-3" />
-                                {group.metadata.org_name}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </AccordionTrigger>
-                      {group.user_id !== "anonymous" && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                          title="Delete this respondent's answers"
-                          onClick={() => {
-                            setDeleteConfirmText("")
-                            setDeleteTarget(group)
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                      </div>
-                      <AccordionContent className="px-0 pb-0">
-                        <div className="border-t bg-muted/10 p-4 md:p-6 space-y-6">
-
-                          {/* Group Answers by Dimension */}
-                          {Object.entries(
-                            group.answers.reduce<Record<string, AnswerWithDimension[]>>((acc, curr) => {
-                              const dim = curr.dimension || 'Uncategorized'
-                              if (!acc[dim]) acc[dim] = []
-                              acc[dim].push(curr)
-                              return acc
-                            }, {})
-                          )
-                            .sort(([a], [b]) => a.localeCompare(b))
-                            .map(([dim, answers], i) => (
-                              <div key={i} className="space-y-3">
-                                <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-primary/60"></span>
-                                  {dim}
-                                  {isPlatformAdmin && (
-                                    <Badge variant="outline" className="ml-auto text-[10px] uppercase tracking-wider py-0 px-1.5 border-blue-500/30 bg-blue-500/5">
-                                      ADMIN CONTEXT
-                                    </Badge>
-                                  )}
-                                </h4>
-                                <div className="grid gap-3 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                                  {answers.map((ans, j) => (
-                                    <div key={j} className="bg-background border rounded-lg p-3 text-sm shadow-sm">
-                                      <p className="font-medium text-foreground mb-2 leading-snug">
-                                        {ans.question}
-                                      </p>
-                                      <Badge className={`font-medium ${getBadgeColor(ans.answer)}`}>
-                                        {ans.answer}
-                                      </Badge>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
-
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </>
       )}
+
+      <Dialog
+        open={!!editTarget}
+        onOpenChange={(open) => {
+          if (!open) closeEditDialog()
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit respondent info</DialogTitle>
+            <DialogDescription>
+              Update profile details used for analytics (role, department, site).
+              Changes apply to this respondent and their answers on the selected survey.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-1">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-first-name">First name</Label>
+                <Input
+                  id="edit-first-name"
+                  value={editForm.first_name}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, first_name: e.target.value }))
+                  }
+                  disabled={savingEdit}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-last-name">Last name</Label>
+                <Input
+                  id="edit-last-name"
+                  value={editForm.last_name}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, last_name: e.target.value }))
+                  }
+                  disabled={savingEdit}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-email">Email</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editForm.email}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, email: e.target.value }))
+                }
+                disabled={savingEdit}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-role">Role</Label>
+              <Input
+                id="edit-role"
+                value={editForm.role}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, role: e.target.value }))
+                }
+                disabled={savingEdit}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-department">Department</Label>
+              <Input
+                id="edit-department"
+                value={editForm.department}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, department: e.target.value }))
+                }
+                disabled={savingEdit}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-site">Site</Label>
+              <Input
+                id="edit-site"
+                value={editForm.site}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, site: e.target.value }))
+                }
+                disabled={savingEdit}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeEditDialog}
+              disabled={savingEdit}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleSaveRespondent()}
+              disabled={savingEdit}
+            >
+              {savingEdit ? "Saving…" : "Save changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog
         open={!!deleteTarget}

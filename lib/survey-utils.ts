@@ -7,34 +7,34 @@ export const getLevelLabel = (score: number) => {
   if (score >= 4.2)
     return {
       level: 5,
-      label: "Level 5 – Excellence (Resilient & Learning Culture)",
+      label: "Level 5 – Resilient",
       badgeColor: "bg-green-500 text-white",
       colorCode: "#22c55e"
     };
   if (score >= 3.4)
     return {
       level: 4,
-      label: "Level 4 – Integrated (Cooperative Culture)",
+      label: "Level 4 – Integrated",
       badgeColor: "bg-yellow-400 text-black",
       colorCode: "#fbbf24"
     };
   if (score >= 2.6)
     return {
       level: 3,
-      label: "Level 3 – Interdependent (At risk: over-reliance on systems)",
+      label: "Level 3 – Engaged",
       badgeColor: "bg-red-500 text-white",
       colorCode: "#f97316"
     };
   if (score >= 1.8)
     return {
       level: 2,
-      label: "Level 2 – Independent (Needs Intervention)",
+      label: "Level 2 – Managed",
       badgeColor: "bg-red-700 text-white",
       colorCode: "#dc2626"
     };
   return {
     level: 1,
-    label: "Level 1 – Dependent (Rules-driven; safety not priority)",
+    label: "Level 1 – Vulnerable",
     badgeColor: "bg-red-900 text-white",
     colorCode: "#991b1b"
   };
