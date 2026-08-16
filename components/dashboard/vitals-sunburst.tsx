@@ -366,6 +366,20 @@ export function VitalsSunburst({
           ? data.reduce((s, n) => s + n.score, 0) / data.length
           : 0;
 
+  const orgLevelInfo =
+    orgOverall > 0
+      ? getLevelLabel(
+          typeof avgScore === "number" && avgScore > 0
+            ? avgScore
+            : (orgOverall / 100) * 5
+        )
+      : null;
+  const orgLevelOnDark =
+    orgLevelInfo != null &&
+    (orgLevelInfo.level === 1 ||
+      orgLevelInfo.level === 2 ||
+      orgLevelInfo.level === 3);
+
   const selectedArc = selectedId
     ? arcs.find((a) => a.id === selectedId) || null
     : null;
@@ -766,7 +780,15 @@ export function VitalsSunburst({
                     </div>
                   ))}
                 </div>
-                <div className="mt-1 bg-emerald-500 px-3 py-2 text-xs font-bold text-white">
+                <div
+                  className={cn(
+                    "mt-1 px-3 py-2 text-xs font-bold",
+                    orgLevelOnDark ? "text-white" : "text-slate-950"
+                  )}
+                  style={{
+                    backgroundColor: orgLevelInfo?.colorCode ?? "#22c55e",
+                  }}
+                >
                   <div className="flex items-center justify-between gap-2">
                     <span>Overall Organization Score</span>
                     <span className="tabular-nums text-sm">
