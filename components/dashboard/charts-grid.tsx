@@ -41,6 +41,12 @@ import {
 import { VitalsSunburst } from "./vitals-sunburst";
 import { cn } from "../../lib/utils";
 import { Checkbox } from "../../@/components/ui/checkbox";
+import {
+    ScoreListFilters,
+    applyScoreListFilters,
+    type ScoreBand,
+    type ScoreSort,
+} from "./score-list-filters";
 
 function toTremorBarData(
     barData: { name?: string; scorePercent?: number }[]
@@ -406,6 +412,8 @@ export function DetailedCharts({
         null
     );
     const [barZoom, setBarZoom] = React.useState(1);
+    const [dimSort, setDimSort] = React.useState<ScoreSort>("number");
+    const [dimBand, setDimBand] = React.useState<ScoreBand>("all");
     const BAR_ZOOM_MIN = 0.5;
     const BAR_ZOOM_MAX = 1.5;
     const BAR_ZOOM_STEP = 0.15;
@@ -413,6 +421,23 @@ export function DetailedCharts({
     React.useEffect(() => {
         if (openChart !== "bar") setBarZoom(1);
     }, [openChart]);
+
+    const filteredBarData = React.useMemo(
+        () =>
+            applyScoreListFilters(
+                barData || [],
+                (d) => Number(d.scorePercent ?? 0),
+                (d) => String(d.name || ""),
+                dimSort,
+                dimBand
+            ),
+        [barData, dimSort, dimBand]
+    );
+
+    const dimensionBars = React.useMemo(
+        () => toTremorBarData(filteredBarData),
+        [filteredBarData]
+    );
 
     const improvementLabel =
         lowestDimensionPercent !== null
@@ -486,19 +511,34 @@ export function DetailedCharts({
                         <EmptyState message="No dimension data available yet." />
                     ) : (
                         <div className="space-y-3">
-                            <div className="max-h-[280px] overflow-y-auto pr-1 pt-5">
+                            <ScoreListFilters
+                                sort={dimSort}
+                                band={dimBand}
+                                onSortChange={setDimSort}
+                                onBandChange={setDimBand}
+                                showNumberSort
+                                resultCount={filteredBarData.length}
+                                totalCount={barData.length}
+                            />
+                            <div className="max-h-[280px] overflow-y-auto pr-1 pt-1">
                                 <p className="text-[10px] text-muted-foreground mb-2">
                                     Hover to enlarge · click a dimension for respondent answers
                                 </p>
-                                <BarList
-                                    data={toTremorBarData(barData)}
-                                    sortOrder="none"
-                                    scaleMax={100}
-                                    showAnimation
-                                    referenceLine={referenceLine}
-                                    valueFormatter={(v) => `${v.toFixed(1)}%`}
-                                    onValueChange={handleDimensionClick}
-                                />
+                                {dimensionBars.length === 0 ? (
+                                    <p className="py-8 text-center text-sm text-muted-foreground">
+                                        No dimensions match this filter.
+                                    </p>
+                                ) : (
+                                    <BarList
+                                        data={dimensionBars}
+                                        sortOrder="none"
+                                        scaleMax={100}
+                                        showAnimation
+                                        referenceLine={referenceLine}
+                                        valueFormatter={(v) => `${v.toFixed(1)}%`}
+                                        onValueChange={handleDimensionClick}
+                                    />
+                                )}
                             </div>
                             {dimensionSummary && (
                                 <p className="text-xs text-muted-foreground leading-relaxed border-t pt-3 px-0.5">
@@ -564,52 +604,69 @@ export function DetailedCharts({
                 onClose={() => setOpenChart(null)}
                 title="Scores by Dimension"
             >
-                <div className="flex items-center justify-end gap-1 -mt-1 mb-2">
-                    <span className="mr-1 text-xs text-muted-foreground tabular-nums">
-                        {Math.round(barZoom * 100)}%
-                    </span>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8"
-                        aria-label="Zoom out — squeeze bars"
-                        disabled={barZoom <= BAR_ZOOM_MIN}
-                        onClick={() =>
-                            setBarZoom((z) =>
-                                Math.max(BAR_ZOOM_MIN, Number((z - BAR_ZOOM_STEP).toFixed(2)))
-                            )
-                        }
-                    >
-                        <Minus className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8"
-                        aria-label="Zoom in — expand bars"
-                        disabled={barZoom >= BAR_ZOOM_MAX}
-                        onClick={() =>
-                            setBarZoom((z) =>
-                                Math.min(BAR_ZOOM_MAX, Number((z + BAR_ZOOM_STEP).toFixed(2)))
-                            )
-                        }
-                    >
-                        <Plus className="h-4 w-4" />
-                    </Button>
+                <div className="flex flex-col gap-3 -mt-1 mb-3">
+                    <div className="flex items-center justify-end gap-1">
+                        <span className="mr-1 text-xs text-muted-foreground tabular-nums">
+                            {Math.round(barZoom * 100)}%
+                        </span>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            aria-label="Zoom out — squeeze bars"
+                            disabled={barZoom <= BAR_ZOOM_MIN}
+                            onClick={() =>
+                                setBarZoom((z) =>
+                                    Math.max(BAR_ZOOM_MIN, Number((z - BAR_ZOOM_STEP).toFixed(2)))
+                                )
+                            }
+                        >
+                            <Minus className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            aria-label="Zoom in — expand bars"
+                            disabled={barZoom >= BAR_ZOOM_MAX}
+                            onClick={() =>
+                                setBarZoom((z) =>
+                                    Math.min(BAR_ZOOM_MAX, Number((z + BAR_ZOOM_STEP).toFixed(2)))
+                                )
+                            }
+                        >
+                            <Plus className="h-4 w-4" />
+                        </Button>
+                    </div>
+                    <ScoreListFilters
+                        sort={dimSort}
+                        band={dimBand}
+                        onSortChange={setDimSort}
+                        onBandChange={setDimBand}
+                        showNumberSort
+                        resultCount={filteredBarData.length}
+                        totalCount={barData.length}
+                    />
                 </div>
                 <div className="max-h-[70vh] overflow-y-auto pr-1">
-                    <BarList
-                        data={toTremorBarData(barData)}
-                        sortOrder="none"
-                        scaleMax={100}
-                        showAnimation
-                        density={barZoom}
-                        referenceLine={referenceLine}
-                        valueFormatter={(v) => `${v.toFixed(1)}%`}
-                        onValueChange={handleDimensionClick}
-                    />
+                    {dimensionBars.length === 0 ? (
+                        <p className="py-8 text-center text-sm text-muted-foreground">
+                            No dimensions match this filter.
+                        </p>
+                    ) : (
+                        <BarList
+                            data={dimensionBars}
+                            sortOrder="none"
+                            scaleMax={100}
+                            showAnimation
+                            density={barZoom}
+                            referenceLine={referenceLine}
+                            valueFormatter={(v) => `${v.toFixed(1)}%`}
+                            onValueChange={handleDimensionClick}
+                        />
+                    )}
                 </div>
             </ChartModal>
 

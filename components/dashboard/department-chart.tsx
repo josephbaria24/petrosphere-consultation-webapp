@@ -14,6 +14,12 @@ import { BarList } from "../tremor_bar";
 import { barColorForScoreClass } from "./dimension-bar-utils";
 import { Button } from "../ui/button";
 import ChartModal from "../chart-modal";
+import {
+  ScoreListFilters,
+  applyScoreListFilters,
+  type ScoreBand,
+  type ScoreSort,
+} from "./score-list-filters";
 
 export interface DeptData {
   department: string;
@@ -96,6 +102,8 @@ export function DepartmentChart({
 }: DepartmentChartProps) {
   const [open, setOpen] = React.useState(false);
   const [barZoom, setBarZoom] = React.useState(1);
+  const [sort, setSort] = React.useState<ScoreSort>("highest");
+  const [band, setBand] = React.useState<ScoreBand>("all");
   const BAR_ZOOM_MIN = 0.5;
   const BAR_ZOOM_MAX = 1.5;
   const BAR_ZOOM_STEP = 0.15;
@@ -103,6 +111,18 @@ export function DepartmentChart({
   React.useEffect(() => {
     if (!open) setBarZoom(1);
   }, [open]);
+
+  const filteredData = React.useMemo(
+    () =>
+      applyScoreListFilters(
+        data,
+        (d) => (Number(d.avg_score) / 5) * 100,
+        (d) => d.department,
+        sort,
+        band
+      ),
+    [data, sort, band]
+  );
 
   if (isLoading) {
     return (
@@ -141,8 +161,20 @@ export function DepartmentChart({
     );
   }
 
-  const barData = toBarData(data);
+  const barData = toBarData(filteredData);
   const summary = departmentSummary(data);
+
+  const filterBar = (
+    <ScoreListFilters
+      sort={sort}
+      band={band}
+      onSortChange={setSort}
+      onBandChange={setBand}
+      showNumberSort={false}
+      resultCount={filteredData.length}
+      totalCount={data.length}
+    />
+  );
 
   const analysis = summary ? (
     <p className="text-xs text-muted-foreground leading-relaxed border-t pt-3 px-0.5">
@@ -194,14 +226,21 @@ export function DepartmentChart({
         </CardHeader>
         <CardContent className="pt-2 space-y-3">
           <DepartmentLegend />
+          {filterBar}
           <div className="max-h-[340px] overflow-y-auto pr-1">
-            <BarList
-              data={barData}
-              sortOrder="descending"
-              scaleMax={5}
-              showAnimation
-              valueFormatter={(v) => `${v.toFixed(2)} / 5`}
-            />
+            {barData.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                No departments match this filter.
+              </p>
+            ) : (
+              <BarList
+                data={barData}
+                sortOrder="none"
+                scaleMax={5}
+                showAnimation
+                valueFormatter={(v) => `${v.toFixed(2)} / 5`}
+              />
+            )}
           </div>
           {analysis}
         </CardContent>
@@ -212,53 +251,62 @@ export function DepartmentChart({
         onClose={() => setOpen(false)}
         title="Scores by Department"
       >
-        <div className="flex items-center justify-between gap-2 -mt-1 mb-2">
-          <DepartmentLegend />
-          <div className="flex items-center gap-1 shrink-0">
-            <span className="mr-1 text-xs text-muted-foreground tabular-nums">
-              {Math.round(barZoom * 100)}%
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              aria-label="Zoom out — squeeze bars"
-              disabled={barZoom <= BAR_ZOOM_MIN}
-              onClick={() =>
-                setBarZoom((z) =>
-                  Math.max(BAR_ZOOM_MIN, Number((z - BAR_ZOOM_STEP).toFixed(2)))
-                )
-              }
-            >
-              <Minus className="h-4 w-4" />
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              aria-label="Zoom in — expand bars"
-              disabled={barZoom >= BAR_ZOOM_MAX}
-              onClick={() =>
-                setBarZoom((z) =>
-                  Math.min(BAR_ZOOM_MAX, Number((z + BAR_ZOOM_STEP).toFixed(2)))
-                )
-              }
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
+        <div className="flex flex-col gap-3 -mt-1 mb-2">
+          <div className="flex items-center justify-between gap-2">
+            <DepartmentLegend />
+            <div className="flex items-center gap-1 shrink-0">
+              <span className="mr-1 text-xs text-muted-foreground tabular-nums">
+                {Math.round(barZoom * 100)}%
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                aria-label="Zoom out — squeeze bars"
+                disabled={barZoom <= BAR_ZOOM_MIN}
+                onClick={() =>
+                  setBarZoom((z) =>
+                    Math.max(BAR_ZOOM_MIN, Number((z - BAR_ZOOM_STEP).toFixed(2)))
+                  )
+                }
+              >
+                <Minus className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                aria-label="Zoom in — expand bars"
+                disabled={barZoom >= BAR_ZOOM_MAX}
+                onClick={() =>
+                  setBarZoom((z) =>
+                    Math.min(BAR_ZOOM_MAX, Number((z + BAR_ZOOM_STEP).toFixed(2)))
+                  )
+                }
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
+          {filterBar}
         </div>
         <div className="max-h-[70vh] overflow-y-auto pr-1 space-y-3">
-          <BarList
-            data={barData}
-            sortOrder="descending"
-            scaleMax={5}
-            showAnimation
-            density={barZoom}
-            valueFormatter={(v) => `${v.toFixed(2)} / 5`}
-          />
+          {barData.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              No departments match this filter.
+            </p>
+          ) : (
+            <BarList
+              data={barData}
+              sortOrder="none"
+              scaleMax={5}
+              showAnimation
+              density={barZoom}
+              valueFormatter={(v) => `${v.toFixed(2)} / 5`}
+            />
+          )}
           {analysis}
         </div>
       </ChartModal>
