@@ -149,6 +149,7 @@ const MAP = {
   GripVertical: "drag-drop-vertical",
   HardHat: "baseball-helmet",
   HelpCircle: "help-circle",
+  History: "clock-01",
   Home: "home-01",
   Image: "image-01",
   ImageIcon: "image-01",
@@ -326,6 +327,7 @@ export const Globe = getMappedIcon("Globe");
 export const GripVertical = getMappedIcon("GripVertical");
 export const HardHat = getMappedIcon("HardHat");
 export const HelpCircle = getMappedIcon("HelpCircle");
+export const History = getMappedIcon("History");
 export const Home = getMappedIcon("Home");
 export const Image = getMappedIcon("Image");
 export const ImageIcon = getMappedIcon("ImageIcon");

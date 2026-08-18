@@ -33,6 +33,7 @@ import {
   uniqueDimensionsFromDrafts,
 } from "../../../../lib/safety-vitals-scoring-csv";
 import { buildPublicSurveyUrl } from "../../../../lib/public-survey-url";
+import { requestDeleteSurvey } from "../../../../lib/delete-survey-client";
 import { readCsvFileText, type ImportQuestionDraft } from "../../../../lib/survey-csv";
 import {
   Card,
@@ -884,8 +885,7 @@ export default function ConsultantClient() {
     setDeletingSurvey(true);
     try {
       const surveyId = selectedExistingSurvey.id;
-      const { error } = await supabase.from("surveys").delete().eq("id", surveyId);
-      if (error) throw error;
+      await requestDeleteSurvey(surveyId);
 
       if (createdSurvey?.id === surveyId) {
         setCreatedSurvey(null);

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { supabase } from "../../../../lib/supabaseClient";
 import { useApp } from "../../../../components/app/AppProvider";
@@ -12,6 +12,7 @@ import {
 import { Badge } from '../../../../@/components/ui/badge'
 import { useRouter } from 'next/navigation'
 import { Button } from '../../../../components/ui/button'
+import { Input } from '../../../../components/ui/input'
 import {
   Trash2,
   Edit,
@@ -23,6 +24,9 @@ import {
   Link,
   Download,
   Upload,
+  ChevronDown,
+  ChevronUp,
+  Search,
 } from "@/components/icons"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../../../../@/components/ui/accordion'
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../../../../@/components/ui/alert-dialog'
@@ -42,6 +46,7 @@ import {
 } from '../../../../components/ui/select'
 import HoldButton from '../../../../components/kokonutui/hold-button'
 import { SurveyImportDialog } from '../../../../components/survey/SurveyImportDialog'
+import { CloneSurveyButton } from '../../../../components/survey/CloneSurveyButton'
 import {
   buildSurveyExcelTemplateBuffer,
   downloadExcel,
@@ -52,6 +57,7 @@ import {
   countRespondentsBySurvey,
   questionMapFromSurveys,
 } from '../../../../lib/count-survey-respondents'
+import { requestDeleteSurvey } from '../../../../lib/delete-survey-client'
 
 // Initialized via modular import
 
@@ -92,6 +98,241 @@ type Survey = {
   organizations: {
     name: string
   } | null
+}
+
+function sortedSurveyQuestions(questions: SurveyQuestion[]) {
+  return [...questions].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+}
+
+function questionDimensionLabel(q: SurveyQuestion) {
+  const dim = (q.dimension || "").replace(/^\d+\.\s*/, "").trim()
+  const code = (q.dimension_code || "").trim()
+  if (code && dim) return { code, dim, key: `${code}::${dim}` }
+  if (dim) return { code: "", dim, key: `dim::${dim}` }
+  if (code) return { code, dim: code, key: `code::${code}` }
+  return { code: "", dim: "No dimension", key: "__none__" }
+}
+
+function groupQuestionsByDimension(questions: SurveyQuestion[]) {
+  const groups: {
+    key: string
+    code: string
+    dim: string
+    questions: SurveyQuestion[]
+  }[] = []
+  const index = new Map<string, number>()
+  for (const q of sortedSurveyQuestions(questions)) {
+    const meta = questionDimensionLabel(q)
+    const existing = index.get(meta.key)
+    if (existing == null) {
+      index.set(meta.key, groups.length)
+      groups.push({ ...meta, questions: [q] })
+    } else {
+      groups[existing].questions.push(q)
+    }
+  }
+  return groups
+}
+
+
+function isNegativeQuestion(q: SurveyQuestion) {
+  return !!q.reverse_score || (q.scoring_type || "").toLowerCase() === "negative"
+}
+
+function SurveyQuestionsPreview({ questions }: { questions: SurveyQuestion[] }) {
+  const [expanded, setExpanded] = useState(false)
+  const [query, setQuery] = useState("")
+  const [dimensionKey, setDimensionKey] = useState("all")
+  const [polarity, setPolarity] = useState("all")
+
+  const dimensionOptions = useMemo(
+    () =>
+      groupQuestionsByDimension(questions).map((g) => ({
+        key: g.key,
+        code: g.code,
+        dim: g.dim,
+        count: g.questions.length,
+      })),
+    [questions]
+  )
+
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase()
+    return sortedSurveyQuestions(questions).filter((item) => {
+      const dim = questionDimensionLabel(item)
+      if (dimensionKey !== "all" && dim.key !== dimensionKey) return false
+      const negative = isNegativeQuestion(item)
+      if (polarity === "positive" && negative) return false
+      if (polarity === "negative" && !negative) return false
+      if (!needle) return true
+      return (
+        item.question_text.toLowerCase().includes(needle) ||
+        dim.dim.toLowerCase().includes(needle) ||
+        dim.code.toLowerCase().includes(needle)
+      )
+    })
+  }, [questions, query, dimensionKey, polarity])
+
+  const groups = useMemo(() => groupQuestionsByDimension(filtered), [filtered])
+  const filtersActive = query.trim() !== "" || dimensionKey !== "all" || polarity !== "all"
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <h4 className="font-semibold text-sm flex items-center gap-2 text-foreground">
+          <FileText className="h-4 w-4 text-muted-foreground" />
+          Questions Preview ({questions.length})
+        </h4>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 gap-1.5"
+          onClick={() => setExpanded((prev) => !prev)}
+        >
+          {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          {expanded ? "Collapse" : "Expand all"}
+        </Button>
+      </div>
+
+      {expanded && (
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search questions, dimension, or code…"
+              className="h-8 bg-background pl-8 text-sm"
+            />
+          </div>
+          <Select value={dimensionKey} onValueChange={setDimensionKey}>
+            <SelectTrigger className="h-8 w-full bg-background sm:w-56">
+              <SelectValue placeholder="All dimensions" />
+            </SelectTrigger>
+            <SelectContent className="z-[200]">
+              <SelectItem value="all">All dimensions</SelectItem>
+              {dimensionOptions.map((opt) => (
+                <SelectItem key={opt.key} value={opt.key}>
+                  {(opt.code ? `${opt.code} · ` : "") + opt.dim} ({opt.count})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={polarity} onValueChange={setPolarity}>
+            <SelectTrigger className="h-8 w-full bg-background sm:w-40">
+              <SelectValue placeholder="All polarity" />
+            </SelectTrigger>
+            <SelectContent className="z-[200]">
+              <SelectItem value="all">All polarity</SelectItem>
+              <SelectItem value="positive">Positive</SelectItem>
+              <SelectItem value="negative">Negative</SelectItem>
+            </SelectContent>
+          </Select>
+          {filtersActive && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2"
+              onClick={() => {
+                setQuery("")
+                setDimensionKey("all")
+                setPolarity("all")
+              }}
+            >
+              Clear
+            </Button>
+          )}
+        </div>
+      )}
+
+      {expanded ? (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            Showing {filtered.length} of {questions.length}
+          </p>
+          <div className="max-h-[32rem] overflow-y-auto rounded-lg border bg-slate-50 dark:bg-slate-900/40">
+            {groups.length === 0 ? (
+              <p className="px-3 py-6 text-center text-sm text-muted-foreground">
+                No questions match those filters.
+              </p>
+            ) : (
+              groups.map((group) => (
+                <div key={group.key} className="border-b last:border-b-0">
+                  <div className="sticky top-0 z-10 flex items-center gap-2 bg-slate-200/95 px-3 py-1.5 text-xs font-semibold text-slate-800 backdrop-blur dark:bg-slate-800/95 dark:text-slate-100">
+                    {group.code ? (
+                      <Badge className="h-5 bg-slate-700 px-1.5 text-[10px] text-white hover:bg-slate-700">
+                        {group.code}
+                      </Badge>
+                    ) : null}
+                    <span className="min-w-0 truncate">{group.dim}</span>
+                    <span className="ml-auto shrink-0 font-normal text-muted-foreground">
+                      {group.questions.length}
+                    </span>
+                  </div>
+                  <div className="divide-y">
+                    {group.questions.map((q) => (
+                      <div key={q.id} className="flex items-start gap-2 px-3 py-2 text-sm">
+                        <span className="mt-0.5 shrink-0 rounded bg-slate-200 px-1.5 py-0.5 font-mono text-[10px] text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                          {(q.order_index ?? 0) + 1}
+                        </span>
+                        <p className="min-w-0 flex-1 leading-snug">{q.question_text}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          {sortedSurveyQuestions(questions).slice(0, 6).map((q, i) => {
+            const dim = questionDimensionLabel(q)
+            return (
+              <div
+                key={q.id}
+                className="bg-card border rounded-lg p-4 text-sm shadow-sm flex flex-col gap-3 hover:border-primary/20 transition-colors"
+              >
+                <div className="flex items-start gap-2">
+                  <span className="text-muted-foreground text-xs font-mono mt-0.5 bg-muted px-1.5 py-0.5 rounded">
+                    {i + 1}
+                  </span>
+                  <span className="font-medium line-clamp-2 leading-snug">{q.question_text}</span>
+                </div>
+                <div className="mt-auto pt-3 flex items-center justify-between gap-2 border-t border-dashed">
+                  <div className="flex min-w-0 flex-wrap items-center gap-1">
+                    {dim.code ? (
+                      <Badge className="h-5 bg-slate-700 px-1.5 text-[10px] text-white hover:bg-slate-700">
+                        {dim.code}
+                      </Badge>
+                    ) : null}
+                    <span className="truncate text-[10px] text-muted-foreground">{dim.dim}</span>
+                  </div>
+                  {q.is_required && (
+                    <span className="text-[10px] font-medium text-destructive bg-destructive/5 px-1.5 py-0.5 rounded border border-destructive/10">
+                      Required
+                    </span>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+          {questions.length > 6 && (
+            <button
+              type="button"
+              className="flex flex-col items-center justify-center gap-1 p-4 text-sm text-muted-foreground bg-muted/20 border border-dashed rounded-lg hover:bg-muted/30 transition-colors"
+              onClick={() => setExpanded(true)}
+            >
+              <span className="font-medium">+{questions.length - 6} more</span>
+              <span className="text-xs opacity-70">Expand to view all with dimensions</span>
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 
@@ -375,7 +616,6 @@ export default function ViewSurveysPage() {
   }
 
   const handleDeleteSurvey = async (id: string) => {
-    // ✅ Get admin_id from cookie
     const adminId = Cookies.get("admin_id");
 
     if (!adminId) {
@@ -383,14 +623,12 @@ export default function ViewSurveysPage() {
       return;
     }
 
-    // ✅ Delete survey
-    const { error } = await supabase.from("surveys").delete().eq("id", id);
-
-    if (error) {
-      toast.error("Failed to delete survey");
-    } else {
+    try {
+      await requestDeleteSurvey(id);
       toast.success("Survey deleted");
       setSurveys((prev) => prev.filter((s) => s.id !== id));
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete survey");
     }
   };
 
@@ -570,6 +808,28 @@ export default function ViewSurveysPage() {
                         </Tooltip>
                       </TooltipProvider>
 
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex flex-1 md:flex-none">
+                              <CloneSurveyButton
+                                surveyId={survey.id}
+                                surveyTitle={survey.title}
+                                destOrgId={
+                                  survey.org_id ||
+                                  (selectedOrgId !== "all" ? selectedOrgId : org?.id) ||
+                                  null
+                                }
+                                onCloned={() => void fetchSurveys()}
+                              />
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Copy questions into a new unpublished survey. Answers are not copied.
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+
                       {(survey.id !== DEFAULT_SURVEY_ID || isPlatformAdmin) && (
                         <>
                           <TooltipProvider>
@@ -630,38 +890,7 @@ export default function ViewSurveysPage() {
 
                   {/* Questions Preview */}
                   {survey.survey_questions?.length > 0 && (
-                    <div className="space-y-4">
-                      <h4 className="font-semibold text-sm flex items-center gap-2 text-foreground">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        Questions Preview ({survey.survey_questions.length})
-                      </h4>
-                      <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                        {survey.survey_questions.slice(0, 6).map((q, i) => (
-                          <div key={q.id} className="bg-card border rounded-lg p-4 text-sm shadow-sm flex flex-col gap-3 hover:border-primary/20 transition-colors">
-                            <div className="flex items-start gap-2">
-                              <span className="text-muted-foreground text-xs font-mono mt-0.5 bg-muted px-1.5 py-0.5 rounded">{i + 1}</span>
-                              <span className="font-medium line-clamp-2 leading-snug">
-                                {q.question_text}
-                              </span>
-                            </div>
-                            <div className="mt-auto pt-3 flex items-center justify-between border-t border-dashed">
-                              <Badge variant="outline" className="text-[10px] h-5 px-1.5 font-normal tracking-wide uppercase text-muted-foreground bg-muted/10">
-                                {q.question_type}
-                              </Badge>
-                              {q.is_required && (
-                                <span className="text-[10px] font-medium text-destructive bg-destructive/5 px-1.5 py-0.5 rounded border border-destructive/10">Required</span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                        {survey.survey_questions.length > 6 && (
-                          <div className="flex flex-col items-center justify-center p-4 text-sm text-muted-foreground bg-muted/20 border border-dashed rounded-lg hover:bg-muted/30 transition-colors">
-                            <span className="font-medium">+{survey.survey_questions.length - 6} more</span>
-                            <span className="text-xs opacity-70">View all in edit mode</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    <SurveyQuestionsPreview questions={survey.survey_questions} />
                   )}
 
                 </div>

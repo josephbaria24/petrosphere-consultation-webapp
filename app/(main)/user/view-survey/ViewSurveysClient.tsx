@@ -34,7 +34,9 @@ import {
   TooltipTrigger,
 } from '../../../../components/ui/tooltip'
 import HoldButton from '../../../../components/kokonutui/hold-button'
+import { CloneSurveyButton } from '../../../../components/survey/CloneSurveyButton'
 import { buildPublicSurveyUrl } from '../../../../lib/public-survey-url'
+import { requestDeleteSurvey } from '../../../../lib/delete-survey-client'
 
 // Initialized via modular import
 
@@ -74,6 +76,7 @@ export default function ViewSurveysPage() {
   const [loading, setLoading] = useState(true)
   const [isAdminCookie, setIsAdminCookie] = useState(false);
   const [adminChecked, setAdminChecked] = useState(false);
+  const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
     const adminId = Cookies.get("admin_id");
@@ -182,7 +185,7 @@ export default function ViewSurveysPage() {
     if (appData) {
       fetchSurveys()
     }
-  }, [appData, adminChecked, isAdminCookie])
+  }, [appData, adminChecked, isAdminCookie, refreshTick])
 
   function DeleteSurveyDialog({ surveyId, onDelete }: { surveyId: string, onDelete: (id: string) => void }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -225,7 +228,6 @@ export default function ViewSurveysPage() {
   }
 
   const handleDeleteSurvey = async (id: string) => {
-    // ✅ Get admin_id from cookie or auth context
     const adminId = Cookies.get("admin_id");
 
     if (!adminId && !appData?.user?.id) {
@@ -233,14 +235,12 @@ export default function ViewSurveysPage() {
       return;
     }
 
-    // ✅ Delete survey
-    const { error } = await supabase.from("surveys").delete().eq("id", id);
-
-    if (error) {
-      toast.error("Failed to delete survey");
-    } else {
+    try {
+      await requestDeleteSurvey(id);
       toast.success("Survey deleted");
       setSurveys((prev) => prev.filter((s) => s.id !== id));
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete survey");
     }
   };
 
@@ -337,6 +337,11 @@ export default function ViewSurveysPage() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 shrink-0 w-full md:w-auto">
+                      <CloneSurveyButton
+                        surveyId={survey.id}
+                        surveyTitle={survey.title}
+                        onCloned={() => setRefreshTick((n) => n + 1)}
+                      />
                       {(survey.id !== DEFAULT_SURVEY_ID || isAdmin) && (
                         <>
                           <TooltipProvider>

@@ -272,7 +272,7 @@ export default function OrganizationsClient() {
                         }}
                     >
                         <ArrowUpDown className="h-4 w-4" />
-                        Migrate results
+                        Copy answers
                     </Button>
                     <div className="relative flex-1 md:w-80">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -479,7 +479,7 @@ export default function OrganizationsClient() {
                                                             }}
                                                         >
                                                             <ArrowUpDown className="w-3.5 h-3.5 text-primary" />
-                                                            Migrate Results
+                                                            Copy answers
                                                         </DropdownMenuItem>
                                                         <DropdownMenuSeparator />
                                                         <DropdownMenuItem
