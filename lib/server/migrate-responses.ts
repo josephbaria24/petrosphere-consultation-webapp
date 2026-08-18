@@ -38,15 +38,15 @@ const PAGE = 1000;
 const IN_CHUNK = 80;
 
 async function pagedSelect<T>(
-  run: (
-    from: number,
-    to: number
-  ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>
+  run: (from: number, to: number) => unknown
 ): Promise<T[]> {
   const rows: T[] = [];
   let from = 0;
   while (true) {
-    const { data, error } = await run(from, from + PAGE - 1);
+    const { data, error } = (await run(from, from + PAGE - 1)) as {
+      data: T[] | null;
+      error: { message: string } | null;
+    };
     if (error) throw new Error(error.message);
     const batch = data || [];
     rows.push(...batch);
